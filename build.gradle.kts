@@ -7,3 +7,4 @@ val versions = mapOf(
     "SCALA_LIBRARY"  to "2.13.18"
 )
 extra["VERSIONS"] = versions
+

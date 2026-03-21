@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ScalaCompilerConfiguration">
-    <profile name="Gradle 1" modules="NowChessSystems.modules.core.main,NowChessSystems.modules.core.test">
+    <profile name="Gradle 1" modules="NowChessSystems.modules.api.main,NowChessSystems.modules.api.test,NowChessSystems.modules.core.main,NowChessSystems.modules.core.test">
       <option name="deprecationWarnings" value="true" />
       <option name="uncheckedWarnings" value="true" />
     </profile>

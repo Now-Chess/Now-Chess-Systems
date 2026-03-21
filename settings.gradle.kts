@@ -1,2 +1,2 @@
 rootProject.name = "NowChessSystems"
-include("modules:core")
+include("modules:core", "modules:api")

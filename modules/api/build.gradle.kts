@@ -1,7 +1,6 @@
 plugins {
-    id("scala")
     jacoco
-    application
+    id("scala")
 }
 
 group = "de.nowchess"
@@ -18,20 +17,11 @@ scala {
     versions["SCALA3"]!!
 }
 
-application {
-    mainClass.set("de.nowchess.chess.chessMain")
-}
-
-tasks.named<JavaExec>("run") {
-    jvmArgs("-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8")
-    standardInput = System.`in`
-}
-
 tasks.test {
-    finalizedBy(tasks.jacocoTestReport)
+    finalizedBy(tasks.jacocoTestReport) // report is always generated after tests run
 }
 tasks.jacocoTestReport {
-    dependsOn(tasks.test)
+    dependsOn(tasks.test) // tests are required to run before generating the report
 }
 
 dependencies {
@@ -51,8 +41,6 @@ dependencies {
             strictly(versions["SCALA_LIBRARY"]!!)
         }
     }
-
-    implementation(project(":modules:api"))
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
