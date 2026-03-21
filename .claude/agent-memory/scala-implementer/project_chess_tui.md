@@ -1,14 +1,20 @@
 ---
 name: chess_tui_implementation
-description: Chess TUI implemented in modules/core under de.nowchess.chess — model, renderer, parser, game loop
+description: Chess TUI in modules/core — MVC sub-packages under de.nowchess.chess
 type: project
 ---
 
-Chess TUI standalone app implemented in `modules/core`, package `de.nowchess.chess`.
+Chess TUI standalone app implemented in `modules/core`, root package `de.nowchess.chess`.
 
-**Why:** Initial feature to demonstrate the system's TUI capability per ADR-001.
+**Why:** Initial feature to demonstrate the system's TUI capability per ADR-001. Refactored to MVC pattern to separate concerns.
 
-**How to apply:** When extending the chess logic (legality, castling, en passant, promotion), build on the existing `Model.scala` opaque `Board` type and add methods via extension. The `@main` entry point is `chessMain` in `Game.scala`. `Test.scala` still exists as a separate hello-world stub — do not remove it.
+**How to apply:** When extending chess logic (legality, castling, en passant, promotion), build on the existing `Board` opaque type in `model` and add extension methods there. The `@main` entry point is `chessMain` in `Main.scala` (root package). Game loop lives in `GameController`.
+
+Package layout after MVC refactor:
+- `de.nowchess.chess.model` — `Model.scala`: `Color`, `PieceType`, `Piece`, `Square`, `Board` (opaque type)
+- `de.nowchess.chess.view` — `Renderer.scala`: ANSI board renderer
+- `de.nowchess.chess.controller` — `Parser.scala`: coordinate-notation parser; `GameController.scala`: game loop
+- `de.nowchess.chess` — `Main.scala`: `@main def chessMain()`
 
 Key design choices:
 - `Board` is an opaque type over `Map[Square, Piece]` with extension methods

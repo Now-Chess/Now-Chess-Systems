@@ -1,4 +1,6 @@
-package de.nowchess.chess
+package de.nowchess.chess.view
+
+import de.nowchess.api.board.{Board, Color, File, Rank, Square}
 
 object Renderer:
 
@@ -14,7 +16,7 @@ object Renderer:
     for rank <- (0 until 8).reverse do
       sb.append(s"${rank + 1} ")
       for file <- 0 until 8 do
-        val sq          = Square(file, rank)
+        val sq          = Square(File.values(file), Rank.values(rank))
         val isLightSq   = (file + rank) % 2 != 0
         val bgColor     = if isLightSq then AnsiLightSquare else AnsiDarkSquare
         val cellContent = board.pieceAt(sq) match

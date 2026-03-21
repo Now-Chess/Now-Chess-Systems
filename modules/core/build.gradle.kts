@@ -22,6 +22,10 @@ application {
     mainClass.set("de.nowchess.chess.chessMain")
 }
 
+tasks.withType<ScalaCompile> {
+    scalaCompileOptions.additionalParameters = listOf("-encoding", "UTF-8")
+}
+
 tasks.named<JavaExec>("run") {
     jvmArgs("-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8")
     standardInput = System.`in`

@@ -1,5 +1,7 @@
 package de.nowchess.chess
 
+import de.nowchess.api.board.Board
+import de.nowchess.chess.view.Renderer
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 

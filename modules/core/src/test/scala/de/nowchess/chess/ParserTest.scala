@@ -1,18 +1,20 @@
 package de.nowchess.chess
 
+import de.nowchess.api.board.{File, Rank, Square}
+import de.nowchess.chess.controller.Parser
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 
 class ParserTest:
 
   @Test def parsesValidMove(): Unit =
-    assertEquals(Some((Square(4, 1), Square(4, 3))), Parser.parseMove("e2e4"))
+    assertEquals(Some((Square(File.E, Rank.R2), Square(File.E, Rank.R4))), Parser.parseMove("e2e4"))
 
   @Test def parsesKnightMove(): Unit =
-    assertEquals(Some((Square(6, 0), Square(5, 2))), Parser.parseMove("g1f3"))
+    assertEquals(Some((Square(File.G, Rank.R1), Square(File.F, Rank.R3))), Parser.parseMove("g1f3"))
 
   @Test def ignoresExtraWhitespace(): Unit =
-    assertEquals(Some((Square(4, 1), Square(4, 3))), Parser.parseMove("  e2e4  "))
+    assertEquals(Some((Square(File.E, Rank.R2), Square(File.E, Rank.R4))), Parser.parseMove("  e2e4  "))
 
   @Test def rejectsShortInput(): Unit =
     assertEquals(None, Parser.parseMove("e2e"))
@@ -27,5 +29,5 @@ class ParserTest:
     assertEquals(None, Parser.parseMove("e9e4"))
 
   @Test def parsesUppercaseAsInvalid(): Unit =
-    // uppercase files are out of range after toLowerCase — stays lowercase internally
-    assertEquals(Some((Square(4, 1), Square(4, 3))), Parser.parseMove("E2E4"))
+    // Input is lowercased before parsing, so "E2E4" -> "e2e4" -> valid
+    assertEquals(Some((Square(File.E, Rank.R2), Square(File.E, Rank.R4))), Parser.parseMove("E2E4"))

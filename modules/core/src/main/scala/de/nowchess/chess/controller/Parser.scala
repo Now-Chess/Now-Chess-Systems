@@ -1,4 +1,6 @@
-package de.nowchess.chess
+package de.nowchess.chess.controller
+
+import de.nowchess.api.board.{File, Rank, Square}
 
 object Parser:
 
@@ -15,6 +17,8 @@ object Parser:
 
   private def parseSquare(s: String): Option[Square] =
     Option.when(s.length == 2)(s).flatMap: sq =>
-      val file = sq(0) - 'a'
-      val rank = sq(1) - '1'
-      Option.when(file >= 0 && file <= 7 && rank >= 0 && rank <= 7)(Square(file, rank))
+      val fileIdx = sq(0) - 'a'
+      val rankIdx = sq(1) - '1'
+      Option.when(fileIdx >= 0 && fileIdx <= 7 && rankIdx >= 0 && rankIdx <= 7)(
+        Square(File.values(fileIdx), Rank.values(rankIdx))
+      )
