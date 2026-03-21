@@ -1,6 +1,6 @@
 package de.nowchess.api.move
 
-import de.nowchess.api.board.{PieceType, Square}
+import de.nowchess.api.board.Square
 
 /** The piece a pawn may be promoted to (all non-pawn, non-king pieces). */
 enum PromotionPiece:

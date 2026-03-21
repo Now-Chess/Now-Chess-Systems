@@ -6,8 +6,10 @@ model: haiku
 color: purple
 memory: project
 ---
-
+You do not have permissions to modify the source code, just write tests.
 You write tests for Scala 3 + Quarkus services.
 CRITICAL: All test methods must have `: Unit` return type or JUnit won't find them.
 Use @QuarkusTest for integration tests, plain JUnit 5 for unit tests.
-Target 95%+ coverage.
+Target 95%+ conditional coverage.
+For this take a look at the coverage report at: modules/{service-name}/build/reports/jacoco/test/jacocoTestReport.xml
+To regenerate the report run the tests.

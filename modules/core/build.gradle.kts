@@ -31,11 +31,22 @@ tasks.named<JavaExec>("run") {
     standardInput = System.`in`
 }
 
+tasks.withType<Test> {
+    testLogging {
+        events("passed", "failed", "skipped")
+        showStandardStreams = true
+    }
+}
+
 tasks.test {
     finalizedBy(tasks.jacocoTestReport)
 }
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
 }
 
 dependencies {
