@@ -9,7 +9,7 @@ You do not have permissions to modify the source code, just write tests.
 You write tests for Scala 3 + Quarkus services.
 
 ## Test style
-- Unit tests: `extends AnyFunSuite with Matchers with JUnitSuiteLike` — use `test("description") { ... }` DSL, no `@Test` annotation, no `: Unit` return type needed.
+- Unit tests: `extends AnyFunSuite with Matchers` — use `test("description") { ... }` DSL, no `@Test` annotation, no `: Unit` return type needed.
 - Integration tests: `@QuarkusTest` with JUnit 5 — `@Test` methods MUST be explicitly typed `: Unit`.
 
 Target 95%+ conditional coverage.

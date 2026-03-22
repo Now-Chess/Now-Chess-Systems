@@ -1,6 +1,6 @@
 plugins {
     id("scala")
-    jacoco
+    id("org.scoverage") version "8.1"
     application
 }
 
@@ -15,7 +15,11 @@ repositories {
 }
 
 scala {
-    versions["SCALA3"]!!
+    scalaVersion = versions["SCALA3"]!!
+}
+
+scoverage {
+    scoverageVersion.set(versions["SCOVERAGE"]!!)
 }
 
 application {
@@ -31,17 +35,6 @@ tasks.named<JavaExec>("run") {
     standardInput = System.`in`
 }
 
-tasks.test {
-    finalizedBy(tasks.jacocoTestReport)
-}
-tasks.jacocoTestReport {
-    dependsOn(tasks.test)
-    reports {
-        xml.required.set(true)
-        html.required.set(true)
-    }
-}
-
 dependencies {
 
     implementation("org.scala-lang:scala3-compiler_3") {
@@ -54,29 +47,17 @@ dependencies {
             strictly(versions["SCALA3"]!!)
         }
     }
-    implementation("org.scala-lang:scala-library") {
-        version {
-            strictly(versions["SCALA_LIBRARY"]!!)
-        }
-    }
 
     implementation(project(":modules:api"))
 
-    testImplementation(platform("org.junit:junit-bom:5.10.0"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("org.scalatest:scalatest_3:3.2.19")
-    testRuntimeOnly("org.junit.platform:junit-platform-engine:1.13.1")
-    testRuntimeOnly("org.scalatestplus:junit-5-13_3:3.2.19.0")
+    testImplementation("org.scalatest:scalatest_3:${versions["SCALATEST"]!!}")
+    testImplementation("org.scalatestplus:junit-5-11_3:${versions["SCALATESTPLUS_JUNIT5"]!!}")
 }
 
-tasks {
-    test{
-        useJUnitPlatform {
-            includeEngines("scalatest")
-            testLogging {
-                events("passed", "skipped", "failed")
-            }
-        }
-    }
+tasks.test {
+    useJUnitPlatform()
+    finalizedBy(tasks.reportScoverage)
+}
+tasks.reportScoverage {
+    dependsOn(tasks.test)
 }

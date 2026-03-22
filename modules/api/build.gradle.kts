@@ -1,6 +1,6 @@
 plugins {
-    jacoco
     id("scala")
+    id("org.scoverage") version "8.1"
 }
 
 group = "de.nowchess"
@@ -14,14 +14,19 @@ repositories {
 }
 
 scala {
-    versions["SCALA3"]!!
+    scalaVersion = versions["SCALA3"]!!
 }
 
-tasks.test {
-    finalizedBy(tasks.jacocoTestReport) // report is always generated after tests run
+scoverage {
+    scoverageVersion.set(versions["SCOVERAGE"]!!)
 }
-tasks.jacocoTestReport {
-    dependsOn(tasks.test) // tests are required to run before generating the report
+
+configurations.scoverage {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.scoverage" && requested.name.startsWith("scalac-scoverage-plugin_")) {
+            useTarget("${requested.group}:scalac-scoverage-plugin_2.13.16:2.3.0")
+        }
+    }
 }
 
 dependencies {
@@ -42,11 +47,22 @@ dependencies {
         }
     }
 
-    testImplementation(platform("org.junit:junit-bom:5.10.0"))
+    testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("org.scalatest:scalatest_3:${versions["SCALATEST"]!!}")
+    testImplementation("org.scalatestplus:junit-5-13_3:${versions["SCALATESTPLUS_JUNIT5"]!!}")
 }
 
 tasks.test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        includeEngines("scalatest")
+        testLogging {
+            events("passed", "skipped", "failed")
+        }
+    }
+    finalizedBy(tasks.reportScoverage)
+}
+tasks.reportScoverage {
+    dependsOn(tasks.test)
 }
