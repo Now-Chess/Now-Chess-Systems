@@ -6,7 +6,7 @@ val versions = mapOf(
     "SCALA3"                to "3.5.1",
     "SCALA_LIBRARY"         to "2.13.18",
     "SCALATEST"             to "3.2.19",
-    "SCALATESTPLUS_JUNIT5"  to "3.2.19.0",
+    "SCALATEST_JUNIT"       to "0.1.11",
     "SCOVERAGE"             to "2.1.1"
 )
 extra["VERSIONS"] = versions

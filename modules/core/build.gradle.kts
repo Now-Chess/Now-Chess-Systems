@@ -50,12 +50,20 @@ dependencies {
 
     implementation(project(":modules:api"))
 
+    testImplementation(platform("org.junit:junit-bom:5.13.4"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.scalatest:scalatest_3:${versions["SCALATEST"]!!}")
-    testImplementation("org.scalatestplus:junit-5-11_3:${versions["SCALATESTPLUS_JUNIT5"]!!}")
+    testImplementation("co.helmethair:scalatest-junit-runner:${versions["SCALATEST_JUNIT"]!!}")
 }
 
 tasks.test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        includeEngines("scalatest")
+        testLogging {
+            events("passed", "skipped", "failed")
+        }
+    }
     finalizedBy(tasks.reportScoverage)
 }
 tasks.reportScoverage {

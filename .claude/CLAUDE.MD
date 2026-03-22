@@ -89,6 +89,13 @@ Create the file if it does not exist. Never delete existing entries.
 - Integration tests use `@QuarkusTest` with JUnit 5 — `@Test` methods must be explicitly typed `: Unit`
 - Always exclude scala-library from Quarkus deps to avoid Scala 2 conflicts
 
+## Coverage Conventions
+- Branch coverage must be at least 90% - unless there is a good reason not to.
+- Line coverage must be at least 95% - unless there is a good reason not to.
+- Method coverage must be at least 90% - unless there is a good reason not to.
+- To check coverage use jacoco-reporter/scoverage_coverage_gaps.py modules/{service}/build/reports/scoverageTest/scoverage.xml
+- IMPORTANT: modules/{service}/build/reports/scoverage/scoverage.xml is not used for coverage TEST calculation. Do not use it.
+
 ## Agent Routing Rules
 
 ### Use agents in PARALLEL when:

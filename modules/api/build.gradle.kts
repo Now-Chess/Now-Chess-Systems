@@ -51,7 +51,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.scalatest:scalatest_3:${versions["SCALATEST"]!!}")
-    testImplementation("org.scalatestplus:junit-5-13_3:${versions["SCALATESTPLUS_JUNIT5"]!!}")
+    testImplementation("co.helmethair:scalatest-junit-runner:${versions["SCALATEST_JUNIT"]!!}")
 }
 
 tasks.test {
