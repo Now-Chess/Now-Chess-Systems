@@ -1,5 +1,26 @@
+plugins {
+    id("org.sonarqube") version "7.2.3.7755"
+}
+
 group = "de.nowchess"
 version = "1.0-SNAPSHOT"
+
+sonar {
+    properties {
+        property("sonar.projectKey", "Now-Chess-Systems")
+        property("sonar.projectName", "Now-Chess Systems")
+        property("sonar.host.url", "https://sonar.janis-eccarius.de")
+        property("sonar.token", System.getenv("SONAR_TOKEN"))
+        property("sonar.branch.name", System.getenv("GIT_BRANCH") ?: "main")
+
+        val scoverageReports = subprojects.mapNotNull { subproject ->
+            val report = subproject.file("build/reports/scoverageTest/scoverage.xml")
+            if (report.exists()) report.absolutePath else null
+        }.joinToString(",")
+
+        property("sonar.scala.coverage.reportPaths", scoverageReports)
+    }
+}
 
 val versions = mapOf(
     "QUARKUS_SCALA3"        to "1.0.0",
