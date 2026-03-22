@@ -1,6 +1,6 @@
 # Claude Code – Working Agreement
 
-## Workflow: Plan → Implement → Verify
+## Workflow: Plan → Write Tests → Implement → Verify
 
 ### 1. Plan First
 Before writing any code, produce an explicit plan:
@@ -9,10 +9,14 @@ Before writing any code, produce an explicit plan:
 - Identify risks or unknowns upfront.
 - Wait for confirmation **only** when the plan reveals an ambiguity that cannot be resolved from context. Otherwise proceed immediately.
 
-### 2. Implement
+### 2. Write Tests
+Before implementing, write tests that should cover the new behaviour.
+Only write tests for the new behaviour.
+
+### 3. Implement
 Follow the plan. Do not add scope beyond what was agreed.
 
-### 3. Verify Every Requirement
+### 4. Verify Every Requirement
 After implementation, go through each requirement one-by-one and confirm it is satisfied:
 - Run the relevant tests (unit, integration, or build check) for every changed module.
 - If a requirement **cannot** be fulfilled, do **not** silently skip it — document it immediately (see *Unresolved Requirements* below).
@@ -81,7 +85,8 @@ Create the file if it does not exist. Never delete existing entries.
 - `settings.gradle.kts` must include every module via `include(":modules:<service>")`.
 - Architecture decisions go in `docs/adr/` as numbered Markdown files (`ADR-001-<title>.md`).
 - API contracts live in `/docs/api/`.
-- Tests must have `: Unit` return type (JUnit + Scala 3 requirement)
+- Unit tests extend `AnyFunSuite with Matchers with JUnitSuiteLike` — no `@Test` annotations, no `: Unit` requirement
+- Integration tests use `@QuarkusTest` with JUnit 5 — `@Test` methods must be explicitly typed `: Unit`
 - Always exclude scala-library from Quarkus deps to avoid Scala 2 conflicts
 
 ## Agent Routing Rules

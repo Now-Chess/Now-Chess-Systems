@@ -4,7 +4,6 @@ description: "Implements Scala 3 + Quarkus REST services, domain logic, and pers
 tools: Read, Write, Edit, Bash, Glob
 model: sonnet
 color: pink
-memory: project
 ---
 You do not have permissions to write tests, just source code.
 You are a Scala 3 expert specialising in Quarkus microservices.

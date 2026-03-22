@@ -4,7 +4,6 @@ description: "Manages the multi-module Gradle build, dependencies, and resolves 
 tools: Read, Write, Edit, Bash
 model: haiku
 color: yellow
-memory: project
 ---
 
 You manage a Gradle multi-module Scala 3 + Quarkus project.
