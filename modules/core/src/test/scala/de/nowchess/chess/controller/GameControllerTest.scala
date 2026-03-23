@@ -49,7 +49,9 @@ class GameControllerTest extends AnyFunSuite with Matchers:
   test("processMove: legal capture returns Moved with the captured piece"):
     val captureBoard = Board(Map(
       sq(File.E, Rank.R5) -> Piece.WhitePawn,
-      sq(File.D, Rank.R6) -> Piece.BlackPawn
+      sq(File.D, Rank.R6) -> Piece.BlackPawn,
+      sq(File.H, Rank.R1) -> Piece.BlackKing,
+      sq(File.H, Rank.R8) -> Piece.WhiteKing
     ))
     GameController.processMove(captureBoard, Color.White, "e5d6") match
       case MoveResult.Moved(newBoard, captured, newTurn) =>
@@ -62,7 +64,7 @@ class GameControllerTest extends AnyFunSuite with Matchers:
 
   private def withInput(input: String)(block: => Unit): Unit =
     val stream = ByteArrayInputStream(input.getBytes("UTF-8"))
-    scala.Console.withIn(stream)(scala.Console.withOut(System.out)(block))
+    scala.Console.withIn(stream)(block)
 
   test("gameLoop: 'quit' exits cleanly without exception"):
     withInput("quit\n"):
@@ -116,7 +118,7 @@ class GameControllerTest extends AnyFunSuite with Matchers:
     // Kh8 can escape to g7/g8/h7 so this is InCheck, not Mated
     val b = Board(Map(
       sq(File.A, Rank.R1) -> Piece.WhiteRook,
-      sq(File.A, Rank.R3) -> Piece.WhiteKing,
+      sq(File.C, Rank.R3) -> Piece.WhiteKing,
       sq(File.H, Rank.R8) -> Piece.BlackKing
     ))
     GameController.processMove(b, Color.White, "a1a8") match
@@ -176,7 +178,7 @@ class GameControllerTest extends AnyFunSuite with Matchers:
   test("gameLoop: MovedInCheck without capture prints check message"):
     val b = Board(Map(
       sq(File.A, Rank.R1) -> Piece.WhiteRook,
-      sq(File.A, Rank.R3) -> Piece.WhiteKing,
+      sq(File.C, Rank.R3) -> Piece.WhiteKing,
       sq(File.H, Rank.R8) -> Piece.BlackKing
     ))
     val output = captureOutput:
@@ -188,7 +190,7 @@ class GameControllerTest extends AnyFunSuite with Matchers:
     // White Rook A1 captures Black Pawn on A8, Ra8 then attacks rank 8 putting Kh8 in check
     val b = Board(Map(
       sq(File.A, Rank.R1) -> Piece.WhiteRook,
-      sq(File.A, Rank.R3) -> Piece.WhiteKing,
+      sq(File.C, Rank.R3) -> Piece.WhiteKing,
       sq(File.A, Rank.R8) -> Piece.BlackPawn,
       sq(File.H, Rank.R8) -> Piece.BlackKing
     ))
