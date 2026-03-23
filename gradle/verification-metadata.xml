@@ -29,31 +29,54 @@
          <trusted-key id="0181A4828FA27B6BE6F1F5A68611CD28F472E006" group="org.jline"/>
          <trusted-key id="073F7A9345756F3B40CDB99E6C70A3B7599C5736" group="org.jline"/>
          <trusted-key id="120D6F34E627ED3A772EBBFE55C7E5E701832382" group="org.yaml" name="snakeyaml" version="2.0"/>
+         <trusted-key id="1FA868A348719E88B6D0DE24C03EF1D7D692BCFF" group="org.scala-lang"/>
          <trusted-key id="23D4275AC69688098AF3997BA6C4333204634502" group="org.scoverage"/>
          <trusted-key id="28118C070CB22A0175A2E8D43D12CA2AC19F3181" group="^com[.]fasterxml($|([.].*))" regex="true"/>
          <trusted-key id="2A5E8B338438CAC7033F9D8FB8A045C0A6EC398E" group="org.scala-lang"/>
+         <trusted-key id="2BE67AC00D699E04E840B7FE29967E804D85663F" group="com.eed3si9n"/>
          <trusted-key id="2DB4F1EF0FA761ECC4EA935C86FDC7E2A11262CB">
             <trusting group="commons-codec"/>
             <trusting group="commons-io"/>
             <trusting group="org.apache.commons"/>
          </trusted-key>
+         <trusted-key id="2E3A1AFFE42B5F53AF19F780BCF4173966770193" group="org.jetbrains" name="annotations" version="15.0"/>
+         <trusted-key id="3F3633D644494880818AD64601D9B9C7952C4A1F" group="org.scala-lang.modules" name="scala-asm" version="9.6.0-scala-1"/>
          <trusted-key id="4008F9DFF7DBC968F35F9E712642156411CCE8B3" group="com.vladsch.flexmark"/>
+         <trusted-key id="50B670A8DE1F3CD89583895241CB98F33B06146E">
+            <trusting group="nl.big-o"/>
+            <trusting group="ua.co.k"/>
+         </trusted-key>
+         <trusted-key id="58DF461CAAC5F4E5FB2BE32CBFFA420097F49C8A" group="com.lmax" name="disruptor" version="3.4.2"/>
          <trusted-key id="600D21219963F228200A72375365A8A69292AF1A" group="org.scala-lang.modules" name="scala-xml_3" version="2.1.0"/>
+         <trusted-key id="624B96CEB9896889C97B258F7DC3076FE22D4F88" group="org.nibor.autolink" name="autolink" version="0.6.0"/>
+         <trusted-key id="6766B3EC6ECC2FFD5F899F7C63BB5E152DFF95F0">
+            <trusting group="org.scalactic"/>
+            <trusting group="org.scalatest"/>
+         </trusted-key>
          <trusted-key id="6E601AC418304FD7DCB373CA3D30EF3598565988" group="org.scoverage"/>
+         <trusted-key id="7B121B76A7ED6CE6E60AD51784E913A8E3A748C0" group="org.bouncycastle" name="bcprov-jdk18on" version="1.83"/>
+         <trusted-key id="7CEAC05AFEB808AD75C2097D60BE32B1404779E5" group="co.helmethair" name="scalatest-junit-runner" version="0.1.11"/>
          <trusted-key id="84789D24DF77A32433CE1F079EB80E92EB2135B1" group="org.apache" name="apache" version="35"/>
          <trusted-key id="8A10792983023D5D14C93B488D7F1BEC1E2ECAE7" group="^com[.]fasterxml[.]jackson($|([.].*))" regex="true"/>
          <trusted-key id="9D0A56AAA0D60E0C0C7DCCC0B4C70893B62BABE8" group="^org[.]apache[.]logging($|([.].*))" regex="true"/>
+         <trusted-key id="A7D8BE3D575D6C5040E889331B6E3BDDD4415872" group="net.openhft"/>
          <trusted-key id="ACF39CCDED38E2C6F0898BF28F7F6C0451967B84" group="org.scala-lang" name="scala3-library_3"/>
          <trusted-key id="B9611F878B0CE6D92145157FA6ED77BB4C0EAE26" group="org.scoverage" name="gradle-scoverage" version="8.1"/>
          <trusted-key id="C44A68FD10FF456C91E2757D18088D07854014B3" group="org.scala-lang.modules" name="scala-parallel-collections_2.13" version="0.2.0"/>
          <trusted-key id="C7BE5BCC9FEC15518CFDA882B0F3710FA64900E7" group="com.google.code.gson"/>
+         <trusted-key id="CD5464315F0B98C77E6E8ECD9DAADC1C9FCC82D0" group="commons-io" name="commons-io" version="2.6"/>
          <trusted-key id="D1436C0DBACEA48702AF97C363F1DD7753B8B315" group="^org[.]sonarsource($|([.].*))" regex="true"/>
          <trusted-key id="D477D51812E692011DB11E66A6EA2E2BF22E0543" group="io.github.java-diff-utils"/>
          <trusted-key id="D54A395B5CF3F86EB45F6E426B1B008864323B92" group="org.antlr"/>
+         <trusted-key id="DBE61B6BA51DFCAEDED256477090AF43A5E10D0B" group="org.scala-lang.modules" name="scala-parser-combinators_2.13" version="1.1.2"/>
+         <trusted-key id="DC98224C6421A7A5BB87F346ED2378CD09A08CDE" group="org.fusesource.jansi" name="jansi" version="2.4.0"/>
          <trusted-key id="EA313384CA0EBA950EA017E937890E298D9A2BFA">
             <trusting group="com.eed3si9n"/>
             <trusting group="^org[.]scala-sbt($|([.].*))" regex="true"/>
          </trusted-key>
+         <trusted-key id="EE2CFEB6A2AECF44C781C5C3DCD5181297A43D24" group="com.swoval" name="file-tree-views" version="2.1.12"/>
+         <trusted-key id="F3184BCD55F4D016E30D4C9BF42E87F9665015C9" group="org.jsoup" name="jsoup" version="1.17.2"/>
+         <trusted-key id="F3D9FF1EE50634CC57D1E380C2952540150670BE" group="org.scala-lang.modules"/>
          <trusted-key id="FA7929F83AD44C4590F6CC6815C71C0A4E0B8EDD" group="net.java.dev.jna" name="jna" version="5.14.0"/>
       </trusted-keys>
    </configuration>
@@ -251,10 +274,13 @@
             <sha256 value="e959288fde1b1b050d9bc082fc786789128da5d2853091468fca504104bdf400" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
          </artifact>
          <artifact name="junit-bom-5.13.4.pom">
-            <sha256 value="d7a08a99b2502f0bb68cd4e1f984f0bf69324aaa208bd0f73366c03fc3548a42" origin="Generated by Gradle"/>
+            <sha256 value="d7a08a99b2502f0bb68cd4e1f984f0bf69324aaa208bd0f73366c03fc3548a42" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
          </artifact>
       </component>
       <component group="org.junit" name="junit-bom" version="5.14.1">
+         <artifact name="junit-bom-5.14.1.module">
+            <sha256 value="278acb11ccc9998694224386f96fb4941a22edb42cb446c92e0f1f33014b6b48" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
+         </artifact>
          <artifact name="junit-bom-5.14.1.pom">
             <sha256 value="01b01dfa366550b40ac5760548a7d728b6109d17c451e83864d1e5e0ce862c94" origin="Generated by Gradle" reason="A key couldn't be downloaded"/>
          </artifact>
