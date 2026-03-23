@@ -49,7 +49,11 @@ object GameController:
                   MoveResult.IllegalMove
                 else
                   val (newBoard, captured) = board.withMove(from, to)
-                  MoveResult.Moved(newBoard, captured, turn.opposite) // stub — Task 6 wires GameRules
+                  GameRules.gameStatus(newBoard, turn.opposite) match
+                    case PositionStatus.Normal  => MoveResult.Moved(newBoard, captured, turn.opposite)
+                    case PositionStatus.InCheck => MoveResult.MovedInCheck(newBoard, captured, turn.opposite)
+                    case PositionStatus.Mated   => MoveResult.Checkmate(turn)
+                    case PositionStatus.Drawn   => MoveResult.Stalemate
 
   /** Thin I/O shell: renders the board, reads a line, delegates to processMove,
    *  prints the outcome, and recurses until the game ends.
@@ -80,9 +84,16 @@ object GameController:
           val toSq = Parser.parseMove(input).map(_._2).fold("?")(_.toString)
           println(s"${prevTurn.label} captures ${cap.color.label} ${cap.pieceType.label} on $toSq")
         gameLoop(newBoard, newTurn)
-      case MoveResult.MovedInCheck(newBoard, captured, newTurn) => // stub — Task 6 fills in
+      case MoveResult.MovedInCheck(newBoard, captured, newTurn) =>
+        val prevTurn = newTurn.opposite
+        captured.foreach: cap =>
+          val toSq = Parser.parseMove(input).map(_._2).fold("?")(_.toString)
+          println(s"${prevTurn.label} captures ${cap.color.label} ${cap.pieceType.label} on $toSq")
+        println(s"${newTurn.label} is in check!")
         gameLoop(newBoard, newTurn)
-      case MoveResult.Checkmate(winner) =>                         // stub — Task 6 fills in
+      case MoveResult.Checkmate(winner) =>
+        println(s"Checkmate! ${winner.label} wins.")
         gameLoop(Board.initial, Color.White)
-      case MoveResult.Stalemate =>                                 // stub — Task 6 fills in
+      case MoveResult.Stalemate =>
+        println("Stalemate! The game is a draw.")
         gameLoop(Board.initial, Color.White)
