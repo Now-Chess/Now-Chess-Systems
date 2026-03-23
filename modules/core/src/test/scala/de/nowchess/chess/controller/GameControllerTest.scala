@@ -101,3 +101,99 @@ class GameControllerTest extends AnyFunSuite with Matchers:
     ))
     withInput("e5d6\nquit\n"):
       GameController.gameLoop(captureBoard, Color.White)
+
+  // ──── helpers ────────────────────────────────────────────────────────
+
+  private def captureOutput(block: => Unit): String =
+    val out = java.io.ByteArrayOutputStream()
+    scala.Console.withOut(out)(block)
+    out.toString("UTF-8")
+
+  // ──── processMove: check / checkmate / stalemate ─────────────────────
+
+  test("processMove: legal move that delivers check returns MovedInCheck"):
+    // White Ra1, Ka3; Black Kh8 — White plays Ra1-Ra8, Ra8 attacks rank 8 putting Kh8 in check
+    // Kh8 can escape to g7/g8/h7 so this is InCheck, not Mated
+    val b = Board(Map(
+      sq(File.A, Rank.R1) -> Piece.WhiteRook,
+      sq(File.A, Rank.R3) -> Piece.WhiteKing,
+      sq(File.H, Rank.R8) -> Piece.BlackKing
+    ))
+    GameController.processMove(b, Color.White, "a1a8") match
+      case MoveResult.MovedInCheck(_, _, newTurn) => newTurn shouldBe Color.Black
+      case other => fail(s"Expected MovedInCheck, got $other")
+
+  test("processMove: legal move that results in checkmate returns Checkmate"):
+    // White Qa1, Ka6; Black Ka8 — White plays Qa1-Qh8 (diagonal a1→h8)
+    // After Qh8: White Qh8 + Ka6 vs Black Ka8 = checkmate (spec-verified position)
+    // Qa1 does NOT currently attack Ka8 — path along file A is blocked by Ka6
+    val b = Board(Map(
+      sq(File.A, Rank.R1) -> Piece.WhiteQueen,
+      sq(File.A, Rank.R6) -> Piece.WhiteKing,
+      sq(File.A, Rank.R8) -> Piece.BlackKing
+    ))
+    GameController.processMove(b, Color.White, "a1h8") match
+      case MoveResult.Checkmate(winner) => winner shouldBe Color.White
+      case other => fail(s"Expected Checkmate(White), got $other")
+
+  test("processMove: legal move that results in stalemate returns Stalemate"):
+    // White Qb1, Kc6; Black Ka8 — White plays Qb1-Qb6
+    // After Qb6: White Qb6 + Kc6 vs Black Ka8 = stalemate (spec-verified position)
+    val b = Board(Map(
+      sq(File.B, Rank.R1) -> Piece.WhiteQueen,
+      sq(File.C, Rank.R6) -> Piece.WhiteKing,
+      sq(File.A, Rank.R8) -> Piece.BlackKing
+    ))
+    GameController.processMove(b, Color.White, "b1b6") match
+      case MoveResult.Stalemate => succeed
+      case other => fail(s"Expected Stalemate, got $other")
+
+  // ──── gameLoop: check / checkmate / stalemate ─────────────────────────
+
+  test("gameLoop: checkmate prints winner message and resets to new game"):
+    // After Qa1-Qh8, position is checkmate; second "quit" exits the new game
+    val b = Board(Map(
+      sq(File.A, Rank.R1) -> Piece.WhiteQueen,
+      sq(File.A, Rank.R6) -> Piece.WhiteKing,
+      sq(File.A, Rank.R8) -> Piece.BlackKing
+    ))
+    val output = captureOutput:
+      withInput("a1h8\nquit\n"):
+        GameController.gameLoop(b, Color.White)
+    output should include("Checkmate! White wins.")
+
+  test("gameLoop: stalemate prints draw message and resets to new game"):
+    val b = Board(Map(
+      sq(File.B, Rank.R1) -> Piece.WhiteQueen,
+      sq(File.C, Rank.R6) -> Piece.WhiteKing,
+      sq(File.A, Rank.R8) -> Piece.BlackKing
+    ))
+    val output = captureOutput:
+      withInput("b1b6\nquit\n"):
+        GameController.gameLoop(b, Color.White)
+    output should include("Stalemate! The game is a draw.")
+
+  test("gameLoop: MovedInCheck without capture prints check message"):
+    val b = Board(Map(
+      sq(File.A, Rank.R1) -> Piece.WhiteRook,
+      sq(File.A, Rank.R3) -> Piece.WhiteKing,
+      sq(File.H, Rank.R8) -> Piece.BlackKing
+    ))
+    val output = captureOutput:
+      withInput("a1a8\nquit\n"):
+        GameController.gameLoop(b, Color.White)
+    output should include("Black is in check!")
+
+  test("gameLoop: MovedInCheck with capture prints both capture and check message"):
+    // White Rook A1 captures Black Pawn on A8, Ra8 then attacks rank 8 putting Kh8 in check
+    val b = Board(Map(
+      sq(File.A, Rank.R1) -> Piece.WhiteRook,
+      sq(File.A, Rank.R3) -> Piece.WhiteKing,
+      sq(File.A, Rank.R8) -> Piece.BlackPawn,
+      sq(File.H, Rank.R8) -> Piece.BlackKing
+    ))
+    val output = captureOutput:
+      withInput("a1a8\nquit\n"):
+        GameController.gameLoop(b, Color.White)
+    output should include("captures")
+    output should include("Black is in check!")
