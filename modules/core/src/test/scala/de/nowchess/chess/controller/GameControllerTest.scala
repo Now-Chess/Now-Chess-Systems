@@ -99,7 +99,9 @@ class GameControllerTest extends AnyFunSuite with Matchers:
   test("gameLoop: capture move prints capture message then recurses and quits"):
     val captureBoard = Board(Map(
       sq(File.E, Rank.R5) -> Piece.WhitePawn,
-      sq(File.D, Rank.R6) -> Piece.BlackPawn
+      sq(File.D, Rank.R6) -> Piece.BlackPawn,
+      sq(File.H, Rank.R1) -> Piece.BlackKing,
+      sq(File.H, Rank.R8) -> Piece.WhiteKing
     ))
     withInput("e5d6\nquit\n"):
       GameController.gameLoop(captureBoard, Color.White)
