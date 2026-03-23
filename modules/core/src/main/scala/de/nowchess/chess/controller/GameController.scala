@@ -2,7 +2,7 @@ package de.nowchess.chess.controller
 
 import scala.io.StdIn
 import de.nowchess.api.board.{Board, Color, Piece}
-import de.nowchess.chess.logic.MoveValidator
+import de.nowchess.chess.logic.{MoveValidator, GameRules, PositionStatus}
 import de.nowchess.chess.view.Renderer
 
 // ---------------------------------------------------------------------------
@@ -11,12 +11,15 @@ import de.nowchess.chess.view.Renderer
 
 sealed trait MoveResult
 object MoveResult:
-  case object Quit                                                              extends MoveResult
-  case class  InvalidFormat(raw: String)                                        extends MoveResult
-  case object NoPiece                                                           extends MoveResult
-  case object WrongColor                                                        extends MoveResult
-  case object IllegalMove                                                       extends MoveResult
-  case class  Moved(newBoard: Board, captured: Option[Piece], newTurn: Color)  extends MoveResult
+  case object Quit                                                                    extends MoveResult
+  case class  InvalidFormat(raw: String)                                              extends MoveResult
+  case object NoPiece                                                                 extends MoveResult
+  case object WrongColor                                                              extends MoveResult
+  case object IllegalMove                                                             extends MoveResult
+  case class  Moved(newBoard: Board, captured: Option[Piece], newTurn: Color)        extends MoveResult
+  case class  MovedInCheck(newBoard: Board, captured: Option[Piece], newTurn: Color) extends MoveResult
+  case class  Checkmate(winner: Color)                                                extends MoveResult
+  case object Stalemate                                                               extends MoveResult
 
 // ---------------------------------------------------------------------------
 // Controller
@@ -46,11 +49,10 @@ object GameController:
                   MoveResult.IllegalMove
                 else
                   val (newBoard, captured) = board.withMove(from, to)
-                  MoveResult.Moved(newBoard, captured, turn.opposite)
+                  MoveResult.Moved(newBoard, captured, turn.opposite) // stub — Task 6 wires GameRules
 
   /** Thin I/O shell: renders the board, reads a line, delegates to processMove,
    *  prints the outcome, and recurses until the game ends.
-   *  Behaviour is identical to the original implementation.
    */
   def gameLoop(board: Board, turn: Color): Unit =
     println()
@@ -78,3 +80,9 @@ object GameController:
           val toSq = Parser.parseMove(input).map(_._2).fold("?")(_.toString)
           println(s"${prevTurn.label} captures ${cap.color.label} ${cap.pieceType.label} on $toSq")
         gameLoop(newBoard, newTurn)
+      case MoveResult.MovedInCheck(newBoard, captured, newTurn) => // stub — Task 6 fills in
+        gameLoop(newBoard, newTurn)
+      case MoveResult.Checkmate(winner) =>                         // stub — Task 6 fills in
+        gameLoop(Board.initial, Color.White)
+      case MoveResult.Stalemate =>                                 // stub — Task 6 fills in
+        gameLoop(Board.initial, Color.White)
