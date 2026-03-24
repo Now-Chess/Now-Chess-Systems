@@ -23,7 +23,7 @@ scoverage {
 }
 
 application {
-    mainClass.set("de.nowchess.chess.chessMain")
+    mainClass.set("de.nowchess.chess.Main")
 }
 
 tasks.withType<ScalaCompile> {
