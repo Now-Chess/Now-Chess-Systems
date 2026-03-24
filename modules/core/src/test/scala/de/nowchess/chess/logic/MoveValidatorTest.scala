@@ -1,6 +1,8 @@
 package de.nowchess.chess.logic
 
 import de.nowchess.api.board.{Board, Color, File, Piece, Rank, Square}
+import de.nowchess.api.game.CastlingRights
+import de.nowchess.chess.logic.{GameContext, CastleSide}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
@@ -209,3 +211,168 @@ class MoveValidatorTest extends AnyFunSuite with Matchers:
       sq(File.E, Rank.R4) -> Piece.BlackRook
     )
     MoveValidator.legalTargets(b, sq(File.D, Rank.R4)) should contain(sq(File.E, Rank.R4))
+
+  // ──── castlingTargets ────────────────────────────────────────────────
+
+  private def ctxWithRights(
+    entries: (Square, Piece)*
+  )(white: CastlingRights = CastlingRights.Both,
+    black: CastlingRights = CastlingRights.Both
+  ): GameContext =
+    GameContext(Board(entries.toMap), white, black)
+
+  test("castlingTargets: white kingside available when all conditions met"):
+    val ctx = ctxWithRights(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.H, Rank.R1) -> Piece.WhiteRook,
+      sq(File.H, Rank.R8) -> Piece.BlackKing
+    )()
+    MoveValidator.castlingTargets(ctx, Color.White) should contain(sq(File.G, Rank.R1))
+
+  test("castlingTargets: white queenside available when all conditions met"):
+    val ctx = ctxWithRights(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.A, Rank.R1) -> Piece.WhiteRook,
+      sq(File.H, Rank.R8) -> Piece.BlackKing
+    )()
+    MoveValidator.castlingTargets(ctx, Color.White) should contain(sq(File.C, Rank.R1))
+
+  test("castlingTargets: black kingside available when all conditions met"):
+    val ctx = ctxWithRights(
+      sq(File.E, Rank.R8) -> Piece.BlackKing,
+      sq(File.H, Rank.R8) -> Piece.BlackRook,
+      sq(File.H, Rank.R1) -> Piece.WhiteKing
+    )()
+    MoveValidator.castlingTargets(ctx, Color.Black) should contain(sq(File.G, Rank.R8))
+
+  test("castlingTargets: black queenside available when all conditions met"):
+    val ctx = ctxWithRights(
+      sq(File.E, Rank.R8) -> Piece.BlackKing,
+      sq(File.A, Rank.R8) -> Piece.BlackRook,
+      sq(File.H, Rank.R1) -> Piece.WhiteKing
+    )()
+    MoveValidator.castlingTargets(ctx, Color.Black) should contain(sq(File.C, Rank.R8))
+
+  test("castlingTargets: blocked when transit square is occupied"):
+    val ctx = ctxWithRights(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.F, Rank.R1) -> Piece.WhiteBishop,
+      sq(File.H, Rank.R1) -> Piece.WhiteRook,
+      sq(File.H, Rank.R8) -> Piece.BlackKing
+    )()
+    MoveValidator.castlingTargets(ctx, Color.White) should not contain sq(File.G, Rank.R1)
+
+  test("castlingTargets: blocked when king is in check"):
+    val ctx = ctxWithRights(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.H, Rank.R1) -> Piece.WhiteRook,
+      sq(File.E, Rank.R8) -> Piece.BlackRook,
+      sq(File.H, Rank.R8) -> Piece.BlackKing
+    )()
+    MoveValidator.castlingTargets(ctx, Color.White) shouldBe empty
+
+  test("castlingTargets: blocked when transit square f1 is attacked"):
+    val ctx = ctxWithRights(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.H, Rank.R1) -> Piece.WhiteRook,
+      sq(File.F, Rank.R8) -> Piece.BlackRook,
+      sq(File.H, Rank.R8) -> Piece.BlackKing
+    )()
+    MoveValidator.castlingTargets(ctx, Color.White) should not contain sq(File.G, Rank.R1)
+
+  test("castlingTargets: blocked when landing square g1 is attacked"):
+    val ctx = ctxWithRights(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.H, Rank.R1) -> Piece.WhiteRook,
+      sq(File.G, Rank.R8) -> Piece.BlackRook,
+      sq(File.A, Rank.R8) -> Piece.BlackKing
+    )()
+    MoveValidator.castlingTargets(ctx, Color.White) should not contain sq(File.G, Rank.R1)
+
+  test("castlingTargets: blocked when kingSide right is false"):
+    val ctx = ctxWithRights(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.H, Rank.R1) -> Piece.WhiteRook,
+      sq(File.H, Rank.R8) -> Piece.BlackKing
+    )(white = CastlingRights(kingSide = false, queenSide = true))
+    MoveValidator.castlingTargets(ctx, Color.White) should not contain sq(File.G, Rank.R1)
+
+  test("castlingTargets: blocked when queenSide right is false"):
+    val ctx = ctxWithRights(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.A, Rank.R1) -> Piece.WhiteRook,
+      sq(File.H, Rank.R8) -> Piece.BlackKing
+    )(white = CastlingRights(kingSide = true, queenSide = false))
+    MoveValidator.castlingTargets(ctx, Color.White) should not contain sq(File.C, Rank.R1)
+
+  test("castlingTargets: blocked when relevant rook is not on home square"):
+    val ctx = ctxWithRights(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.G, Rank.R1) -> Piece.WhiteRook,
+      sq(File.H, Rank.R8) -> Piece.BlackKing
+    )()
+    MoveValidator.castlingTargets(ctx, Color.White) should not contain sq(File.G, Rank.R1)
+
+  // ──── context-aware legalTargets includes castling ────────────────────
+
+  test("legalTargets(ctx, from): king on e1 includes g1 when castling available"):
+    val ctx = ctxWithRights(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.H, Rank.R1) -> Piece.WhiteRook,
+      sq(File.H, Rank.R8) -> Piece.BlackKing
+    )()
+    MoveValidator.legalTargets(ctx, sq(File.E, Rank.R1)) should contain(sq(File.G, Rank.R1))
+
+  test("legalTargets(ctx, from): non-king pieces unchanged by context"):
+    val ctx = ctxWithRights(
+      sq(File.D, Rank.R4) -> Piece.WhiteBishop,
+      sq(File.H, Rank.R8) -> Piece.BlackKing,
+      sq(File.H, Rank.R1) -> Piece.WhiteKing
+    )()
+    MoveValidator.legalTargets(ctx, sq(File.D, Rank.R4)) shouldBe
+      MoveValidator.legalTargets(ctx.board, sq(File.D, Rank.R4))
+
+  // ──── isCastle / castleSide / isLegal(ctx) ───────────────────────────
+
+  test("isCastle: returns true when king moves two files"):
+    val board = Board(Map(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.H, Rank.R1) -> Piece.WhiteRook
+    ))
+    MoveValidator.isCastle(board, sq(File.E, Rank.R1), sq(File.G, Rank.R1)) shouldBe true
+
+  test("isCastle: returns false when king moves one file"):
+    val board = Board(Map(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing
+    ))
+    MoveValidator.isCastle(board, sq(File.E, Rank.R1), sq(File.F, Rank.R1)) shouldBe false
+
+  test("castleSide: returns Kingside when moving to higher file"):
+    MoveValidator.castleSide(sq(File.E, Rank.R1), sq(File.G, Rank.R1)) shouldBe CastleSide.Kingside
+
+  test("castleSide: returns Queenside when moving to lower file"):
+    MoveValidator.castleSide(sq(File.E, Rank.R1), sq(File.C, Rank.R1)) shouldBe CastleSide.Queenside
+
+  test("isLegal(ctx): returns true for legal castling move"):
+    val ctx = ctxWithRights(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.H, Rank.R1) -> Piece.WhiteRook,
+      sq(File.H, Rank.R8) -> Piece.BlackKing
+    )()
+    MoveValidator.isLegal(ctx, sq(File.E, Rank.R1), sq(File.G, Rank.R1)) shouldBe true
+
+  test("isLegal(ctx): returns false for illegal castling move when rights revoked"):
+    val ctx = ctxWithRights(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.H, Rank.R1) -> Piece.WhiteRook,
+      sq(File.H, Rank.R8) -> Piece.BlackKing
+    )(white = CastlingRights.None)
+    MoveValidator.isLegal(ctx, sq(File.E, Rank.R1), sq(File.G, Rank.R1)) shouldBe false
+
+  test("castlingTargets: returns empty when king not on home square"):
+    val ctx = ctxWithRights(
+      sq(File.D, Rank.R1) -> Piece.WhiteKing,
+      sq(File.H, Rank.R1) -> Piece.WhiteRook,
+      sq(File.H, Rank.R8) -> Piece.BlackKing
+    )()
+    MoveValidator.castlingTargets(ctx, Color.White) shouldBe empty

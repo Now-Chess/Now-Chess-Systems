@@ -1,6 +1,7 @@
 package de.nowchess.chess.logic
 
 import de.nowchess.api.board.*
+import de.nowchess.chess.logic.{GameContext, CastleSide}
 
 object MoveValidator:
 
@@ -110,3 +111,57 @@ object MoveValidator:
     (diagonalDeltas ++ orthogonalDeltas).flatMap: (df, dr) =>
       squareAt(fi + df, ri + dr).filterNot(sq => isOwnPiece(board, sq, color))
     .toSet
+
+  // ── Castling helpers ────────────────────────────────────────────────────────
+
+  private def isAttackedBy(board: Board, sq: Square, attackerColor: Color): Boolean =
+    board.pieces.exists { case (from, piece) =>
+      piece.color == attackerColor && legalTargets(board, from).contains(sq)
+    }
+
+  def isCastle(board: Board, from: Square, to: Square): Boolean =
+    board.pieceAt(from).exists(_.pieceType == PieceType.King) &&
+    math.abs(to.file.ordinal - from.file.ordinal) == 2
+
+  def castleSide(from: Square, to: Square): CastleSide =
+    if to.file.ordinal > from.file.ordinal then CastleSide.Kingside else CastleSide.Queenside
+
+  def castlingTargets(ctx: GameContext, color: Color): Set[Square] =
+    val rights = ctx.castlingFor(color)
+    val rank   = if color == Color.White then Rank.R1 else Rank.R8
+    val kingSq = Square(File.E, rank)
+    val enemy  = color.opposite
+
+    if ctx.board.pieceAt(kingSq) != Some(Piece(color, PieceType.King)) then return Set.empty
+    if GameRules.isInCheck(ctx.board, color) then return Set.empty
+
+    var result = Set.empty[Square]
+
+    if rights.kingSide then
+      val rookSq  = Square(File.H, rank)
+      val transit = List(Square(File.F, rank), Square(File.G, rank))
+      if ctx.board.pieceAt(rookSq).contains(Piece(color, PieceType.Rook)) &&
+         transit.forall(s => ctx.board.pieceAt(s).isEmpty) &&
+         !transit.exists(s => isAttackedBy(ctx.board, s, enemy)) then
+        result += Square(File.G, rank)
+
+    if rights.queenSide then
+      val rookSq       = Square(File.A, rank)
+      val emptySquares = List(Square(File.B, rank), Square(File.C, rank), Square(File.D, rank))
+      val transitSqs   = List(Square(File.D, rank), Square(File.C, rank))
+      if ctx.board.pieceAt(rookSq).contains(Piece(color, PieceType.Rook)) &&
+         emptySquares.forall(s => ctx.board.pieceAt(s).isEmpty) &&
+         !transitSqs.exists(s => isAttackedBy(ctx.board, s, enemy)) then
+        result += Square(File.C, rank)
+
+    result
+
+  def legalTargets(ctx: GameContext, from: Square): Set[Square] =
+    ctx.board.pieceAt(from) match
+      case Some(piece) if piece.pieceType == PieceType.King =>
+        legalTargets(ctx.board, from) ++ castlingTargets(ctx, piece.color)
+      case _ =>
+        legalTargets(ctx.board, from)
+
+  def isLegal(ctx: GameContext, from: Square, to: Square): Boolean =
+    legalTargets(ctx, from).contains(to)
