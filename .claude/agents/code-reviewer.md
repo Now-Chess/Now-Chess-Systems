@@ -23,7 +23,7 @@ report findings to team-leader, who re-invokes scala-implementer for fixes.
 - `@QuarkusTest` methods (JUnit 5) must be explicitly typed `: Unit`
 
 ### Tests
-- Unit tests must extend `AnyFunSuite with Matchers with JUnitSuiteLike`, not plain JUnit 5
+- Unit tests must extend `AnyFunSuite with Matchers`
 - Integration tests use `@QuarkusTest` with JUnit 5 `@Test` methods
 - No raw `@Test` annotations on plain unit test classes
 

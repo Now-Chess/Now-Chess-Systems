@@ -45,13 +45,13 @@ The only current module is `core` (`modules/core`).
 - Jakarta annotations only (`jakarta.*`), never `javax.*`.
 - Use reactive types (`Uni`, `Multi`) for I/O; no blocking calls on the event loop.
 - **Always exclude `org.scala-lang:scala-library` from Quarkus BOM** to avoid Scala 2 conflicts.
-- **Unit tests use `extends AnyFunSuite with Matchers with JUnitSuiteLike`** — ScalaTest DSL, no `@Test` annotations needed.
+- **Unit tests use `extends AnyFunSuite with Matchers`** — ScalaTest DSL, no `@Test` annotations needed.
 - **Integration tests use `@QuarkusTest` with JUnit 5** — explicit `: Unit` return type still required on `@Test` methods.
 
 ### Agent Workflow (for new services)
 1. **architect** → writes OpenAPI contract to `docs/api/{service}.yaml` and ADR to `docs/adr/`.
 2. **scala-implementer** → reads contract, implements service under `modules/{service}/`.
-3. **test-writer** → writes `@QuarkusTest` integration tests and `AnyFunSuite with Matchers with JUnitSuiteLike` unit tests.
+3. **test-writer** → writes `@QuarkusTest` integration tests and `AnyFunSuite with Matchers` unit tests.
 4. **gradle-builder** → resolves any build/dependency issues.
 5. **code-reviewer** → reviews; reports findings back without self-fixing.
 

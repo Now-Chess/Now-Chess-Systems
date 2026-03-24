@@ -85,7 +85,7 @@ Create the file if it does not exist. Never delete existing entries.
 - `settings.gradle.kts` must include every module via `include(":modules:<service>")`.
 - Architecture decisions go in `docs/adr/` as numbered Markdown files (`ADR-001-<title>.md`).
 - API contracts live in `/docs/api/`.
-- Unit tests extend `AnyFunSuite with Matchers with JUnitSuiteLike` — no `@Test` annotations, no `: Unit` requirement
+- Unit tests extend `AnyFunSuite with Matchers` — no `@Test` annotations, no `: Unit` requirement
 - Integration tests use `@QuarkusTest` with JUnit 5 — `@Test` methods must be explicitly typed `: Unit`
 - Always exclude scala-library from Quarkus deps to avoid Scala 2 conflicts
 
