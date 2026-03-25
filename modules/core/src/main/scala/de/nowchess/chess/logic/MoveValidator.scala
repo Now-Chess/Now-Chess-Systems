@@ -132,29 +132,24 @@ object MoveValidator:
     val kingSq = Square(File.E, rank)
     val enemy  = color.opposite
 
-    if ctx.board.pieceAt(kingSq) != Some(Piece(color, PieceType.King)) then return Set.empty
-    if GameRules.isInCheck(ctx.board, color) then return Set.empty
+    if !ctx.board.pieceAt(kingSq).contains(Piece(color, PieceType.King)) ||
+       GameRules.isInCheck(ctx.board, color) then Set.empty
+    else
+      val kingsideSq = Option.when(
+        rights.kingSide &&
+        ctx.board.pieceAt(Square(File.H, rank)).contains(Piece(color, PieceType.Rook)) &&
+        List(Square(File.F, rank), Square(File.G, rank)).forall(s => ctx.board.pieceAt(s).isEmpty) &&
+        !List(Square(File.F, rank), Square(File.G, rank)).exists(s => isAttackedBy(ctx.board, s, enemy))
+      )(Square(File.G, rank))
 
-    var result = Set.empty[Square]
+      val queensideSq = Option.when(
+        rights.queenSide &&
+        ctx.board.pieceAt(Square(File.A, rank)).contains(Piece(color, PieceType.Rook)) &&
+        List(Square(File.B, rank), Square(File.C, rank), Square(File.D, rank)).forall(s => ctx.board.pieceAt(s).isEmpty) &&
+        !List(Square(File.D, rank), Square(File.C, rank)).exists(s => isAttackedBy(ctx.board, s, enemy))
+      )(Square(File.C, rank))
 
-    if rights.kingSide then
-      val rookSq  = Square(File.H, rank)
-      val transit = List(Square(File.F, rank), Square(File.G, rank))
-      if ctx.board.pieceAt(rookSq).contains(Piece(color, PieceType.Rook)) &&
-         transit.forall(s => ctx.board.pieceAt(s).isEmpty) &&
-         !transit.exists(s => isAttackedBy(ctx.board, s, enemy)) then
-        result += Square(File.G, rank)
-
-    if rights.queenSide then
-      val rookSq       = Square(File.A, rank)
-      val emptySquares = List(Square(File.B, rank), Square(File.C, rank), Square(File.D, rank))
-      val transitSqs   = List(Square(File.D, rank), Square(File.C, rank))
-      if ctx.board.pieceAt(rookSq).contains(Piece(color, PieceType.Rook)) &&
-         emptySquares.forall(s => ctx.board.pieceAt(s).isEmpty) &&
-         !transitSqs.exists(s => isAttackedBy(ctx.board, s, enemy)) then
-        result += Square(File.C, rank)
-
-    result
+      kingsideSq.toSet ++ queensideSq.toSet
 
   def legalTargets(ctx: GameContext, from: Square): Set[Square] =
     ctx.board.pieceAt(from) match

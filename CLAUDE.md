@@ -1,58 +1,54 @@
-# CLAUDE.md
+# CLAUDE.md — NowChessSystems
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Stack
+Scala 3.5.x · Quarkus + quarkus-scala3 · Hibernate/Jakarta · Lanterna TUI · K8s + ArgoCD + Kargo · Frontend TBD (Vite/React/Angular/Vue)
 
-## Build & Test Commands
+## Structure
+```
+build.gradle.kts / settings.gradle.kts   # root; include(":modules:<svc>") per service
+modules/<svc>/build.gradle.kts + src/
+docs/adr/  docs/api/  docs/unresolved.md
+```
+Versions in root `extra["VERSIONS"]`; modules read via `rootProject.extra["VERSIONS"] as Map<String,String>`.
 
+## Commands
 ```bash
-# Build everything
 ./gradlew build
-
-# Build a single module
-./gradlew :modules:<service>:build
-
-# Run tests for a single module
-./gradlew :modules:<service>:test
-
-# Run a specific test class
-./gradlew :modules:<service>:test --tests "de.nowchess.<service>.<ClassName>"
+./gradlew :modules:<svc>:build|test
+./gradlew :modules:<svc>:test --tests "de.nowchess.<svc>.<Class>"
 ```
 
-The only current module is `core` (`modules/core`).
+## Workflow
+1. **Plan** — restate requirement, list files, flag risks. Proceed unless genuine ambiguity.
+2. **Tests first** — cover only new behaviour.
+3. **Implement** — no scope creep.
+4. **Verify** — check each requirement; confirm green build.
 
-## Architecture
+## Scala/Quarkus Rules
+- `given`/`using` only (no `implicit`); `Option`/`Either`/`Try` (no `null`/`.get`)
+- `jakarta.*` only; reactive I/O (`Uni`/`Multi`), no blocking on event loop
+- Always exclude `org.scala-lang:scala-library` from Quarkus BOM
+- Unit tests: `extends AnyFunSuite with Matchers` — no `@Test`, no `: Unit`
+- Integration tests: `@QuarkusTest` + JUnit 5 — `@Test` methods need explicit `: Unit`
 
-**NowChessSystems** is a chess platform built as a Scala 3 + Quarkus microservice system.
+## Coverage
+Line ≥ 95% · Branch ≥ 90% · Method ≥ 90% (document exceptions)
+Check: `jacoco-reporter/scoverage_coverage_gaps.py modules/{svc}/build/reports/scoverageTest/scoverage.xml`
+⚠️ Use `scoverageTest/`, NOT `scoverage/`.
 
-- Multi-module Gradle project; every service lives under `modules/{service-name}`.
-- Shared dependency versions live in the root `build.gradle.kts` under `extra["VERSIONS"]`.
-- Each module reads versions via `rootProject.extra["VERSIONS"] as Map<String, String>`.
-- `settings.gradle.kts` must `include(":modules:<service>")` for every module.
+## Bug Fixing
+Fix failures immediately without asking. After 3 failed attempts → log in `docs/unresolved.md` + surface summary.
 
-### Stack (ADR-001)
-| Layer | Technology |
-|---|---|
-| Language | Scala 3.5.x |
-| Backend framework | Quarkus + `quarkus-scala3` extension |
-| Persistence | Hibernate / Jakarta Persistence |
-| Frontend (TBD) | Vite; React/Angular/Vue under evaluation |
-| TUI | Lanterna |
-| Container orchestration | Kubernetes + ArgoCD + Kargo |
+## Agents (new service)
+Sequential: architect → scala-implementer → test-writer → gradle-builder → code-reviewer (review only, no self-fix)
+Parallel: only when services are fully independent (no shared contracts/state).
 
-### Key Scala 3 / Quarkus Rules
-- Use `given`/`using`, not `implicit` (no Scala 2 idioms).
-- Use `Option`/`Either`/`Try`, never `null` or `.get`.
-- Jakarta annotations only (`jakarta.*`), never `javax.*`.
-- Use reactive types (`Uni`, `Multi`) for I/O; no blocking calls on the event loop.
-- **Always exclude `org.scala-lang:scala-library` from Quarkus BOM** to avoid Scala 2 conflicts.
-- **Unit tests use `extends AnyFunSuite with Matchers`** — ScalaTest DSL, no `@Test` annotations needed.
-- **Integration tests use `@QuarkusTest` with JUnit 5** — explicit `: Unit` return type still required on `@Test` methods.
+## Unresolved (`docs/unresolved.md`)
+Append only, never delete:
+```
+## [YYYY-MM-DD] <title>
+**Requirement/Bug:** **Root Cause:** **Attempted Fixes:** **Next Step:**
+```
 
-### Agent Workflow (for new services)
-1. **architect** → writes OpenAPI contract to `docs/api/{service}.yaml` and ADR to `docs/adr/`.
-2. **scala-implementer** → reads contract, implements service under `modules/{service}/`.
-3. **test-writer** → writes `@QuarkusTest` integration tests and `AnyFunSuite with Matchers` unit tests.
-4. **gradle-builder** → resolves any build/dependency issues.
-5. **code-reviewer** → reviews; reports findings back without self-fixing.
-
-Detailed working agreement (plan/verify/unresolved workflow) is in `.claude/CLAUDE.MD`.
+## Done Checklist
+- [ ] Plan written · files created/modified · tests green · requirements verified · unresolved logged
