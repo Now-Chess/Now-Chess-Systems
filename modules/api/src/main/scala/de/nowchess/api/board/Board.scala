@@ -8,10 +8,12 @@ object Board:
 
   extension (b: Board)
     def pieceAt(sq: Square): Option[Piece] = b.get(sq)
+    def updated(sq: Square, piece: Piece): Board = b.updated(sq, piece)
+    def removed(sq: Square): Board = b.removed(sq)
     def withMove(from: Square, to: Square): (Board, Option[Piece]) =
       val captured = b.get(to)
-      val updated  = b.removed(from).updated(to, b(from))
-      (updated, captured)
+      val updatedBoard = b.removed(from).updated(to, b(from))
+      (updatedBoard, captured)
     def pieces: Map[Square, Piece] = b
 
   val initial: Board =

@@ -100,3 +100,23 @@ class BoardTest extends AnyFunSuite with Matchers:
     do
       Board.initial.pieceAt(Square(file, rank)) shouldBe None
   }
+
+  test("updated adds or replaces piece at square") {
+    val b = Board(Map(e2 -> Piece.WhitePawn))
+    val updated = b.updated(e4, Piece.WhiteKnight)
+    updated.pieceAt(e2) shouldBe Some(Piece.WhitePawn)
+    updated.pieceAt(e4) shouldBe Some(Piece.WhiteKnight)
+  }
+
+  test("updated replaces existing piece") {
+    val b = Board(Map(e2 -> Piece.WhitePawn))
+    val updated = b.updated(e2, Piece.WhiteKnight)
+    updated.pieceAt(e2) shouldBe Some(Piece.WhiteKnight)
+  }
+
+  test("removed deletes piece from board") {
+    val b = Board(Map(e2 -> Piece.WhitePawn, e4 -> Piece.WhiteKnight))
+    val removed = b.removed(e2)
+    removed.pieceAt(e2) shouldBe None
+    removed.pieceAt(e4) shouldBe Some(Piece.WhiteKnight)
+  }

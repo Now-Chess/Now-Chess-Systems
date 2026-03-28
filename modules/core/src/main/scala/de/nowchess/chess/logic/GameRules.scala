@@ -1,7 +1,7 @@
 package de.nowchess.chess.logic
 
 import de.nowchess.api.board.*
-import de.nowchess.chess.logic.GameContext
+import de.nowchess.chess.logic.GameHistory
 
 enum PositionStatus:
   case Normal, InCheck, Mated, Drawn
@@ -20,17 +20,17 @@ object GameRules:
       }
 
   /** All (from, to) moves for `color` that do not leave their own king in check. */
-  def legalMoves(ctx: GameContext, color: Color): Set[(Square, Square)] =
-    ctx.board.pieces
+  def legalMoves(board: Board, history: GameHistory, color: Color): Set[(Square, Square)] =
+    board.pieces
       .collect { case (from, piece) if piece.color == color => from }
       .flatMap { from =>
-        MoveValidator.legalTargets(ctx, from)           // context-aware: includes castling
+        MoveValidator.legalTargets(board, history, from)           // context-aware: includes castling
           .filter { to =>
             val newBoard =
-              if MoveValidator.isCastle(ctx.board, from, to) then
-                ctx.board.withCastle(color, MoveValidator.castleSide(from, to))
+              if MoveValidator.isCastle(board, from, to) then
+                board.withCastle(color, MoveValidator.castleSide(from, to))
               else
-                ctx.board.withMove(from, to)._1
+                board.withMove(from, to)._1
             !isInCheck(newBoard, color)
           }
           .map(to => from -> to)
@@ -38,9 +38,9 @@ object GameRules:
       .toSet
 
   /** Position status for the side whose turn it is (`color`). */
-  def gameStatus(ctx: GameContext, color: Color): PositionStatus =
-    val moves   = legalMoves(ctx, color)
-    val inCheck = isInCheck(ctx.board, color)
+  def gameStatus(board: Board, history: GameHistory, color: Color): PositionStatus =
+    val moves   = legalMoves(board, history, color)
+    val inCheck = isInCheck(board, color)
     if moves.isEmpty && inCheck then PositionStatus.Mated
     else if moves.isEmpty       then PositionStatus.Drawn
     else if inCheck             then PositionStatus.InCheck

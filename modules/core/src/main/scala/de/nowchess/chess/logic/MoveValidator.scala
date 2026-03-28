@@ -1,7 +1,7 @@
 package de.nowchess.chess.logic
 
 import de.nowchess.api.board.*
-import de.nowchess.chess.logic.{GameContext, CastleSide}
+import de.nowchess.chess.logic.{CastleSide, GameHistory}
 
 object MoveValidator:
 
@@ -126,37 +126,37 @@ object MoveValidator:
   def castleSide(from: Square, to: Square): CastleSide =
     if to.file.ordinal > from.file.ordinal then CastleSide.Kingside else CastleSide.Queenside
 
-  def castlingTargets(ctx: GameContext, color: Color): Set[Square] =
-    val rights = ctx.castlingFor(color)
+  def castlingTargets(board: Board, history: GameHistory, color: Color): Set[Square] =
+    val rights = CastlingRightsCalculator.deriveCastlingRights(history, color)
     val rank   = if color == Color.White then Rank.R1 else Rank.R8
     val kingSq = Square(File.E, rank)
     val enemy  = color.opposite
 
-    if !ctx.board.pieceAt(kingSq).contains(Piece(color, PieceType.King)) ||
-       GameRules.isInCheck(ctx.board, color) then Set.empty
+    if !board.pieceAt(kingSq).contains(Piece(color, PieceType.King)) ||
+       GameRules.isInCheck(board, color) then Set.empty
     else
       val kingsideSq = Option.when(
         rights.kingSide &&
-        ctx.board.pieceAt(Square(File.H, rank)).contains(Piece(color, PieceType.Rook)) &&
-        List(Square(File.F, rank), Square(File.G, rank)).forall(s => ctx.board.pieceAt(s).isEmpty) &&
-        !List(Square(File.F, rank), Square(File.G, rank)).exists(s => isAttackedBy(ctx.board, s, enemy))
+        board.pieceAt(Square(File.H, rank)).contains(Piece(color, PieceType.Rook)) &&
+        List(Square(File.F, rank), Square(File.G, rank)).forall(s => board.pieceAt(s).isEmpty) &&
+        !List(Square(File.F, rank), Square(File.G, rank)).exists(s => isAttackedBy(board, s, enemy))
       )(Square(File.G, rank))
 
       val queensideSq = Option.when(
         rights.queenSide &&
-        ctx.board.pieceAt(Square(File.A, rank)).contains(Piece(color, PieceType.Rook)) &&
-        List(Square(File.B, rank), Square(File.C, rank), Square(File.D, rank)).forall(s => ctx.board.pieceAt(s).isEmpty) &&
-        !List(Square(File.D, rank), Square(File.C, rank)).exists(s => isAttackedBy(ctx.board, s, enemy))
+        board.pieceAt(Square(File.A, rank)).contains(Piece(color, PieceType.Rook)) &&
+        List(Square(File.B, rank), Square(File.C, rank), Square(File.D, rank)).forall(s => board.pieceAt(s).isEmpty) &&
+        !List(Square(File.D, rank), Square(File.C, rank)).exists(s => isAttackedBy(board, s, enemy))
       )(Square(File.C, rank))
 
       kingsideSq.toSet ++ queensideSq.toSet
 
-  def legalTargets(ctx: GameContext, from: Square): Set[Square] =
-    ctx.board.pieceAt(from) match
+  def legalTargets(board: Board, history: GameHistory, from: Square): Set[Square] =
+    board.pieceAt(from) match
       case Some(piece) if piece.pieceType == PieceType.King =>
-        legalTargets(ctx.board, from) ++ castlingTargets(ctx, piece.color)
+        legalTargets(board, from) ++ castlingTargets(board, history, piece.color)
       case _ =>
-        legalTargets(ctx.board, from)
+        legalTargets(board, from)
 
-  def isLegal(ctx: GameContext, from: Square, to: Square): Boolean =
-    legalTargets(ctx, from).contains(to)
+  def isLegal(board: Board, history: GameHistory, from: Square, to: Square): Boolean =
+    legalTargets(board, history, from).contains(to)
