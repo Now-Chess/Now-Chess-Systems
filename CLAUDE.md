@@ -3,6 +3,10 @@
 ## Stack
 Scala 3.5.x · Quarkus + quarkus-scala3 · Hibernate/Jakarta · Lanterna TUI · K8s + ArgoCD + Kargo · Frontend TBD (Vite/React/Angular/Vue)
 
+### Memory
+
+Your memory is saved under .claude/memory/MEMORY.md.
+
 ## Structure
 ```
 build.gradle.kts / settings.gradle.kts   # root; include(":modules:<svc>") per service
