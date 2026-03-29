@@ -36,7 +36,7 @@ Versions in root `extra["VERSIONS"]`; modules read via `rootProject.extra["VERSI
 - Integration tests: `@QuarkusTest` + JUnit 5 — `@Test` methods need explicit `: Unit`
 
 ## Coverage
-Line ≥ 95% · Branch ≥ 90% · Method ≥ 90% (document exceptions)
+Line = 100% · Branch = 100% · Method = 100% · Regression tests · document exceptions
 Check: `jacoco-reporter/scoverage_coverage_gaps.py modules/{svc}/build/reports/scoverageTest/scoverage.xml`
 ⚠️ Use `scoverageTest/`, NOT `scoverage/`.
 

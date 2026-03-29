@@ -12,7 +12,7 @@ You write tests for Scala 3 + Quarkus services.
 - Unit tests: `extends AnyFunSuite with Matchers` — use `test("description") { ... }` DSL, no `@Test` annotation, no `: Unit` return type needed.
 - Integration tests: `@QuarkusTest` with JUnit 5 — `@Test` methods MUST be explicitly typed `: Unit`.
 
-Target 95%+ conditional coverage.
+Target 100% conditional coverage if possible.
 
 When invoked BEFORE scala-implementer (no implementation exists yet):
   Use the contract-first-test-writing skill — write failing tests from docs/api/{service}.yaml.
