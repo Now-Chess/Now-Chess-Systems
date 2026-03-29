@@ -365,3 +365,39 @@ class GameControllerTest extends AnyFunSuite with Matchers:
       case MoveResult.MovedInCheck(_, newHistory, _, _) =>
         castlingRights(newHistory, Color.White).queenSide shouldBe false
       case other => fail(s"Expected Moved or MovedInCheck, got $other")
+
+  // ──── en passant ────────────────────────────────────────────────────────
+
+  test("en passant capture removes the captured pawn from the board"):
+    // Setup: white pawn e5, black pawn just double-pushed to d5 (ep target = d6)
+    val b = Board(Map(
+      Square(File.E, Rank.R5) -> Piece.WhitePawn,
+      Square(File.D, Rank.R5) -> Piece.BlackPawn,
+      Square(File.E, Rank.R1) -> Piece.WhiteKing,
+      Square(File.E, Rank.R8) -> Piece.BlackKing
+    ))
+    val h = GameHistory.empty.addMove(Square(File.D, Rank.R7), Square(File.D, Rank.R5))
+    val result = GameController.processMove(b, h, Color.White, "e5d6")
+    result match
+      case MoveResult.Moved(newBoard, _, captured, _) =>
+        newBoard.pieceAt(Square(File.D, Rank.R5)) shouldBe None  // captured pawn removed
+        newBoard.pieceAt(Square(File.D, Rank.R6)) shouldBe Some(Piece.WhitePawn)  // capturing pawn placed
+        captured shouldBe Some(Piece.BlackPawn)
+      case other => fail(s"Expected Moved but got $other")
+
+  test("en passant capture by black removes the captured white pawn"):
+    // Setup: black pawn d4, white pawn just double-pushed to e4 (ep target = e3)
+    val b = Board(Map(
+      Square(File.D, Rank.R4) -> Piece.BlackPawn,
+      Square(File.E, Rank.R4) -> Piece.WhitePawn,
+      Square(File.E, Rank.R8) -> Piece.BlackKing,
+      Square(File.E, Rank.R1) -> Piece.WhiteKing
+    ))
+    val h = GameHistory.empty.addMove(Square(File.E, Rank.R2), Square(File.E, Rank.R4))
+    val result = GameController.processMove(b, h, Color.Black, "d4e3")
+    result match
+      case MoveResult.Moved(newBoard, _, captured, _) =>
+        newBoard.pieceAt(Square(File.E, Rank.R4)) shouldBe None  // captured pawn removed
+        newBoard.pieceAt(Square(File.E, Rank.R3)) shouldBe Some(Piece.BlackPawn)  // capturing pawn placed
+        captured shouldBe Some(Piece.WhitePawn)
+      case other => fail(s"Expected Moved but got $other")

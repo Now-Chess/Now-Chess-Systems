@@ -51,9 +51,15 @@ object GameController:
                   val castleOpt = if MoveValidator.isCastle(board, from, to)
                                   then Some(MoveValidator.castleSide(from, to))
                                   else None
+                  val isEP = EnPassantCalculator.isEnPassant(board, history, from, to)
                   val (newBoard, captured) = castleOpt match
                     case Some(side) => (board.withCastle(turn, side), None)
-                    case None       => board.withMove(from, to)
+                    case None =>
+                      val (b, cap) = board.withMove(from, to)
+                      if isEP then
+                        val capturedSq = EnPassantCalculator.capturedPawnSquare(to, turn)
+                        (b.removed(capturedSq), board.pieceAt(capturedSq))
+                      else (b, cap)
                   val newHistory = history.addMove(from, to, castleOpt)
                   GameRules.gameStatus(newBoard, newHistory, turn.opposite) match
                     case PositionStatus.Normal  => MoveResult.Moved(newBoard, newHistory, captured, turn.opposite)

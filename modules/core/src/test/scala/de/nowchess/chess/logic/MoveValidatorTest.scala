@@ -211,3 +211,47 @@ class MoveValidatorTest extends AnyFunSuite with Matchers:
       sq(File.E, Rank.R4) -> Piece.BlackRook
     )
     MoveValidator.legalTargets(b, sq(File.D, Rank.R4)) should contain(sq(File.E, Rank.R4))
+
+  // ──── Pawn – en passant targets ──────────────────────────────────────
+
+  test("white pawn includes ep target in legal moves after black double push"):
+    // Black pawn just double-pushed to d5 (ep target = d6); white pawn on e5
+    val b = board(
+      sq(File.E, Rank.R5) -> Piece.WhitePawn,
+      sq(File.D, Rank.R5) -> Piece.BlackPawn
+    )
+    val h = GameHistory.empty.addMove(sq(File.D, Rank.R7), sq(File.D, Rank.R5))
+    MoveValidator.legalTargets(b, h, sq(File.E, Rank.R5)) should contain(sq(File.D, Rank.R6))
+
+  test("white pawn does not include ep target without a preceding double push"):
+    val b = board(
+      sq(File.E, Rank.R5) -> Piece.WhitePawn,
+      sq(File.D, Rank.R5) -> Piece.BlackPawn
+    )
+    val h = GameHistory.empty.addMove(sq(File.D, Rank.R6), sq(File.D, Rank.R5))  // single push
+    MoveValidator.legalTargets(b, h, sq(File.E, Rank.R5)) should not contain sq(File.D, Rank.R6)
+
+  test("black pawn includes ep target in legal moves after white double push"):
+    // White pawn just double-pushed to e4 (ep target = e3); black pawn on d4
+    val b = board(
+      sq(File.D, Rank.R4) -> Piece.BlackPawn,
+      sq(File.E, Rank.R4) -> Piece.WhitePawn
+    )
+    val h = GameHistory.empty.addMove(sq(File.E, Rank.R2), sq(File.E, Rank.R4))
+    MoveValidator.legalTargets(b, h, sq(File.D, Rank.R4)) should contain(sq(File.E, Rank.R3))
+
+  test("pawn on wrong file does not get ep target from adjacent double push"):
+    // White pawn on a5, black pawn double-pushed to d5 — a5 is not adjacent to d5
+    val b = board(
+      sq(File.A, Rank.R5) -> Piece.WhitePawn,
+      sq(File.D, Rank.R5) -> Piece.BlackPawn
+    )
+    val h = GameHistory.empty.addMove(sq(File.D, Rank.R7), sq(File.D, Rank.R5))
+    MoveValidator.legalTargets(b, h, sq(File.A, Rank.R5)) should not contain sq(File.D, Rank.R6)
+
+  // ──── History-aware legalTargets fallback for non-pawn non-king pieces ─────
+
+  test("legalTargets with history delegates to geometry-only for non-pawn non-king pieces"):
+    val b = board(sq(File.D, Rank.R4) -> Piece.WhiteRook)
+    val h = GameHistory.empty.addMove(sq(File.E, Rank.R2), sq(File.E, Rank.R4))
+    MoveValidator.legalTargets(b, h, sq(File.D, Rank.R4)) shouldBe MoveValidator.legalTargets(b, sq(File.D, Rank.R4))

@@ -155,8 +155,21 @@ object MoveValidator:
     board.pieceAt(from) match
       case Some(piece) if piece.pieceType == PieceType.King =>
         legalTargets(board, from) ++ castlingTargets(board, history, piece.color)
+      case Some(piece) if piece.pieceType == PieceType.Pawn =>
+        pawnTargets(board, history, from, piece.color)
       case _ =>
         legalTargets(board, from)
+
+  private def pawnTargets(board: Board, history: GameHistory, from: Square, color: Color): Set[Square] =
+    val existing = pawnTargets(board, from, color)
+    val fi  = from.file.ordinal
+    val ri  = from.rank.ordinal
+    val dir = if color == Color.White then 1 else -1
+    val epCapture: Set[Square] =
+      EnPassantCalculator.enPassantTarget(board, history).filter: target =>
+        squareAt(fi - 1, ri + dir).contains(target) || squareAt(fi + 1, ri + dir).contains(target)
+      .toSet
+    existing ++ epCapture
 
   def isLegal(board: Board, history: GameHistory, from: Square, to: Square): Boolean =
     legalTargets(board, history, from).contains(to)
