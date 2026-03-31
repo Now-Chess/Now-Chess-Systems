@@ -6,16 +6,11 @@ import de.nowchess.chess.logic.{CastleSide, GameHistory}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
-import java.io.ByteArrayInputStream
-
 class GameControllerTest extends AnyFunSuite with Matchers:
 
   private def sq(f: File, r: Rank): Square = Square(f, r)
   private def processMove(board: Board, history: GameHistory, turn: Color, raw: String): MoveResult =
     GameController.processMove(board, history, turn, raw)
-
-  private def gameLoop(board: Board, history: GameHistory, turn: Color): Unit =
-    GameController.gameLoop(board, history, turn)
 
   private def castlingRights(history: GameHistory, color: Color): CastlingRights =
     de.nowchess.chess.logic.CastlingRightsCalculator.deriveCastlingRights(history, color)
@@ -69,59 +64,6 @@ class GameControllerTest extends AnyFunSuite with Matchers:
         newTurn shouldBe Color.Black
       case other => fail(s"Expected Moved, got $other")
 
-  // ──── gameLoop ───────────────────────────────────────────────────────
-
-  private def withInput(input: String)(block: => Unit): Unit =
-    val stream = ByteArrayInputStream(input.getBytes("UTF-8"))
-    scala.Console.withIn(stream)(block)
-
-  test("gameLoop: 'quit' exits cleanly without exception"):
-    withInput("quit\n"):
-      gameLoop(Board.initial, GameHistory.empty, Color.White)
-
-  test("gameLoop: EOF (null readLine) exits via quit fallback"):
-    withInput(""):
-      gameLoop(Board.initial, GameHistory.empty, Color.White)
-
-  test("gameLoop: invalid format prints message and recurses until quit"):
-    withInput("badmove\nquit\n"):
-      gameLoop(Board.initial, GameHistory.empty, Color.White)
-
-  test("gameLoop: NoPiece prints message and recurses until quit"):
-    // E3 is empty in the initial position
-    withInput("e3e4\nquit\n"):
-      gameLoop(Board.initial, GameHistory.empty, Color.White)
-
-  test("gameLoop: WrongColor prints message and recurses until quit"):
-    // E7 has a Black pawn; it is White's turn
-    withInput("e7e6\nquit\n"):
-      gameLoop(Board.initial, GameHistory.empty, Color.White)
-
-  test("gameLoop: IllegalMove prints message and recurses until quit"):
-    withInput("e2e5\nquit\n"):
-      gameLoop(Board.initial, GameHistory.empty, Color.White)
-
-  test("gameLoop: legal non-capture move recurses with new board then quits"):
-    withInput("e2e4\nquit\n"):
-      gameLoop(Board.initial, GameHistory.empty, Color.White)
-
-  test("gameLoop: capture move prints capture message then recurses and quits"):
-    val captureBoard = Board(Map(
-      sq(File.E, Rank.R5) -> Piece.WhitePawn,
-      sq(File.D, Rank.R6) -> Piece.BlackPawn,
-      sq(File.H, Rank.R1) -> Piece.BlackKing,
-      sq(File.H, Rank.R8) -> Piece.WhiteKing
-    ))
-    withInput("e5d6\nquit\n"):
-      gameLoop(captureBoard, GameHistory.empty, Color.White)
-
-  // ──── helpers ────────────────────────────────────────────────────────
-
-  private def captureOutput(block: => Unit): String =
-    val out = java.io.ByteArrayOutputStream()
-    scala.Console.withOut(out)(block)
-    out.toString("UTF-8")
-
   // ──── processMove: check / checkmate / stalemate ─────────────────────
 
   test("processMove: legal move that delivers check returns MovedInCheck"):
@@ -160,56 +102,6 @@ class GameControllerTest extends AnyFunSuite with Matchers:
     processMove(b, GameHistory.empty, Color.White, "b1b6") match
       case MoveResult.Stalemate => succeed
       case other => fail(s"Expected Stalemate, got $other")
-
-  // ──── gameLoop: check / checkmate / stalemate ─────────────────────────
-
-  test("gameLoop: checkmate prints winner message and resets to new game"):
-    // After Qa1-Qh8, position is checkmate; second "quit" exits the new game
-    val b = Board(Map(
-      sq(File.A, Rank.R1) -> Piece.WhiteQueen,
-      sq(File.A, Rank.R6) -> Piece.WhiteKing,
-      sq(File.A, Rank.R8) -> Piece.BlackKing
-    ))
-    val output = captureOutput:
-      withInput("a1h8\nquit\n"):
-        gameLoop(b, GameHistory.empty, Color.White)
-    output should include("Checkmate! White wins.")
-
-  test("gameLoop: stalemate prints draw message and resets to new game"):
-    val b = Board(Map(
-      sq(File.B, Rank.R1) -> Piece.WhiteQueen,
-      sq(File.C, Rank.R6) -> Piece.WhiteKing,
-      sq(File.A, Rank.R8) -> Piece.BlackKing
-    ))
-    val output = captureOutput:
-      withInput("b1b6\nquit\n"):
-        gameLoop(b, GameHistory.empty, Color.White)
-    output should include("Stalemate! The game is a draw.")
-
-  test("gameLoop: MovedInCheck without capture prints check message"):
-    val b = Board(Map(
-      sq(File.A, Rank.R1) -> Piece.WhiteRook,
-      sq(File.C, Rank.R3) -> Piece.WhiteKing,
-      sq(File.H, Rank.R8) -> Piece.BlackKing
-    ))
-    val output = captureOutput:
-      withInput("a1a8\nquit\n"):
-        gameLoop(b, GameHistory.empty, Color.White)
-    output should include("Black is in check!")
-
-  test("gameLoop: MovedInCheck with capture prints both capture and check message"):
-    // White Rook A1 captures Black Pawn on A8, Ra8 then attacks rank 8 putting Kh8 in check
-    val b = Board(Map(
-      sq(File.A, Rank.R1) -> Piece.WhiteRook,
-      sq(File.C, Rank.R3) -> Piece.WhiteKing,
-      sq(File.A, Rank.R8) -> Piece.BlackPawn,
-      sq(File.H, Rank.R8) -> Piece.BlackKing
-    ))
-    val output = captureOutput:
-      withInput("a1a8\nquit\n"):
-        gameLoop(b, GameHistory.empty, Color.White)
-    output should include("captures")
-    output should include("Black is in check!")
 
   // ──── castling execution ─────────────────────────────────────────────
 

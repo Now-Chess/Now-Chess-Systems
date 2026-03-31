@@ -1,9 +1,7 @@
 package de.nowchess.chess.controller
 
-import scala.io.StdIn
 import de.nowchess.api.board.{Board, Color, File, Piece, Rank, Square}
 import de.nowchess.chess.logic.*
-import de.nowchess.chess.view.Renderer
 
 // ---------------------------------------------------------------------------
 // Result ADT returned by the pure processMove function
@@ -66,46 +64,3 @@ object GameController:
                     case PositionStatus.InCheck => MoveResult.MovedInCheck(newBoard, newHistory, captured, turn.opposite)
                     case PositionStatus.Mated   => MoveResult.Checkmate(turn)
                     case PositionStatus.Drawn   => MoveResult.Stalemate
-
-  /** Thin I/O shell: renders the board, reads a line, delegates to processMove,
-   *  prints the outcome, and recurses until the game ends.
-   */
-  def gameLoop(board: Board, history: GameHistory, turn: Color): Unit =
-    println()
-    print(Renderer.render(board))
-    println(s"${turn.label}'s turn. Enter move: ")
-    val input = Option(StdIn.readLine()).getOrElse("quit").trim
-    processMove(board, history, turn, input) match
-      case MoveResult.Quit =>
-        println("Game over. Goodbye!")
-      case MoveResult.InvalidFormat(raw) =>
-        println(s"Invalid move format '$raw'. Use coordinate notation, e.g. e2e4.")
-        gameLoop(board, history, turn)
-      case MoveResult.NoPiece =>
-        println(s"No piece on ${Parser.parseMove(input).map(_._1).fold("?")(_.toString)}.")
-        gameLoop(board, history, turn)
-      case MoveResult.WrongColor =>
-        println(s"That is not your piece.")
-        gameLoop(board, history, turn)
-      case MoveResult.IllegalMove =>
-        println(s"Illegal move.")
-        gameLoop(board, history, turn)
-      case MoveResult.Moved(newBoard, newHistory, captured, newTurn) =>
-        val prevTurn = newTurn.opposite
-        captured.foreach: cap =>
-          val toSq = Parser.parseMove(input).map(_._2).fold("?")(_.toString)
-          println(s"${prevTurn.label} captures ${cap.color.label} ${cap.pieceType.label} on $toSq")
-        gameLoop(newBoard, newHistory, newTurn)
-      case MoveResult.MovedInCheck(newBoard, newHistory, captured, newTurn) =>
-        val prevTurn = newTurn.opposite
-        captured.foreach: cap =>
-          val toSq = Parser.parseMove(input).map(_._2).fold("?")(_.toString)
-          println(s"${prevTurn.label} captures ${cap.color.label} ${cap.pieceType.label} on $toSq")
-        println(s"${newTurn.label} is in check!")
-        gameLoop(newBoard, newHistory, newTurn)
-      case MoveResult.Checkmate(winner) =>
-        println(s"Checkmate! ${winner.label} wins.")
-        gameLoop(Board.initial, GameHistory.empty, Color.White)
-      case MoveResult.Stalemate =>
-        println("Stalemate! The game is a draw.")
-        gameLoop(Board.initial, GameHistory.empty, Color.White)

@@ -5,7 +5,7 @@
       <option name="deprecationWarnings" value="true" />
       <option name="uncheckedWarnings" value="true" />
     </profile>
-    <profile name="Gradle 2" modules="NowChessSystems.modules.core.main,NowChessSystems.modules.core.scoverage,NowChessSystems.modules.core.test">
+    <profile name="Gradle 2" modules="NowChessSystems.modules.core.main,NowChessSystems.modules.core.scoverage,NowChessSystems.modules.core.test,NowChessSystems.modules.ui.main,NowChessSystems.modules.ui.scoverage,NowChessSystems.modules.ui.test">
       <option name="deprecationWarnings" value="true" />
       <option name="uncheckedWarnings" value="true" />
       <parameters>
