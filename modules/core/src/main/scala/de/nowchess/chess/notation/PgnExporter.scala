@@ -1,6 +1,7 @@
 package de.nowchess.chess.notation
 
 import de.nowchess.api.board.*
+import de.nowchess.api.move.PromotionPiece
 import de.nowchess.chess.logic.{CastleSide, GameHistory, HistoryMove}
 
 object PgnExporter:
@@ -32,4 +33,11 @@ object PgnExporter:
     move.castleSide match
       case Some(CastleSide.Kingside)  => "O-O"
       case Some(CastleSide.Queenside) => "O-O-O"
-      case None => s"${move.from}${move.to}"
+      case None =>
+        val base = s"${move.from}${move.to}"
+        move.promotionPiece match
+          case Some(PromotionPiece.Queen)  => s"$base=Q"
+          case Some(PromotionPiece.Rook)   => s"$base=R"
+          case Some(PromotionPiece.Bishop) => s"$base=B"
+          case Some(PromotionPiece.Knight) => s"$base=N"
+          case None                        => base

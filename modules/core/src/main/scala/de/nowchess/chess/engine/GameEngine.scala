@@ -1,6 +1,7 @@
 package de.nowchess.chess.engine
 
 import de.nowchess.api.board.{Board, Color, Piece, Square}
+import de.nowchess.api.move.PromotionPiece
 import de.nowchess.chess.logic.{GameHistory, GameRules, PositionStatus}
 import de.nowchess.chess.controller.{GameController, Parser, MoveResult}
 import de.nowchess.chess.observer.*
@@ -11,11 +12,30 @@ import de.nowchess.chess.command.{CommandInvoker, MoveCommand}
  *  All user interactions must go through this engine via Commands, and all state changes
  *  are communicated to observers via GameEvent notifications.
  */
-class GameEngine extends Observable:
-  private var currentBoard: Board = Board.initial
-  private var currentHistory: GameHistory = GameHistory.empty
-  private var currentTurn: Color = Color.White
+class GameEngine(
+  initialBoard: Board = Board.initial,
+  initialHistory: GameHistory = GameHistory.empty,
+  initialTurn: Color = Color.White,
+  completePromotionFn: (Board, GameHistory, Square, Square, PromotionPiece, Color) => MoveResult =
+    GameController.completePromotion
+) extends Observable:
+  private var currentBoard: Board = initialBoard
+  private var currentHistory: GameHistory = initialHistory
+  private var currentTurn: Color = initialTurn
   private val invoker = new CommandInvoker()
+
+  /** Inner class for tracking pending promotion state */
+  private case class PendingPromotion(
+    from: Square, to: Square,
+    boardBefore: Board, historyBefore: GameHistory,
+    turn: Color
+  )
+
+  /** Current pending promotion, if any */
+  private var pendingPromotion: Option[PendingPromotion] = None
+
+  /** True if a pawn promotion move is pending and needs a piece choice. */
+  def isPendingPromotion: Boolean = synchronized { pendingPromotion.isDefined }
 
   // Synchronized accessors for current state
   def board: Board = synchronized { currentBoard }
@@ -115,6 +135,10 @@ class GameEngine extends Observable:
                 currentHistory = GameHistory.empty
                 currentTurn = Color.White
                 notifyObservers(StalemateEvent(currentBoard, currentHistory, currentTurn))
+
+              case MoveResult.PromotionRequired(promFrom, promTo, boardBefore, histBefore, _, promotingTurn) =>
+                pendingPromotion = Some(PendingPromotion(promFrom, promTo, boardBefore, histBefore, promotingTurn))
+                notifyObservers(PromotionRequiredEvent(currentBoard, currentHistory, currentTurn, promFrom, promTo))
   }
 
   /** Undo the last move. */
@@ -125,6 +149,59 @@ class GameEngine extends Observable:
   /** Redo the last undone move. */
   def redo(): Unit = synchronized {
     performRedo()
+  }
+
+  /** Apply a player's promotion piece choice.
+   *  Must only be called when isPendingPromotion is true.
+   */
+  def completePromotion(piece: PromotionPiece): Unit = synchronized {
+    pendingPromotion match
+      case None =>
+        notifyObservers(InvalidMoveEvent(currentBoard, currentHistory, currentTurn, "No promotion pending."))
+      case Some(pending) =>
+        pendingPromotion = None
+        val cmd = MoveCommand(
+          from = pending.from,
+          to = pending.to,
+          previousBoard = Some(pending.boardBefore),
+          previousHistory = Some(pending.historyBefore),
+          previousTurn = Some(pending.turn)
+        )
+        completePromotionFn(
+          pending.boardBefore, pending.historyBefore,
+          pending.from, pending.to, piece, pending.turn
+        ) match
+          case MoveResult.Moved(newBoard, newHistory, captured, newTurn) =>
+            val updatedCmd = cmd.copy(moveResult = Some(de.nowchess.chess.command.MoveResult.Successful(newBoard, newHistory, newTurn, captured)))
+            invoker.execute(updatedCmd)
+            updateGameState(newBoard, newHistory, newTurn)
+            emitMoveEvent(pending.from.toString, pending.to.toString, captured, newTurn)
+
+          case MoveResult.MovedInCheck(newBoard, newHistory, captured, newTurn) =>
+            val updatedCmd = cmd.copy(moveResult = Some(de.nowchess.chess.command.MoveResult.Successful(newBoard, newHistory, newTurn, captured)))
+            invoker.execute(updatedCmd)
+            updateGameState(newBoard, newHistory, newTurn)
+            emitMoveEvent(pending.from.toString, pending.to.toString, captured, newTurn)
+            notifyObservers(CheckDetectedEvent(currentBoard, currentHistory, currentTurn))
+
+          case MoveResult.Checkmate(winner) =>
+            val updatedCmd = cmd.copy(moveResult = Some(de.nowchess.chess.command.MoveResult.Successful(Board.initial, GameHistory.empty, Color.White, None)))
+            invoker.execute(updatedCmd)
+            currentBoard = Board.initial
+            currentHistory = GameHistory.empty
+            currentTurn = Color.White
+            notifyObservers(CheckmateEvent(currentBoard, currentHistory, currentTurn, winner))
+
+          case MoveResult.Stalemate =>
+            val updatedCmd = cmd.copy(moveResult = Some(de.nowchess.chess.command.MoveResult.Successful(Board.initial, GameHistory.empty, Color.White, None)))
+            invoker.execute(updatedCmd)
+            currentBoard = Board.initial
+            currentHistory = GameHistory.empty
+            currentTurn = Color.White
+            notifyObservers(StalemateEvent(currentBoard, currentHistory, currentTurn))
+
+          case _ =>
+            notifyObservers(InvalidMoveEvent(currentBoard, currentHistory, currentTurn, "Error completing promotion."))
   }
 
   /** Reset the board to initial position. */

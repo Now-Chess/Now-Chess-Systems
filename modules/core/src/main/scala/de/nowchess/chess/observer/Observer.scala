@@ -1,6 +1,6 @@
 package de.nowchess.chess.observer
 
-import de.nowchess.api.board.{Board, Color}
+import de.nowchess.api.board.{Board, Color, Square}
 import de.nowchess.chess.logic.GameHistory
 
 /** Base trait for all game state events.
@@ -49,6 +49,15 @@ case class InvalidMoveEvent(
   history: GameHistory,
   turn: Color,
   reason: String
+) extends GameEvent
+
+/** Fired when a pawn reaches the back rank and the player must choose a promotion piece. */
+case class PromotionRequiredEvent(
+  board: Board,
+  history: GameHistory,
+  turn: Color,
+  from: Square,
+  to: Square
 ) extends GameEvent
 
 /** Fired when the board is reset. */

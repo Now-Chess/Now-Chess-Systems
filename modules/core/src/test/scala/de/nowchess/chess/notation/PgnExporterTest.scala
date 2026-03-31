@@ -1,6 +1,7 @@
 package de.nowchess.chess.notation
 
 import de.nowchess.api.board.*
+import de.nowchess.api.move.PromotionPiece
 import de.nowchess.chess.logic.{GameHistory, HistoryMove, CastleSide}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
@@ -62,4 +63,40 @@ class PgnExporterTest extends AnyFunSuite with Matchers:
     val pgn = PgnExporter.exportGame(headers, history)
 
     pgn.contains("O-O-O") shouldBe true
+  }
+
+  test("exportGame encodes promotion to Queen as =Q suffix") {
+    val history = GameHistory()
+      .addMove(HistoryMove(Square(File.E, Rank.R7), Square(File.E, Rank.R8), None, Some(PromotionPiece.Queen)))
+    val pgn = PgnExporter.exportGame(Map.empty, history)
+    pgn should include ("e7e8=Q")
+  }
+
+  test("exportGame encodes promotion to Rook as =R suffix") {
+    val history = GameHistory()
+      .addMove(HistoryMove(Square(File.E, Rank.R7), Square(File.E, Rank.R8), None, Some(PromotionPiece.Rook)))
+    val pgn = PgnExporter.exportGame(Map.empty, history)
+    pgn should include ("e7e8=R")
+  }
+
+  test("exportGame encodes promotion to Bishop as =B suffix") {
+    val history = GameHistory()
+      .addMove(HistoryMove(Square(File.E, Rank.R7), Square(File.E, Rank.R8), None, Some(PromotionPiece.Bishop)))
+    val pgn = PgnExporter.exportGame(Map.empty, history)
+    pgn should include ("e7e8=B")
+  }
+
+  test("exportGame encodes promotion to Knight as =N suffix") {
+    val history = GameHistory()
+      .addMove(HistoryMove(Square(File.E, Rank.R7), Square(File.E, Rank.R8), None, Some(PromotionPiece.Knight)))
+    val pgn = PgnExporter.exportGame(Map.empty, history)
+    pgn should include ("e7e8=N")
+  }
+
+  test("exportGame does not add suffix for normal moves") {
+    val history = GameHistory()
+      .addMove(HistoryMove(Square(File.E, Rank.R2), Square(File.E, Rank.R4), None, None))
+    val pgn = PgnExporter.exportGame(Map.empty, history)
+    pgn should include ("e2e4")
+    pgn should not include ("=")
   }

@@ -6,6 +6,16 @@
       <inspection_tool class="CommitNamingConvention" enabled="true" level="WARNING" enabled_by_default="true" />
     </profile>
   </component>
+  <component name="IssueNavigationConfiguration">
+    <option name="links">
+      <list>
+        <IssueNavigationLink>
+          <option name="issueRegexp" value="(?x)\b(CORE|NCWF|BAC|FRO|K8S|ORG|NCI|NCS)-\d+\b#YouTrack" />
+          <option name="linkRegexp" value="https://knockoutwhist.youtrack.cloud/issue/$0" />
+        </IssueNavigationLink>
+      </list>
+    </option>
+  </component>
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
   </component>

@@ -173,3 +173,11 @@ object MoveValidator:
 
   def isLegal(board: Board, history: GameHistory, from: Square, to: Square): Boolean =
     legalTargets(board, history, from).contains(to)
+
+  /** Returns true if the piece on `from` is a pawn moving to its back rank (promotion). */
+  def isPromotionMove(board: Board, from: Square, to: Square): Boolean =
+    board.pieceAt(from) match
+      case Some(Piece(_, PieceType.Pawn)) =>
+        (from.rank == Rank.R7 && to.rank == Rank.R8) ||
+        (from.rank == Rank.R2 && to.rank == Rank.R1)
+      case _ => false

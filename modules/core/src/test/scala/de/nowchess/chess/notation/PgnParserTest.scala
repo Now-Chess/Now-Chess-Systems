@@ -1,7 +1,9 @@
 package de.nowchess.chess.notation
 
 import de.nowchess.api.board.*
+import de.nowchess.api.move.PromotionPiece
 import de.nowchess.chess.logic.{GameHistory, HistoryMove, CastleSide}
+import de.nowchess.chess.notation.FenParser
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
@@ -331,4 +333,119 @@ class PgnParserTest extends AnyFunSuite with Matchers:
     // Should find a rook (hint "9" matches everything)
     result.isDefined shouldBe true
     result.get.to shouldBe Square(File.D, Rank.R1)
+  }
+
+  test("parseAlgebraicMove preserves promotion to Queen in HistoryMove") {
+    val board = FenParser.parseBoard("8/4P3/4k3/8/8/8/8/8").get
+    val result = PgnParser.parseAlgebraicMove("e7e8=Q", board, GameHistory.empty, Color.White)
+    result.isDefined should be (true)
+    result.get.promotionPiece should be (Some(PromotionPiece.Queen))
+    result.get.to should be (Square(File.E, Rank.R8))
+  }
+
+  test("parseAlgebraicMove preserves promotion to Rook") {
+    val board = FenParser.parseBoard("8/4P3/4k3/8/8/8/8/8").get
+    val result = PgnParser.parseAlgebraicMove("e7e8=R", board, GameHistory.empty, Color.White)
+    result.get.promotionPiece should be (Some(PromotionPiece.Rook))
+  }
+
+  test("parseAlgebraicMove preserves promotion to Bishop") {
+    val board = FenParser.parseBoard("8/4P3/4k3/8/8/8/8/8").get
+    val result = PgnParser.parseAlgebraicMove("e7e8=B", board, GameHistory.empty, Color.White)
+    result.get.promotionPiece should be (Some(PromotionPiece.Bishop))
+  }
+
+  test("parseAlgebraicMove preserves promotion to Knight") {
+    val board = FenParser.parseBoard("8/4P3/4k3/8/8/8/8/8").get
+    val result = PgnParser.parseAlgebraicMove("e7e8=N", board, GameHistory.empty, Color.White)
+    result.get.promotionPiece should be (Some(PromotionPiece.Knight))
+  }
+
+  test("parsePgn applies promoted piece to board for subsequent moves") {
+    // Build a board with a white pawn on e7 plus the two kings
+    import de.nowchess.api.board.{Board, Square, File, Rank, Piece, Color, PieceType}
+    val pieces: Map[Square, Piece] = Map(
+      Square(File.E, Rank.R7) -> Piece(Color.White, PieceType.Pawn),
+      Square(File.E, Rank.R1) -> Piece(Color.White, PieceType.King),
+      Square(File.H, Rank.R1) -> Piece(Color.Black, PieceType.King)
+    )
+    val board = Board(pieces)
+    val move = PgnParser.parseAlgebraicMove("e7e8=Q", board, GameHistory.empty, Color.White)
+    move.isDefined should be (true)
+    move.get.promotionPiece should be (Some(PromotionPiece.Queen))
+    // After applying the promotion the square e8 should hold a White Queen
+    val (boardAfterPawnMove, _) = board.withMove(move.get.from, move.get.to)
+    val promotedBoard = boardAfterPawnMove.updated(move.get.to, Piece(Color.White, PieceType.Queen))
+    promotedBoard.pieceAt(Square(File.E, Rank.R8)) should be (Some(Piece(Color.White, PieceType.Queen)))
+  }
+
+  test("parsePgn with all four promotion piece types (Queen, Rook, Bishop, Knight) in sequence") {
+    // This test exercises lines 53-58 in PgnParser.parseMovesText which contain
+    // the pattern match over PromotionPiece for Queen, Rook, Bishop, Knight
+    val pgn = """[Event "Promotion Test"]
+[White "A"]
+[Black "B"]
+
+1. a2a3 h7h5 2. a3a4 h5h4 3. a4a5 h4h3 4. a5a6 h3h2 5. a6a7 h2h1=Q 6. a7a8=R 1-0
+"""
+    val game = PgnParser.parsePgn(pgn)
+
+    game.isDefined shouldBe true
+    // Move 10 is h2h1=Q (black pawn promotes to queen)
+    val blackPromotionToQ = game.get.moves(9)  // 0-indexed
+    blackPromotionToQ.promotionPiece shouldBe Some(PromotionPiece.Queen)
+
+    // Move 11 is a7a8=R (white pawn promotes to rook)
+    val whitePromotionToR = game.get.moves(10)
+    whitePromotionToR.promotionPiece shouldBe Some(PromotionPiece.Rook)
+  }
+
+  test("parseAlgebraicMove promotion with Rook through full PGN parse") {
+    val pgn = """[Event "Test"]
+[White "A"]
+[Black "B"]
+
+1. a2a3 h7h6 2. a3a4 h6h5 3. a4a5 h5h4 4. a5a6 h4h3 5. a6a7 h3h2 6. a7a8=R
+"""
+    val game = PgnParser.parsePgn(pgn)
+    game.isDefined shouldBe true
+    val lastMove = game.get.moves.last
+    lastMove.promotionPiece shouldBe Some(PromotionPiece.Rook)
+  }
+
+  test("parseAlgebraicMove promotion with Bishop through full PGN parse") {
+    val pgn = """[Event "Test"]
+[White "A"]
+[Black "B"]
+
+1. b2b3 h7h6 2. b3b4 h6h5 3. b4b5 h5h4 4. b5b6 h4h3 5. b6b7 h3h2 6. b7b8=B
+"""
+    val game = PgnParser.parsePgn(pgn)
+    game.isDefined shouldBe true
+    val lastMove = game.get.moves.last
+    lastMove.promotionPiece shouldBe Some(PromotionPiece.Bishop)
+  }
+
+  test("parseAlgebraicMove promotion with Knight through full PGN parse") {
+    val pgn = """[Event "Test"]
+[White "A"]
+[Black "B"]
+
+1. c2c3 h7h6 2. c3c4 h6h5 3. c4c5 h5h4 4. c5c6 h4h3 5. c6c7 h3h2 6. c7c8=N
+"""
+    val game = PgnParser.parsePgn(pgn)
+    game.isDefined shouldBe true
+    val lastMove = game.get.moves.last
+    lastMove.promotionPiece shouldBe Some(PromotionPiece.Knight)
+  }
+
+  test("extractPromotion returns None for invalid promotion letter") {
+    // Regex =([A-Z]) now captures any uppercase letter, so =X is matched but case _ => None fires
+    val result = PgnParser.extractPromotion("e7e8=X")
+    result shouldBe None
+  }
+
+  test("extractPromotion returns None when no promotion in notation") {
+    val result = PgnParser.extractPromotion("e7e8")
+    result shouldBe None
   }

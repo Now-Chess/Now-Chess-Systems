@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import de.nowchess.chess.engine.GameEngine
 import de.nowchess.chess.observer.*
-import de.nowchess.api.board.{Board, Color}
+import de.nowchess.api.board.{Board, Color, File, Rank, Square}
 import de.nowchess.chess.logic.GameHistory
 
 class TerminalUITest extends AnyFunSuite with Matchers {
@@ -185,5 +185,143 @@ class TerminalUITest extends AnyFunSuite with Matchers {
     output should include("Game over. Goodbye!")
     // The move should have been processed and the board displayed
     engine.turn shouldBe Color.Black
+  }
+
+  test("TerminalUI shows promotion prompt on PromotionRequiredEvent") {
+    val out = new ByteArrayOutputStream()
+    val engine = new GameEngine()
+    val ui = new TerminalUI(engine)
+
+    Console.withOut(out) {
+      ui.onGameEvent(PromotionRequiredEvent(
+        Board(Map.empty), GameHistory(), Color.White,
+        Square(File.E, Rank.R7), Square(File.E, Rank.R8)
+      ))
+    }
+
+    out.toString should include("Promote to")
+  }
+
+  test("TerminalUI routes promotion choice to engine.completePromotion") {
+    import de.nowchess.api.move.PromotionPiece
+
+    var capturedPiece: Option[PromotionPiece] = None
+
+    val engine = new GameEngine() {
+      override def processUserInput(rawInput: String): Unit =
+        if rawInput.trim == "e7e8" then
+          notifyObservers(PromotionRequiredEvent(
+            Board(Map.empty), GameHistory.empty, Color.White,
+            Square(File.E, Rank.R7), Square(File.E, Rank.R8)
+          ))
+      override def completePromotion(piece: PromotionPiece): Unit =
+        capturedPiece = Some(piece)
+        notifyObservers(MoveExecutedEvent(Board(Map.empty), GameHistory.empty, Color.Black, "e7", "e8", None))
+    }
+
+    val in = new ByteArrayInputStream("e7e8\nq\nquit\n".getBytes)
+    val out = new ByteArrayOutputStream()
+    val ui = new TerminalUI(engine)
+
+    Console.withIn(in) {
+      Console.withOut(out) {
+        ui.start()
+      }
+    }
+
+    capturedPiece should be(Some(PromotionPiece.Queen))
+    out.toString should include("Promote to")
+  }
+
+  test("TerminalUI re-prompts on invalid promotion choice") {
+    import de.nowchess.api.move.PromotionPiece
+
+    var capturedPiece: Option[PromotionPiece] = None
+
+    val engine = new GameEngine() {
+      override def processUserInput(rawInput: String): Unit =
+        if rawInput.trim == "e7e8" then
+          notifyObservers(PromotionRequiredEvent(
+            Board(Map.empty), GameHistory.empty, Color.White,
+            Square(File.E, Rank.R7), Square(File.E, Rank.R8)
+          ))
+      override def completePromotion(piece: PromotionPiece): Unit =
+        capturedPiece = Some(piece)
+        notifyObservers(MoveExecutedEvent(Board(Map.empty), GameHistory.empty, Color.Black, "e7", "e8", None))
+    }
+
+    // "x" is invalid, then "r" for rook
+    val in = new ByteArrayInputStream("e7e8\nx\nr\nquit\n".getBytes)
+    val out = new ByteArrayOutputStream()
+    val ui = new TerminalUI(engine)
+
+    Console.withIn(in) {
+      Console.withOut(out) {
+        ui.start()
+      }
+    }
+
+    capturedPiece should be(Some(PromotionPiece.Rook))
+    out.toString should include("Invalid")
+  }
+
+  test("TerminalUI routes Bishop promotion choice to engine.completePromotion") {
+    import de.nowchess.api.move.PromotionPiece
+
+    var capturedPiece: Option[PromotionPiece] = None
+
+    val engine = new GameEngine() {
+      override def processUserInput(rawInput: String): Unit =
+        if rawInput.trim == "e7e8" then
+          notifyObservers(PromotionRequiredEvent(
+            Board(Map.empty), GameHistory.empty, Color.White,
+            Square(File.E, Rank.R7), Square(File.E, Rank.R8)
+          ))
+      override def completePromotion(piece: PromotionPiece): Unit =
+        capturedPiece = Some(piece)
+        notifyObservers(MoveExecutedEvent(Board(Map.empty), GameHistory.empty, Color.Black, "e7", "e8", None))
+    }
+
+    val in = new ByteArrayInputStream("e7e8\nb\nquit\n".getBytes)
+    val out = new ByteArrayOutputStream()
+    val ui = new TerminalUI(engine)
+
+    Console.withIn(in) {
+      Console.withOut(out) {
+        ui.start()
+      }
+    }
+
+    capturedPiece should be(Some(PromotionPiece.Bishop))
+  }
+
+  test("TerminalUI routes Knight promotion choice to engine.completePromotion") {
+    import de.nowchess.api.move.PromotionPiece
+
+    var capturedPiece: Option[PromotionPiece] = None
+
+    val engine = new GameEngine() {
+      override def processUserInput(rawInput: String): Unit =
+        if rawInput.trim == "e7e8" then
+          notifyObservers(PromotionRequiredEvent(
+            Board(Map.empty), GameHistory.empty, Color.White,
+            Square(File.E, Rank.R7), Square(File.E, Rank.R8)
+          ))
+      override def completePromotion(piece: PromotionPiece): Unit =
+        capturedPiece = Some(piece)
+        notifyObservers(MoveExecutedEvent(Board(Map.empty), GameHistory.empty, Color.Black, "e7", "e8", None))
+    }
+
+    val in = new ByteArrayInputStream("e7e8\nn\nquit\n".getBytes)
+    val out = new ByteArrayOutputStream()
+    val ui = new TerminalUI(engine)
+
+    Console.withIn(in) {
+      Console.withOut(out) {
+        ui.start()
+      }
+    }
+
+    capturedPiece should be(Some(PromotionPiece.Knight))
   }
 }

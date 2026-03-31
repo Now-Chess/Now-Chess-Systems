@@ -1,6 +1,7 @@
 package de.nowchess.chess.notation
 
 import de.nowchess.api.board.*
+import de.nowchess.api.move.PromotionPiece
 import de.nowchess.chess.logic.{CastleSide, GameHistory, HistoryMove, GameRules, MoveValidator, withCastle}
 
 /** A parsed PGN game containing headers and the resolved move list. */
@@ -41,15 +42,29 @@ object PgnParser:
         if isMoveNumberOrResult(token) then state
         else
           parseAlgebraicMove(token, board, history, color) match
-            case None => state  // unrecognised token — skip silently
+            case None       => state  // unrecognised token — skip silently
             case Some(move) =>
-              val newBoard = move.castleSide match
-                case Some(side) => board.withCastle(color, side)
-                case None       => board.withMove(move.from, move.to)._1
+              val newBoard   = applyMoveToBoard(board, move, color)
               val newHistory = history.addMove(move)
               (newBoard, newHistory, color.opposite, acc :+ move)
 
     moves
+
+  /** Apply a single HistoryMove to a Board, handling castling and promotion. */
+  private def applyMoveToBoard(board: Board, move: HistoryMove, color: Color): Board =
+    move.castleSide match
+      case Some(side) => board.withCastle(color, side)
+      case None =>
+        val (boardAfterMove, _) = board.withMove(move.from, move.to)
+        move.promotionPiece match
+          case Some(pp) =>
+            val pieceType = pp match
+              case PromotionPiece.Queen  => PieceType.Queen
+              case PromotionPiece.Rook   => PieceType.Rook
+              case PromotionPiece.Bishop => PieceType.Bishop
+              case PromotionPiece.Knight => PieceType.Knight
+            boardAfterMove.updated(move.to, Piece(color, pieceType))
+          case None => boardAfterMove
 
   /** True for move-number tokens ("1.", "12.") and PGN result tokens. */
   private def isMoveNumberOrResult(token: String): Boolean =
@@ -128,16 +143,26 @@ object PgnParser:
           if hint.isEmpty then byPiece
           else byPiece.filter(from => matchesHint(from, hint))
 
-        disambiguated.headOption.map(from => HistoryMove(from, toSquare, None))
+        val promotion = extractPromotion(notation)
+        disambiguated.headOption.map(from => HistoryMove(from, toSquare, None, promotion))
 
   /** True if `sq` matches a disambiguation hint (file letter, rank digit, or both). */
   private def matchesHint(sq: Square, hint: String): Boolean =
-    hint.foldLeft(true): (ok, c) =>
-      ok && (
-        if c >= 'a' && c <= 'h' then sq.file.toString.equalsIgnoreCase(c.toString)
-        else if c >= '1' && c <= '8' then sq.rank.ordinal == (c - '1')
-        else true
-      )
+    hint.forall(c => if c >= 'a' && c <= 'h' then sq.file.toString.equalsIgnoreCase(c.toString)
+    else if c >= '1' && c <= '8' then sq.rank.ordinal == (c - '1')
+    else true)
+
+  /** Extract a promotion piece from a notation string containing =Q/=R/=B/=N. */
+  private[notation] def extractPromotion(notation: String): Option[PromotionPiece] =
+    val promotionPattern = """=([A-Z])""".r
+    promotionPattern.findFirstMatchIn(notation).flatMap { m =>
+      m.group(1) match
+        case "Q" => Some(PromotionPiece.Queen)
+        case "R" => Some(PromotionPiece.Rook)
+        case "B" => Some(PromotionPiece.Bishop)
+        case "N" => Some(PromotionPiece.Knight)
+        case _   => None
+    }
 
   /** Convert a piece-letter character to a PieceType. */
   private def charToPieceType(c: Char): Option[PieceType] =

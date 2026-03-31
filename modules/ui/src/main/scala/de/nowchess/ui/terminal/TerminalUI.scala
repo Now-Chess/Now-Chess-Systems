@@ -1,6 +1,7 @@
 package de.nowchess.ui.terminal
 
 import scala.io.StdIn
+import de.nowchess.api.move.PromotionPiece
 import de.nowchess.chess.engine.GameEngine
 import de.nowchess.chess.observer.{Observer, GameEvent, *}
 import de.nowchess.chess.view.Renderer
@@ -11,6 +12,7 @@ import de.nowchess.chess.view.Renderer
  */
 class TerminalUI(engine: GameEngine) extends Observer:
   private var running = true
+  private var awaitingPromotion = false
 
   /** Called by GameEngine whenever a game event occurs. */
   override def onGameEvent(event: GameEvent): Unit =
@@ -44,6 +46,10 @@ class TerminalUI(engine: GameEngine) extends Observer:
         print(Renderer.render(e.board))
         printPrompt(e.turn)
 
+      case _: PromotionRequiredEvent =>
+        println("Promote to: q=Queen, r=Rook, b=Bishop, n=Knight")
+        synchronized { awaitingPromotion = true }
+
   /** Start the terminal UI game loop. */
   def start(): Unit =
     // Register as observer
@@ -57,14 +63,26 @@ class TerminalUI(engine: GameEngine) extends Observer:
     // Game loop
     while running do
       val input = Option(StdIn.readLine()).getOrElse("quit").trim
-      input.toLowerCase match
-        case "quit" | "q" =>
-          running = false
-          println("Game over. Goodbye!")
-        case "" =>
-          printPrompt(engine.turn)
-        case _ =>
-          engine.processUserInput(input)
+      synchronized {
+        if awaitingPromotion then
+          input.toLowerCase match
+            case "q" => awaitingPromotion = false; engine.completePromotion(PromotionPiece.Queen)
+            case "r" => awaitingPromotion = false; engine.completePromotion(PromotionPiece.Rook)
+            case "b" => awaitingPromotion = false; engine.completePromotion(PromotionPiece.Bishop)
+            case "n" => awaitingPromotion = false; engine.completePromotion(PromotionPiece.Knight)
+            case _ =>
+              println("Invalid choice. Enter q, r, b, or n.")
+              println("Promote to: q=Queen, r=Rook, b=Bishop, n=Knight")
+        else
+          input.toLowerCase match
+            case "quit" | "q" =>
+              running = false
+              println("Game over. Goodbye!")
+            case "" =>
+              printPrompt(engine.turn)
+            case _ =>
+              engine.processUserInput(input)
+      }
 
     // Unsubscribe when done
     engine.unsubscribe(this)
@@ -73,4 +91,3 @@ class TerminalUI(engine: GameEngine) extends Observer:
     val undoHint = if engine.canUndo then " [undo]" else ""
     val redoHint = if engine.canRedo then " [redo]" else ""
     print(s"${turn.label}'s turn. Enter move (or 'quit'/'q' to exit)$undoHint$redoHint: ")
-

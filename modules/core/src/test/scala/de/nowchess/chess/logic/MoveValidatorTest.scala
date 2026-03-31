@@ -3,6 +3,7 @@ package de.nowchess.chess.logic
 import de.nowchess.api.board.{Board, Color, File, Piece, Rank, Square}
 import de.nowchess.api.game.CastlingRights
 import de.nowchess.chess.logic.{CastleSide, GameHistory}
+import de.nowchess.chess.notation.FenParser
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
@@ -255,3 +256,25 @@ class MoveValidatorTest extends AnyFunSuite with Matchers:
     val b = board(sq(File.D, Rank.R4) -> Piece.WhiteRook)
     val h = GameHistory.empty.addMove(sq(File.E, Rank.R2), sq(File.E, Rank.R4))
     MoveValidator.legalTargets(b, h, sq(File.D, Rank.R4)) shouldBe MoveValidator.legalTargets(b, sq(File.D, Rank.R4))
+
+  // ──── isPromotionMove ────────────────────────────────────────────────
+
+  test("White pawn reaching R8 is a promotion move"):
+    val b = FenParser.parseBoard("8/4P3/4k3/8/8/8/8/8").get
+    MoveValidator.isPromotionMove(b, Square(File.E, Rank.R7), Square(File.E, Rank.R8)) should be (true)
+
+  test("Black pawn reaching R1 is a promotion move"):
+    val b = FenParser.parseBoard("8/8/8/8/4K3/8/4p3/8").get
+    MoveValidator.isPromotionMove(b, Square(File.E, Rank.R2), Square(File.E, Rank.R1)) should be (true)
+
+  test("Pawn capturing to back rank is a promotion move"):
+    val b = FenParser.parseBoard("3q4/4P3/8/8/8/8/8/8").get
+    MoveValidator.isPromotionMove(b, Square(File.E, Rank.R7), Square(File.D, Rank.R8)) should be (true)
+
+  test("Pawn not reaching back rank is not a promotion move"):
+    val b = FenParser.parseBoard("8/8/8/4P3/8/8/8/8").get
+    MoveValidator.isPromotionMove(b, Square(File.E, Rank.R5), Square(File.E, Rank.R6)) should be (false)
+
+  test("Non-pawn piece is never a promotion move"):
+    val b = FenParser.parseBoard("8/8/8/4Q3/8/8/8/8").get
+    MoveValidator.isPromotionMove(b, Square(File.E, Rank.R5), Square(File.E, Rank.R8)) should be (false)
