@@ -43,6 +43,30 @@ class GameControllerTest extends AnyFunSuite with Matchers:
     // White pawn at E2 cannot jump three squares to E5
     processMove(Board.initial, GameHistory.empty, Color.White, "e2e5") shouldBe MoveResult.IllegalMove
 
+  test("processMove: move that leaves own king in check returns IllegalMove"):
+    // White King E1 is in check from Black Rook E8. Moving the D2 pawn is
+    // geometrically legal but does not resolve the check — must be rejected.
+    val b = Board(Map(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.D, Rank.R2) -> Piece.WhitePawn,
+      sq(File.E, Rank.R8) -> Piece.BlackRook,
+      sq(File.A, Rank.R8) -> Piece.BlackKing
+    ))
+    processMove(b, GameHistory.empty, Color.White, "d2d4") shouldBe MoveResult.IllegalMove
+
+  test("processMove: move that resolves check is allowed"):
+    // White King E1 is in check from Black Rook E8 along the E-file.
+    // White Rook A5 interposes at E5 — resolves the check, no new check on Black King A8.
+    val b = Board(Map(
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.A, Rank.R5) -> Piece.WhiteRook,
+      sq(File.E, Rank.R8) -> Piece.BlackRook,
+      sq(File.A, Rank.R8) -> Piece.BlackKing
+    ))
+    processMove(b, GameHistory.empty, Color.White, "a5e5") match
+      case _: MoveResult.Moved => succeed
+      case other => fail(s"Expected Moved, got $other")
+
   test("processMove: legal pawn move returns Moved with updated board and flipped turn"):
     processMove(Board.initial, GameHistory.empty, Color.White, "e2e4") match
       case MoveResult.Moved(newBoard, newHistory, captured, newTurn) =>

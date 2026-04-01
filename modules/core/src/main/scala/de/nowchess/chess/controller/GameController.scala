@@ -75,7 +75,7 @@ object GameController:
       case None                              => MoveResult.NoPiece
       case Some(piece) if piece.color != turn => MoveResult.WrongColor
       case Some(_) =>
-        if !MoveValidator.isLegal(board, history, from, to) then MoveResult.IllegalMove
+        if !GameRules.legalMoves(board, history, turn).contains(from -> to) then MoveResult.IllegalMove
         else if MoveValidator.isPromotionMove(board, from, to) then
           MoveResult.PromotionRequired(from, to, board, history, board.pieceAt(to), turn)
         else applyNormalMove(board, history, turn, from, to)

@@ -20,5 +20,4 @@ When invoked BEFORE scala-implementer (no implementation exists yet):
 
 When invoked AFTER scala-implementer (implementation exists):
   Run python3 jacoco-reporter/jacoco_coverage_gaps.py modules/{service-name}/build/reports/jacoco/test/jacocoTestReport.xml --output agent
-  Use the jacoco-coverage-gaps skill — close coverage gaps revealed by the report.
   To regenerate the report run the tests first.
