@@ -3,7 +3,7 @@ package de.nowchess.chess.engine
 import scala.collection.mutable
 import de.nowchess.api.board.{Board, Color}
 import de.nowchess.chess.logic.GameHistory
-import de.nowchess.chess.observer.{Observer, GameEvent, MoveExecutedEvent, CheckDetectedEvent, BoardResetEvent, InvalidMoveEvent}
+import de.nowchess.chess.observer.{Observer, GameEvent, MoveExecutedEvent, CheckDetectedEvent, BoardResetEvent, InvalidMoveEvent, FiftyMoveRuleAvailableEvent, DrawClaimedEvent}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
@@ -301,6 +301,47 @@ class GameEngineTest extends AnyFunSuite with Matchers:
     observer.events.head shouldBe a[MoveExecutedEvent]
     engine.board shouldBe boardAfterSecondMove
     engine.turn shouldBe Color.White
+
+  // ──── 50-move rule ───────────────────────────────────────────────────
+
+  test("GameEngine: 'draw' rejected when halfMoveClock < 100"):
+    val engine = new GameEngine()
+    val observer = new MockObserver()
+    engine.subscribe(observer)
+    engine.processUserInput("draw")
+    observer.events.size shouldBe 1
+    observer.events.head shouldBe a[InvalidMoveEvent]
+
+  test("GameEngine: 'draw' accepted and fires DrawClaimedEvent when halfMoveClock >= 100"):
+    val engine = new GameEngine(initialHistory = GameHistory(halfMoveClock = 100))
+    val observer = new MockObserver()
+    engine.subscribe(observer)
+    engine.processUserInput("draw")
+    observer.events.size shouldBe 1
+    observer.events.head shouldBe a[DrawClaimedEvent]
+
+  test("GameEngine: state resets to initial after draw claimed"):
+    val engine = new GameEngine(initialHistory = GameHistory(halfMoveClock = 100))
+    engine.processUserInput("draw")
+    engine.board shouldBe Board.initial
+    engine.history shouldBe GameHistory.empty
+    engine.turn shouldBe Color.White
+
+  test("GameEngine: FiftyMoveRuleAvailableEvent fired when move brings clock to 100"):
+    // Start at clock 99; a knight move (non-pawn, non-capture) increments to 100
+    val engine = new GameEngine(initialHistory = GameHistory(halfMoveClock = 99))
+    val observer = new MockObserver()
+    engine.subscribe(observer)
+    engine.processUserInput("g1f3")  // knight move on initial board
+    // Should receive MoveExecutedEvent AND FiftyMoveRuleAvailableEvent
+    observer.events.exists(_.isInstanceOf[FiftyMoveRuleAvailableEvent]) shouldBe true
+
+  test("GameEngine: FiftyMoveRuleAvailableEvent not fired when clock is below 100 after move"):
+    val engine = new GameEngine(initialHistory = GameHistory(halfMoveClock = 5))
+    val observer = new MockObserver()
+    engine.subscribe(observer)
+    engine.processUserInput("g1f3")
+    observer.events.exists(_.isInstanceOf[FiftyMoveRuleAvailableEvent]) shouldBe false
 
   // Mock Observer for testing
   private class MockObserver extends Observer:

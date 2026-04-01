@@ -67,6 +67,20 @@ case class BoardResetEvent(
   turn: Color
 ) extends GameEvent
 
+/** Fired after any move where the half-move clock reaches 100 — the 50-move rule is now claimable. */
+case class FiftyMoveRuleAvailableEvent(
+  board: Board,
+  history: GameHistory,
+  turn: Color
+) extends GameEvent
+
+/** Fired when a player successfully claims a draw under the 50-move rule. */
+case class DrawClaimedEvent(
+  board: Board,
+  history: GameHistory,
+  turn: Color
+) extends GameEvent
+
 /** Observer trait: implement to receive game state updates. */
 trait Observer:
   def onGameEvent(event: GameEvent): Unit

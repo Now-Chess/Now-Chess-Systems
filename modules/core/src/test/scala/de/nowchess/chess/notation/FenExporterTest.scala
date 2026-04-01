@@ -67,3 +67,22 @@ class FenExporterTest extends AnyFunSuite with Matchers:
     )
     val fen = FenExporter.gameStateToFen(gameState)
     fen shouldBe "rnbqkbnr/pp1ppppp/8/2pP4/8/8/PPPP1PPP/RNBQKBNR w KQkq c6 2 3"
+
+  test("halfMoveClock round-trips through FEN export and import"):
+    import de.nowchess.chess.logic.GameHistory
+    import de.nowchess.chess.notation.FenParser
+    val history = GameHistory(halfMoveClock = 42)
+    val gameState = GameState(
+      piecePlacement  = FenExporter.boardToFen(de.nowchess.api.board.Board.initial),
+      activeColor     = Color.White,
+      castlingWhite   = CastlingRights.Both,
+      castlingBlack   = CastlingRights.Both,
+      enPassantTarget = None,
+      halfMoveClock   = history.halfMoveClock,
+      fullMoveNumber  = 1,
+      status          = GameStatus.InProgress
+    )
+    val fen    = FenExporter.gameStateToFen(gameState)
+    FenParser.parseFen(fen) match
+      case Some(gs) => gs.halfMoveClock shouldBe 42
+      case None     => fail("FEN parsing failed")

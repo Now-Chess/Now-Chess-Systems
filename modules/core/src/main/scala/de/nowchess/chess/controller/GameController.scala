@@ -63,7 +63,8 @@ object GameController:
       case PromotionPiece.Bishop => PieceType.Bishop
       case PromotionPiece.Knight => PieceType.Knight
     val newBoard    = boardAfterMove.updated(to, Piece(turn, promotedPieceType))
-    val newHistory  = history.addMove(from, to, None, Some(piece))
+    // Promotion is always a pawn move → clock resets
+    val newHistory = history.addMove(from, to, None, Some(piece), wasPawnMove = true)
     toMoveResult(newBoard, newHistory, captured, turn)
 
   // ---------------------------------------------------------------------------
@@ -91,7 +92,9 @@ object GameController:
           val capturedSq = EnPassantCalculator.capturedPawnSquare(to, turn)
           (b.removed(capturedSq), board.pieceAt(capturedSq))
         else (b, cap)
-    val newHistory = history.addMove(from, to, castleOpt)
+    val wasPawnMove = board.pieceAt(from).exists(_.pieceType == PieceType.Pawn)
+    val wasCapture  = captured.isDefined
+    val newHistory  = history.addMove(from, to, castleOpt, wasPawnMove = wasPawnMove, wasCapture = wasCapture)
     toMoveResult(newBoard, newHistory, captured, turn)
 
   private def toMoveResult(newBoard: Board, newHistory: GameHistory, captured: Option[Piece], turn: Color): MoveResult =

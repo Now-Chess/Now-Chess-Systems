@@ -22,7 +22,8 @@ object PgnExporter:
         if blackMoveStr.isEmpty then s"$moveNum. $whiteMoveStr"
         else s"$moveNum. $whiteMoveStr $blackMoveStr"
 
-      moveLines.mkString(" ") + " *"
+      val termination = headers.getOrElse("Result", "*")
+      moveLines.mkString(" ") + s" $termination"
 
     if headerLines.isEmpty then moveText
     else if moveText.isEmpty then headerLines

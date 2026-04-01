@@ -100,3 +100,15 @@ class PgnExporterTest extends AnyFunSuite with Matchers:
     pgn should include ("e2e4")
     pgn should not include ("=")
   }
+
+  test("exportGame uses Result header as termination marker"):
+    val history = GameHistory()
+      .addMove(HistoryMove(Square(File.E, Rank.R2), Square(File.E, Rank.R4), None))
+    val pgn = PgnExporter.exportGame(Map("Result" -> "1/2-1/2"), history)
+    pgn should endWith("1/2-1/2")
+
+  test("exportGame with no Result header still uses * as default"):
+    val history = GameHistory()
+      .addMove(HistoryMove(Square(File.E, Rank.R2), Square(File.E, Rank.R4), None))
+    val pgn = PgnExporter.exportGame(Map.empty, history)
+    pgn shouldBe "1. e2e4 *"

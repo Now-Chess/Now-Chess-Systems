@@ -488,3 +488,39 @@ class GameControllerTest extends AnyFunSuite with Matchers:
       PromotionPiece.Knight, Color.White
     )
     result should be (MoveResult.Stalemate)
+
+  // ──── half-move clock propagation ────────────────────────────────────
+
+  test("processMove: non-pawn non-capture increments halfMoveClock"):
+    // g1f3 is a knight move — not a pawn, not a capture
+    processMove(Board.initial, GameHistory.empty, Color.White, "g1f3") match
+      case MoveResult.Moved(_, newHistory, _, _) =>
+        newHistory.halfMoveClock shouldBe 1
+      case other => fail(s"Expected Moved, got $other")
+
+  test("processMove: pawn move resets halfMoveClock to 0"):
+    processMove(Board.initial, GameHistory.empty, Color.White, "e2e4") match
+      case MoveResult.Moved(_, newHistory, _, _) =>
+        newHistory.halfMoveClock shouldBe 0
+      case other => fail(s"Expected Moved, got $other")
+
+  test("processMove: capture resets halfMoveClock to 0"):
+    // White pawn on e5, Black pawn on d6 — exd6 is a capture
+    val board = Board(Map(
+      sq(File.E, Rank.R5) -> Piece.WhitePawn,
+      sq(File.D, Rank.R6) -> Piece.BlackPawn,
+      sq(File.E, Rank.R1) -> Piece.WhiteKing,
+      sq(File.E, Rank.R8) -> Piece.BlackKing
+    ))
+    val history = GameHistory(halfMoveClock = 10)
+    processMove(board, history, Color.White, "e5d6") match
+      case MoveResult.Moved(_, newHistory, _, _) =>
+        newHistory.halfMoveClock shouldBe 0
+      case other => fail(s"Expected Moved, got $other")
+
+  test("processMove: clock carries from previous history on non-pawn non-capture"):
+    val history = GameHistory(halfMoveClock = 5)
+    processMove(Board.initial, history, Color.White, "g1f3") match
+      case MoveResult.Moved(_, newHistory, _, _) =>
+        newHistory.halfMoveClock shouldBe 6
+      case other => fail(s"Expected Moved, got $other")

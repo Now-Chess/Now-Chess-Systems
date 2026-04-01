@@ -69,3 +69,36 @@ class GameHistoryTest extends AnyFunSuite with Matchers:
     newHistory.moves should have length 1
     newHistory.moves.head.castleSide should be (None)
     newHistory.moves.head.promotionPiece should be (Some(PromotionPiece.Queen))
+
+  // ──── half-move clock ────────────────────────────────────────────────
+
+  test("halfMoveClock starts at 0"):
+    GameHistory.empty.halfMoveClock shouldBe 0
+
+  test("halfMoveClock increments on a non-pawn non-capture move"):
+    val h = GameHistory.empty.addMove(sq(File.G, Rank.R1), sq(File.F, Rank.R3))
+    h.halfMoveClock shouldBe 1
+
+  test("halfMoveClock resets to 0 on a pawn move"):
+    val h = GameHistory.empty.addMove(sq(File.E, Rank.R2), sq(File.E, Rank.R4), wasPawnMove = true)
+    h.halfMoveClock shouldBe 0
+
+  test("halfMoveClock resets to 0 on a capture"):
+    val h = GameHistory.empty.addMove(sq(File.E, Rank.R5), sq(File.D, Rank.R6), wasCapture = true)
+    h.halfMoveClock shouldBe 0
+
+  test("halfMoveClock resets to 0 when both wasPawnMove and wasCapture are true"):
+    val h = GameHistory.empty.addMove(sq(File.E, Rank.R5), sq(File.D, Rank.R6), wasPawnMove = true, wasCapture = true)
+    h.halfMoveClock shouldBe 0
+
+  test("halfMoveClock carries across multiple moves"):
+    val h = GameHistory.empty
+      .addMove(sq(File.G, Rank.R1), sq(File.F, Rank.R3))          // +1 → 1
+      .addMove(sq(File.G, Rank.R8), sq(File.F, Rank.R6))          // +1 → 2
+      .addMove(sq(File.E, Rank.R2), sq(File.E, Rank.R4), wasPawnMove = true)  // reset → 0
+      .addMove(sq(File.B, Rank.R1), sq(File.C, Rank.R3))          // +1 → 1
+    h.halfMoveClock shouldBe 1
+
+  test("GameHistory can be initialised with a non-zero halfMoveClock"):
+    val h = GameHistory(halfMoveClock = 42)
+    h.halfMoveClock shouldBe 42

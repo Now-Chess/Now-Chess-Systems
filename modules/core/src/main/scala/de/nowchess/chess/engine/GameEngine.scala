@@ -67,6 +67,19 @@ class GameEngine(
       case "redo" =>
         performRedo()
 
+      case "draw" =>
+        if currentHistory.halfMoveClock >= 100 then
+          currentBoard   = Board.initial
+          currentHistory = GameHistory.empty
+          currentTurn    = Color.White
+          invoker.clear()
+          notifyObservers(DrawClaimedEvent(currentBoard, currentHistory, currentTurn))
+        else
+          notifyObservers(InvalidMoveEvent(
+            currentBoard, currentHistory, currentTurn,
+            "Draw cannot be claimed: the 50-move rule has not been triggered."
+          ))
+
       case "" =>
         val event = InvalidMoveEvent(
           currentBoard,
@@ -77,69 +90,64 @@ class GameEngine(
         notifyObservers(event)
 
       case moveInput =>
-        // Try to parse as a move
         Parser.parseMove(moveInput) match
           case None =>
-            val event = InvalidMoveEvent(
-              currentBoard,
-              currentHistory,
-              currentTurn,
+            notifyObservers(InvalidMoveEvent(
+              currentBoard, currentHistory, currentTurn,
               s"Invalid move format '$moveInput'. Use coordinate notation, e.g. e2e4."
-            )
-            notifyObservers(event)
-
+            ))
           case Some((from, to)) =>
-            // Create a move command with current state snapshot
-            val cmd = MoveCommand(
-              from = from,
-              to = to,
-              previousBoard = Some(currentBoard),
-              previousHistory = Some(currentHistory),
-              previousTurn = Some(currentTurn)
-            )
-
-            // Execute the move through GameController
-            GameController.processMove(currentBoard, currentHistory, currentTurn, moveInput) match
-              case MoveResult.InvalidFormat(_) | MoveResult.NoPiece | MoveResult.WrongColor | MoveResult.IllegalMove | MoveResult.Quit =>
-                handleFailedMove(moveInput)
-
-              case MoveResult.Moved(newBoard, newHistory, captured, newTurn) =>
-                // Move succeeded - store result and execute through invoker
-                val updatedCmd = cmd.copy(moveResult = Some(de.nowchess.chess.command.MoveResult.Successful(newBoard, newHistory, newTurn, captured)))
-                invoker.execute(updatedCmd)
-                updateGameState(newBoard, newHistory, newTurn)
-                emitMoveEvent(from.toString, to.toString, captured, newTurn)
-
-              case MoveResult.MovedInCheck(newBoard, newHistory, captured, newTurn) =>
-                // Move succeeded with check
-                val updatedCmd = cmd.copy(moveResult = Some(de.nowchess.chess.command.MoveResult.Successful(newBoard, newHistory, newTurn, captured)))
-                invoker.execute(updatedCmd)
-                updateGameState(newBoard, newHistory, newTurn)
-                emitMoveEvent(from.toString, to.toString, captured, newTurn)
-                notifyObservers(CheckDetectedEvent(currentBoard, currentHistory, currentTurn))
-
-              case MoveResult.Checkmate(winner) =>
-                // Move resulted in checkmate
-                val updatedCmd = cmd.copy(moveResult = Some(de.nowchess.chess.command.MoveResult.Successful(Board.initial, GameHistory.empty, Color.White, None)))
-                invoker.execute(updatedCmd)
-                currentBoard = Board.initial
-                currentHistory = GameHistory.empty
-                currentTurn = Color.White
-                notifyObservers(CheckmateEvent(currentBoard, currentHistory, currentTurn, winner))
-
-              case MoveResult.Stalemate =>
-                // Move resulted in stalemate
-                val updatedCmd = cmd.copy(moveResult = Some(de.nowchess.chess.command.MoveResult.Successful(Board.initial, GameHistory.empty, Color.White, None)))
-                invoker.execute(updatedCmd)
-                currentBoard = Board.initial
-                currentHistory = GameHistory.empty
-                currentTurn = Color.White
-                notifyObservers(StalemateEvent(currentBoard, currentHistory, currentTurn))
-
-              case MoveResult.PromotionRequired(promFrom, promTo, boardBefore, histBefore, _, promotingTurn) =>
-                pendingPromotion = Some(PendingPromotion(promFrom, promTo, boardBefore, histBefore, promotingTurn))
-                notifyObservers(PromotionRequiredEvent(currentBoard, currentHistory, currentTurn, promFrom, promTo))
+            handleParsedMove(from, to, moveInput)
   }
+
+  private def handleParsedMove(from: Square, to: Square, moveInput: String): Unit =
+    val cmd = MoveCommand(
+      from = from,
+      to = to,
+      previousBoard = Some(currentBoard),
+      previousHistory = Some(currentHistory),
+      previousTurn = Some(currentTurn)
+    )
+    GameController.processMove(currentBoard, currentHistory, currentTurn, moveInput) match
+      case MoveResult.InvalidFormat(_) | MoveResult.NoPiece | MoveResult.WrongColor | MoveResult.IllegalMove | MoveResult.Quit =>
+        handleFailedMove(moveInput)
+
+      case MoveResult.Moved(newBoard, newHistory, captured, newTurn) =>
+        val updatedCmd = cmd.copy(moveResult = Some(de.nowchess.chess.command.MoveResult.Successful(newBoard, newHistory, newTurn, captured)))
+        invoker.execute(updatedCmd)
+        updateGameState(newBoard, newHistory, newTurn)
+        emitMoveEvent(from.toString, to.toString, captured, newTurn)
+        if currentHistory.halfMoveClock >= 100 then
+          notifyObservers(FiftyMoveRuleAvailableEvent(currentBoard, currentHistory, currentTurn))
+
+      case MoveResult.MovedInCheck(newBoard, newHistory, captured, newTurn) =>
+        val updatedCmd = cmd.copy(moveResult = Some(de.nowchess.chess.command.MoveResult.Successful(newBoard, newHistory, newTurn, captured)))
+        invoker.execute(updatedCmd)
+        updateGameState(newBoard, newHistory, newTurn)
+        emitMoveEvent(from.toString, to.toString, captured, newTurn)
+        notifyObservers(CheckDetectedEvent(currentBoard, currentHistory, currentTurn))
+        if currentHistory.halfMoveClock >= 100 then
+          notifyObservers(FiftyMoveRuleAvailableEvent(currentBoard, currentHistory, currentTurn))
+
+      case MoveResult.Checkmate(winner) =>
+        val updatedCmd = cmd.copy(moveResult = Some(de.nowchess.chess.command.MoveResult.Successful(Board.initial, GameHistory.empty, Color.White, None)))
+        invoker.execute(updatedCmd)
+        currentBoard = Board.initial
+        currentHistory = GameHistory.empty
+        currentTurn = Color.White
+        notifyObservers(CheckmateEvent(currentBoard, currentHistory, currentTurn, winner))
+
+      case MoveResult.Stalemate =>
+        val updatedCmd = cmd.copy(moveResult = Some(de.nowchess.chess.command.MoveResult.Successful(Board.initial, GameHistory.empty, Color.White, None)))
+        invoker.execute(updatedCmd)
+        currentBoard = Board.initial
+        currentHistory = GameHistory.empty
+        currentTurn = Color.White
+        notifyObservers(StalemateEvent(currentBoard, currentHistory, currentTurn))
+
+      case MoveResult.PromotionRequired(promFrom, promTo, boardBefore, histBefore, _, promotingTurn) =>
+        pendingPromotion = Some(PendingPromotion(promFrom, promTo, boardBefore, histBefore, promotingTurn))
+        notifyObservers(PromotionRequiredEvent(currentBoard, currentHistory, currentTurn, promFrom, promTo))
 
   /** Undo the last move. */
   def undo(): Unit = synchronized {
