@@ -49,6 +49,12 @@ class TerminalUI(engine: GameEngine) extends Observer:
       case _: PromotionRequiredEvent =>
         println("Promote to: q=Queen, r=Rook, b=Bishop, n=Knight")
         synchronized { awaitingPromotion = true }
+      case _: DrawClaimedEvent =>
+        println("Draw claimed! The game is a draw.")
+        println()
+        print(Renderer.render(engine.board))
+      case _: FiftyMoveRuleAvailableEvent =>
+        println("50-move rule available! The game is a draw.")
 
   /** Start the terminal UI game loop. */
   def start(): Unit =

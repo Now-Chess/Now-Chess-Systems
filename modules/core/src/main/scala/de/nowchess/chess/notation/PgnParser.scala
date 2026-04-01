@@ -12,6 +12,16 @@ case class PgnGame(
 
 object PgnParser:
 
+  /** Strictly validate a PGN text.
+   *  Returns Right(PgnGame) if every move token is a legal move in the evolving position.
+   *  Returns Left(error message) on the first illegal or impossible move, or any unrecognised token. */
+  def validatePgn(pgn: String): Either[String, PgnGame] =
+    val lines = pgn.split("\n").map(_.trim)
+    val (headerLines, rest) = lines.span(_.startsWith("["))
+    val headers  = parseHeaders(headerLines)
+    val moveText = rest.mkString(" ")
+    validateMovesText(moveText).map(moves => PgnGame(headers, moves))
+
   /** Parse a complete PGN text into a PgnGame with headers and moves.
    *  Always succeeds (returns Some); malformed tokens are silently skipped. */
   def parsePgn(pgn: String): Option[PgnGame] =
@@ -79,11 +89,11 @@ object PgnParser:
     notation match
       case "O-O" | "O-O+" | "O-O#" =>
         val rank = if color == Color.White then Rank.R1 else Rank.R8
-        Some(HistoryMove(Square(File.E, rank), Square(File.G, rank), Some(CastleSide.Kingside)))
+        Some(HistoryMove(Square(File.E, rank), Square(File.G, rank), Some(CastleSide.Kingside), pieceType = PieceType.King))
 
       case "O-O-O" | "O-O-O+" | "O-O-O#" =>
         val rank = if color == Color.White then Rank.R1 else Rank.R8
-        Some(HistoryMove(Square(File.E, rank), Square(File.C, rank), Some(CastleSide.Queenside)))
+        Some(HistoryMove(Square(File.E, rank), Square(File.C, rank), Some(CastleSide.Queenside), pieceType = PieceType.King))
 
       case _ =>
         parseRegularMove(notation, board, history, color)
@@ -143,8 +153,10 @@ object PgnParser:
           if hint.isEmpty then byPiece
           else byPiece.filter(from => matchesHint(from, hint))
 
-        val promotion = extractPromotion(notation)
-        disambiguated.headOption.map(from => HistoryMove(from, toSquare, None, promotion))
+        val promotion     = extractPromotion(notation)
+        val movePieceType = requiredPieceType.getOrElse(PieceType.Pawn)
+        val moveIsCapture = notation.contains('x')
+        disambiguated.headOption.map(from => HistoryMove(from, toSquare, None, promotion, movePieceType, moveIsCapture))
 
   /** True if `sq` matches a disambiguation hint (file letter, rank digit, or both). */
   private def matchesHint(sq: Square, hint: String): Boolean =
@@ -173,3 +185,83 @@ object PgnParser:
       case 'Q' => Some(PieceType.Queen)
       case 'K' => Some(PieceType.King)
       case _   => None
+
+  // ── Strict validation helpers ─────────────────────────────────────────────
+
+  /** Walk all move tokens, failing immediately on any unresolvable or illegal move. */
+  private def validateMovesText(moveText: String): Either[String, List[HistoryMove]] =
+    val tokens = moveText.split("\\s+").filter(_.nonEmpty)
+    tokens.foldLeft(Right((Board.initial, GameHistory.empty, Color.White, List.empty[HistoryMove])): Either[String, (Board, GameHistory, Color, List[HistoryMove])]) {
+      case (acc, token) =>
+        acc.flatMap { case (board, history, color, moves) =>
+          if isMoveNumberOrResult(token) then Right((board, history, color, moves))
+          else
+            strictParseAlgebraicMove(token, board, history, color) match
+              case None       => Left(s"Illegal or impossible move: '$token'")
+              case Some(move) =>
+                val newBoard   = applyMoveToBoard(board, move, color)
+                val newHistory = history.addMove(move)
+                Right((newBoard, newHistory, color.opposite, moves :+ move))
+        }
+    }.map(_._4)
+
+  /** Strict algebraic move parse — no fallback to positionally-illegal moves. */
+  private def strictParseAlgebraicMove(notation: String, board: Board, history: GameHistory, color: Color): Option[HistoryMove] =
+    val rank = if color == Color.White then Rank.R1 else Rank.R8
+    notation match
+      case "O-O" | "O-O+" | "O-O#" =>
+        val dest = Square(File.G, rank)
+        Option.when(MoveValidator.castlingTargets(board, history, color).contains(dest))(
+          HistoryMove(Square(File.E, rank), dest, Some(CastleSide.Kingside), pieceType = PieceType.King)
+        )
+      case "O-O-O" | "O-O-O+" | "O-O-O#" =>
+        val dest = Square(File.C, rank)
+        Option.when(MoveValidator.castlingTargets(board, history, color).contains(dest))(
+          HistoryMove(Square(File.E, rank), dest, Some(CastleSide.Queenside), pieceType = PieceType.King)
+        )
+      case _ =>
+        strictParseRegularMove(notation, board, history, color)
+
+  /** Strict regular move parse — uses only legally reachable squares, no fallback. */
+  private def strictParseRegularMove(notation: String, board: Board, history: GameHistory, color: Color): Option[HistoryMove] =
+    val clean = notation
+      .replace("+", "")
+      .replace("#", "")
+      .replace("x", "")
+      .replaceAll("=[NBRQ]$", "")
+
+    if clean.length < 2 then None
+    else
+      val destStr = clean.takeRight(2)
+      Square.fromAlgebraic(destStr).flatMap { toSquare =>
+        val disambig = clean.dropRight(2)
+
+        val requiredPieceType: Option[PieceType] =
+          if disambig.nonEmpty && disambig.head.isUpper then charToPieceType(disambig.head)
+          else if clean.head.isUpper then charToPieceType(clean.head)
+          else Some(PieceType.Pawn)
+
+        val hint =
+          if disambig.nonEmpty && disambig.head.isUpper then disambig.tail
+          else disambig
+
+        // Strict: only squares from which a legal move (including en passant/castling awareness) exists.
+        val reachable: Set[Square] =
+          board.pieces.collect {
+            case (from, piece) if piece.color == color &&
+              MoveValidator.legalTargets(board, history, from).contains(toSquare) => from
+          }.toSet
+
+        val byPiece = reachable.filter(from =>
+          requiredPieceType.forall(pt => board.pieceAt(from).exists(_.pieceType == pt))
+        )
+
+        val disambiguated =
+          if hint.isEmpty then byPiece
+          else byPiece.filter(from => matchesHint(from, hint))
+
+        val promotion     = extractPromotion(notation)
+        val movePieceType = requiredPieceType.getOrElse(PieceType.Pawn)
+        val moveIsCapture = notation.contains('x')
+        disambiguated.headOption.map(from => HistoryMove(from, toSquare, None, promotion, movePieceType, moveIsCapture))
+      }

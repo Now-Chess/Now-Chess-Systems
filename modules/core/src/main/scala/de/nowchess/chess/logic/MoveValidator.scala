@@ -73,7 +73,7 @@ object MoveValidator:
     val fi       = from.file.ordinal
     val ri       = from.rank.ordinal
     val dir      = if color == Color.White then 1 else -1
-    val startRank = if color == Color.White then 1 else 6  // R2 = ordinal 1, R7 = ordinal 6
+    val startRank = if color == Color.White then Rank.R2.ordinal else Rank.R7.ordinal
 
     val oneStep = squareAt(fi, ri + dir)
 

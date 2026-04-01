@@ -1,6 +1,6 @@
 package de.nowchess.chess.notation
 
-import de.nowchess.api.board.*
+import de.nowchess.api.board.{PieceType, *}
 import de.nowchess.api.move.PromotionPiece
 import de.nowchess.chess.logic.{GameHistory, HistoryMove, CastleSide}
 import org.scalatest.funsuite.AnyFunSuite
@@ -24,7 +24,7 @@ class PgnExporterTest extends AnyFunSuite with Matchers:
       .addMove(HistoryMove(Square(File.E, Rank.R2), Square(File.E, Rank.R4), None))
     val pgn = PgnExporter.exportGame(headers, history)
 
-    pgn.contains("1. e2e4") shouldBe true
+    pgn.contains("1. e4") shouldBe true
   }
 
   test("export castling") {
@@ -41,11 +41,11 @@ class PgnExporterTest extends AnyFunSuite with Matchers:
     val history = GameHistory()
       .addMove(HistoryMove(Square(File.E, Rank.R2), Square(File.E, Rank.R4), None))
       .addMove(HistoryMove(Square(File.C, Rank.R7), Square(File.C, Rank.R5), None))
-      .addMove(HistoryMove(Square(File.G, Rank.R1), Square(File.F, Rank.R3), None))
+      .addMove(HistoryMove(Square(File.G, Rank.R1), Square(File.F, Rank.R3), None, pieceType = PieceType.Knight))
     val pgn = PgnExporter.exportGame(headers, history)
 
-    pgn.contains("1. e2e4 c7c5") shouldBe true
-    pgn.contains("2. g1f3") shouldBe true
+    pgn.contains("1. e4 c5") shouldBe true
+    pgn.contains("2. Nf3") shouldBe true
   }
 
   test("export game with no headers returns only move text") {
@@ -53,7 +53,7 @@ class PgnExporterTest extends AnyFunSuite with Matchers:
       .addMove(HistoryMove(Square(File.E, Rank.R2), Square(File.E, Rank.R4), None))
     val pgn = PgnExporter.exportGame(Map.empty, history)
 
-    pgn shouldBe "1. e2e4 *"
+    pgn shouldBe "1. e4 *"
   }
 
   test("export queenside castling") {
@@ -69,35 +69,35 @@ class PgnExporterTest extends AnyFunSuite with Matchers:
     val history = GameHistory()
       .addMove(HistoryMove(Square(File.E, Rank.R7), Square(File.E, Rank.R8), None, Some(PromotionPiece.Queen)))
     val pgn = PgnExporter.exportGame(Map.empty, history)
-    pgn should include ("e7e8=Q")
+    pgn should include ("e8=Q")
   }
 
   test("exportGame encodes promotion to Rook as =R suffix") {
     val history = GameHistory()
       .addMove(HistoryMove(Square(File.E, Rank.R7), Square(File.E, Rank.R8), None, Some(PromotionPiece.Rook)))
     val pgn = PgnExporter.exportGame(Map.empty, history)
-    pgn should include ("e7e8=R")
+    pgn should include ("e8=R")
   }
 
   test("exportGame encodes promotion to Bishop as =B suffix") {
     val history = GameHistory()
       .addMove(HistoryMove(Square(File.E, Rank.R7), Square(File.E, Rank.R8), None, Some(PromotionPiece.Bishop)))
     val pgn = PgnExporter.exportGame(Map.empty, history)
-    pgn should include ("e7e8=B")
+    pgn should include ("e8=B")
   }
 
   test("exportGame encodes promotion to Knight as =N suffix") {
     val history = GameHistory()
       .addMove(HistoryMove(Square(File.E, Rank.R7), Square(File.E, Rank.R8), None, Some(PromotionPiece.Knight)))
     val pgn = PgnExporter.exportGame(Map.empty, history)
-    pgn should include ("e7e8=N")
+    pgn should include ("e8=N")
   }
 
   test("exportGame does not add suffix for normal moves") {
     val history = GameHistory()
       .addMove(HistoryMove(Square(File.E, Rank.R2), Square(File.E, Rank.R4), None, None))
     val pgn = PgnExporter.exportGame(Map.empty, history)
-    pgn should include ("e2e4")
+    pgn should include ("e4")
     pgn should not include ("=")
   }
 
@@ -111,4 +111,4 @@ class PgnExporterTest extends AnyFunSuite with Matchers:
     val history = GameHistory()
       .addMove(HistoryMove(Square(File.E, Rank.R2), Square(File.E, Rank.R4), None))
     val pgn = PgnExporter.exportGame(Map.empty, history)
-    pgn shouldBe "1. e2e4 *"
+    pgn shouldBe "1. e4 *"

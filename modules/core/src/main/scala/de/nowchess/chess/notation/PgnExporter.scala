@@ -1,6 +1,6 @@
 package de.nowchess.chess.notation
 
-import de.nowchess.api.board.*
+import de.nowchess.api.board.{PieceType, *}
 import de.nowchess.api.move.PromotionPiece
 import de.nowchess.chess.logic.{CastleSide, GameHistory, HistoryMove}
 
@@ -29,16 +29,26 @@ object PgnExporter:
     else if moveText.isEmpty then headerLines
     else s"$headerLines\n\n$moveText"
 
-  /** Convert a HistoryMove to algebraic notation. */
-  private def moveToAlgebraic(move: HistoryMove): String =
+  /** Convert a HistoryMove to Standard Algebraic Notation. */
+  def moveToAlgebraic(move: HistoryMove): String =
     move.castleSide match
       case Some(CastleSide.Kingside)  => "O-O"
       case Some(CastleSide.Queenside) => "O-O-O"
       case None =>
-        val base = s"${move.from}${move.to}"
-        move.promotionPiece match
-          case Some(PromotionPiece.Queen)  => s"$base=Q"
-          case Some(PromotionPiece.Rook)   => s"$base=R"
-          case Some(PromotionPiece.Bishop) => s"$base=B"
-          case Some(PromotionPiece.Knight) => s"$base=N"
-          case None                        => base
+        val dest       = move.to.toString
+        val capStr     = if move.isCapture then "x" else ""
+        val promSuffix = move.promotionPiece match
+          case Some(PromotionPiece.Queen)  => "=Q"
+          case Some(PromotionPiece.Rook)   => "=R"
+          case Some(PromotionPiece.Bishop) => "=B"
+          case Some(PromotionPiece.Knight) => "=N"
+          case None                        => ""
+        move.pieceType match
+          case PieceType.Pawn =>
+            if move.isCapture then s"${move.from.file.toString.toLowerCase}x$dest$promSuffix"
+            else s"$dest$promSuffix"
+          case PieceType.Knight => s"N$capStr$dest$promSuffix"
+          case PieceType.Bishop => s"B$capStr$dest$promSuffix"
+          case PieceType.Rook   => s"R$capStr$dest$promSuffix"
+          case PieceType.Queen  => s"Q$capStr$dest$promSuffix"
+          case PieceType.King   => s"K$capStr$dest$promSuffix"

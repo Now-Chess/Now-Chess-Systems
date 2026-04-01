@@ -81,6 +81,32 @@ case class DrawClaimedEvent(
   turn: Color
 ) extends GameEvent
 
+/** Fired when a move is undone, carrying PGN notation of the reversed move. */
+case class MoveUndoneEvent(
+  board: Board,
+  history: GameHistory,
+  turn: Color,
+  pgnNotation: String
+) extends GameEvent
+
+/** Fired when a previously undone move is redone, carrying PGN notation of the replayed move. */
+case class MoveRedoneEvent(
+  board: Board,
+  history: GameHistory,
+  turn: Color,
+  pgnNotation: String,
+  fromSquare: String,
+  toSquare: String,
+  capturedPiece: Option[String]
+) extends GameEvent
+
+/** Fired after a PGN string is successfully loaded and all moves are replayed into history. */
+case class PgnLoadedEvent(
+  board: Board,
+  history: GameHistory,
+  turn: Color
+) extends GameEvent
+
 /** Observer trait: implement to receive game state updates. */
 trait Observer:
   def onGameEvent(event: GameEvent): Unit

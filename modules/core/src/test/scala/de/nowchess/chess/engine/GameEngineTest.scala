@@ -3,7 +3,7 @@ package de.nowchess.chess.engine
 import scala.collection.mutable
 import de.nowchess.api.board.{Board, Color}
 import de.nowchess.chess.logic.GameHistory
-import de.nowchess.chess.observer.{Observer, GameEvent, MoveExecutedEvent, CheckDetectedEvent, BoardResetEvent, InvalidMoveEvent, FiftyMoveRuleAvailableEvent, DrawClaimedEvent}
+import de.nowchess.chess.observer.{Observer, GameEvent, MoveExecutedEvent, CheckDetectedEvent, BoardResetEvent, InvalidMoveEvent, FiftyMoveRuleAvailableEvent, DrawClaimedEvent, MoveUndoneEvent, MoveRedoneEvent}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
@@ -125,7 +125,7 @@ class GameEngineTest extends AnyFunSuite with Matchers:
     observer.events.clear()
     engine.undo()
     observer.events.size shouldBe 1
-    observer.events.head shouldBe a[BoardResetEvent]
+    observer.events.head shouldBe a[MoveUndoneEvent]
 
   test("GameEngine redo replays undone move"):
     val engine = new GameEngine()
@@ -269,7 +269,7 @@ class GameEngineTest extends AnyFunSuite with Matchers:
     engine.processUserInput("q")
     observer.events.size shouldBe initialEvents
   
-  test("GameEngine undo notifies with BoardResetEvent after successful undo"):
+  test("GameEngine undo notifies with MoveUndoneEvent after successful undo"):
     val engine = new GameEngine()
     engine.processUserInput("e2e4")
     engine.processUserInput("e7e5")
@@ -279,11 +279,11 @@ class GameEngineTest extends AnyFunSuite with Matchers:
 
     engine.undo()
 
-    // Should have received a BoardResetEvent on undo
+    // Should have received a MoveUndoneEvent on undo
     observer.events.size should be > 0
-    observer.events.exists(_.isInstanceOf[BoardResetEvent]) shouldBe true
+    observer.events.exists(_.isInstanceOf[MoveUndoneEvent]) shouldBe true
 
-  test("GameEngine redo notifies with MoveExecutedEvent after successful redo"):
+  test("GameEngine redo notifies with MoveRedoneEvent after successful redo"):
     val engine = new GameEngine()
     engine.processUserInput("e2e4")
     engine.processUserInput("e7e5")
@@ -296,9 +296,9 @@ class GameEngineTest extends AnyFunSuite with Matchers:
 
     engine.redo()
 
-    // Should have received a MoveExecutedEvent for the redo
+    // Should have received a MoveRedoneEvent for the redo
     observer.events.size shouldBe 1
-    observer.events.head shouldBe a[MoveExecutedEvent]
+    observer.events.head shouldBe a[MoveRedoneEvent]
     engine.board shouldBe boardAfterSecondMove
     engine.turn shouldBe Color.White
 

@@ -92,9 +92,10 @@ object GameController:
           val capturedSq = EnPassantCalculator.capturedPawnSquare(to, turn)
           (b.removed(capturedSq), board.pieceAt(capturedSq))
         else (b, cap)
-    val wasPawnMove = board.pieceAt(from).exists(_.pieceType == PieceType.Pawn)
+    val pieceType   = board.pieceAt(from).map(_.pieceType).getOrElse(PieceType.Pawn)
+    val wasPawnMove = pieceType == PieceType.Pawn
     val wasCapture  = captured.isDefined
-    val newHistory  = history.addMove(from, to, castleOpt, wasPawnMove = wasPawnMove, wasCapture = wasCapture)
+    val newHistory  = history.addMove(from, to, castleOpt, wasPawnMove = wasPawnMove, wasCapture = wasCapture, pieceType = pieceType)
     toMoveResult(newBoard, newHistory, captured, turn)
 
   private def toMoveResult(newBoard: Board, newHistory: GameHistory, captured: Option[Piece], turn: Color): MoveResult =

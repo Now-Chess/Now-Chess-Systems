@@ -1,6 +1,6 @@
 package de.nowchess.chess.logic
 
-import de.nowchess.api.board.Square
+import de.nowchess.api.board.{PieceType, Square}
 import de.nowchess.api.move.PromotionPiece
 
 /** A single move recorded in the game history. Distinct from api.move.Move which represents user intent. */
@@ -8,7 +8,9 @@ case class HistoryMove(
   from: Square,
   to: Square,
   castleSide: Option[CastleSide],
-  promotionPiece: Option[PromotionPiece] = None
+  promotionPiece: Option[PromotionPiece] = None,
+  pieceType: PieceType = PieceType.Pawn,
+  isCapture: Boolean = false
 )
 
 /** Complete game history: ordered list of moves plus the half-move clock for the 50-move rule.
@@ -37,10 +39,11 @@ case class GameHistory(moves: List[HistoryMove] = List.empty, halfMoveClock: Int
     castleSide: Option[CastleSide] = None,
     promotionPiece: Option[PromotionPiece] = None,
     wasPawnMove: Boolean = false,
-    wasCapture: Boolean = false
+    wasCapture: Boolean = false,
+    pieceType: PieceType = PieceType.Pawn
   ): GameHistory =
     val newClock = if wasPawnMove || wasCapture then 0 else halfMoveClock + 1
-    GameHistory(moves :+ HistoryMove(from, to, castleSide, promotionPiece), newClock)
+    GameHistory(moves :+ HistoryMove(from, to, castleSide, promotionPiece, pieceType, wasCapture), newClock)
 
 object GameHistory:
   val empty: GameHistory = GameHistory()

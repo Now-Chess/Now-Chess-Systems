@@ -6,6 +6,7 @@ import de.nowchess.chess.logic.{GameHistory, GameRules, PositionStatus}
 import de.nowchess.chess.controller.{GameController, Parser, MoveResult}
 import de.nowchess.chess.observer.*
 import de.nowchess.chess.command.{CommandInvoker, MoveCommand}
+import de.nowchess.chess.notation.{PgnExporter, PgnParser}
 
 /** Pure game engine that manages game state and notifies observers of state changes.
  *  This class is the single source of truth for the game state.
@@ -212,6 +213,60 @@ class GameEngine(
             notifyObservers(InvalidMoveEvent(currentBoard, currentHistory, currentTurn, "Error completing promotion."))
   }
 
+  /** Validate and load a PGN string.
+   *  Each move is replayed through the command system so undo/redo is available after loading.
+   *  Returns Right(()) on success; Left(error) if any move is illegal or the position impossible. */
+  def loadPgn(pgn: String): Either[String, Unit] = synchronized {
+    PgnParser.validatePgn(pgn) match
+      case Left(err) =>
+        Left(err)
+      case Right(game) =>
+        val initialBoardBeforeLoad = currentBoard
+        val initialHistoryBeforeLoad = currentHistory
+        val initialTurnBeforeLoad = currentTurn
+        
+        currentBoard = Board.initial
+        currentHistory = GameHistory.empty
+        currentTurn = Color.White
+        pendingPromotion = None
+        invoker.clear()
+
+        var error: Option[String] = None
+        import scala.util.control.Breaks._
+        breakable {
+          game.moves.foreach { move =>
+            handleParsedMove(move.from, move.to, s"${move.from}${move.to}")
+            move.promotionPiece.foreach(completePromotion)
+            
+            // If the move failed to execute properly, stop and report
+            // (validatePgn should have caught this, but we're being safe)
+            if pendingPromotion.isDefined && move.promotionPiece.isEmpty then
+              error = Some(s"Promotion required for move ${move.from}${move.to}")
+              break()
+          }
+        }
+        
+        error match
+          case Some(err) =>
+            currentBoard = initialBoardBeforeLoad
+            currentHistory = initialHistoryBeforeLoad
+            currentTurn = initialTurnBeforeLoad
+            Left(err)
+          case None =>
+            notifyObservers(PgnLoadedEvent(currentBoard, currentHistory, currentTurn))
+            Right(())
+  }
+
+  /** Load an arbitrary board position, clearing all history and undo/redo state. */
+  def loadPosition(board: Board, history: GameHistory, turn: Color): Unit = synchronized {
+    currentBoard = board
+    currentHistory = history
+    currentTurn = turn
+    pendingPromotion = None
+    invoker.clear()
+    notifyObservers(BoardResetEvent(currentBoard, currentHistory, currentTurn))
+  }
+
   /** Reset the board to initial position. */
   def reset(): Unit = synchronized {
     currentBoard = Board.initial
@@ -232,11 +287,12 @@ class GameEngine(
       val cmd = invoker.history(invoker.getCurrentIndex)
       (cmd: @unchecked) match
         case moveCmd: MoveCommand =>
+          val notation = currentHistory.moves.lastOption.map(PgnExporter.moveToAlgebraic).getOrElse("")
           moveCmd.previousBoard.foreach(currentBoard = _)
           moveCmd.previousHistory.foreach(currentHistory = _)
           moveCmd.previousTurn.foreach(currentTurn = _)
           invoker.undo()
-          notifyObservers(BoardResetEvent(currentBoard, currentHistory, currentTurn))
+          notifyObservers(MoveUndoneEvent(currentBoard, currentHistory, currentTurn, notation))
     else
       notifyObservers(InvalidMoveEvent(currentBoard, currentHistory, currentTurn, "Nothing to undo."))
 
@@ -248,7 +304,9 @@ class GameEngine(
           for case de.nowchess.chess.command.MoveResult.Successful(nb, nh, nt, cap) <- moveCmd.moveResult do
             updateGameState(nb, nh, nt)
             invoker.redo()
-            emitMoveEvent(moveCmd.from.toString, moveCmd.to.toString, cap, nt)
+            val notation    = nh.moves.lastOption.map(PgnExporter.moveToAlgebraic).getOrElse("")
+            val capturedDesc = cap.map(c => s"${c.color.label} ${c.pieceType.label}")
+            notifyObservers(MoveRedoneEvent(currentBoard, currentHistory, currentTurn, notation, moveCmd.from.toString, moveCmd.to.toString, capturedDesc))
     else
       notifyObservers(InvalidMoveEvent(currentBoard, currentHistory, currentTurn, "Nothing to redo."))
 

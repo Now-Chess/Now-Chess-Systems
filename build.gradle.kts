@@ -1,5 +1,6 @@
 plugins {
     id("org.sonarqube") version "7.2.3.7755"
+    id("org.scoverage") version "8.1" apply false
 }
 
 group = "de.nowchess"
@@ -28,7 +29,10 @@ val versions = mapOf(
     "SCALA_LIBRARY"         to "2.13.18",
     "SCALATEST"             to "3.2.19",
     "SCALATEST_JUNIT"       to "0.1.11",
-    "SCOVERAGE"             to "2.1.1"
+    "SCOVERAGE"             to "2.1.1",
+    "SCALAFX"               to "21.0.0-R32",
+    "JAVAFX"                to "21.0.1",
+    "JUNIT_BOM"             to "5.13.4"
 )
 extra["VERSIONS"] = versions
 
