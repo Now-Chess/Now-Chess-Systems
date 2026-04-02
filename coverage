@@ -1,0 +1,10 @@
+#! /usr/bin/env bash
+set -euo pipefail
+
+./gradlew test
+
+if [ "$#" -eq 0 ]; then
+  python3 jacoco-reporter/scoverage_coverage_gaps.py
+else
+  python3 jacoco-reporter/scoverage_coverage_gaps.py "modules/$1/build/reports/scoverageTest/scoverage.xml"
+fi

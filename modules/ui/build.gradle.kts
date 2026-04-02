@@ -83,7 +83,7 @@ tasks.test {
     useJUnitPlatform {
         includeEngines("scalatest")
         testLogging {
-            events("passed", "skipped", "failed")
+            events("skipped", "failed")
         }
     }
     finalizedBy(tasks.reportScoverage)

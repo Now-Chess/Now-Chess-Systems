@@ -1,0 +1,10 @@
+#! /usr/bin/env bash
+set -euo pipefail
+
+./gradlew test
+
+if [ "$#" -eq 0 ]; then
+  python3 jacoco-reporter/test_gaps.py
+else
+  python3 jacoco-reporter/test_gaps.py  --module "$1"
+fi

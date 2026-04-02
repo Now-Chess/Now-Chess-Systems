@@ -19,6 +19,9 @@ Usage:
     python scoverage_coverage_gaps.py <scoverage.xml> --output agent   (default)
     python scoverage_coverage_gaps.py <scoverage.xml> --package-filter de.nowchess.chess.controller
     python scoverage_coverage_gaps.py <scoverage.xml> --min-coverage 80
+    python scoverage_coverage_gaps.py                                 (default: scans ./modules)
+    python scoverage_coverage_gaps.py --modules-dir ./services
+    python scoverage_coverage_gaps.py <scoverage.xml>
 """
 
 import xml.etree.ElementTree as ET
@@ -26,7 +29,8 @@ import sys
 import argparse
 import json
 import re
-from pathlib import Path, PureWindowsPath
+import glob
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -112,7 +116,6 @@ class ClassGap:
     @property
     def uncovered_branch_lines(self) -> list[int]:
         """Lines that are branch points and have at least one uncovered branch statement."""
-        # Group branch statements by line; a line is "partial" if some covered, some not
         from collections import defaultdict
         by_line: dict[int, list[Statement]] = defaultdict(list)
         for s in self.statements:
@@ -120,10 +123,7 @@ class ClassGap:
                 by_line[s.line].append(s)
         partial = []
         for line, stmts in by_line.items():
-            has_covered = any(s.is_covered for s in stmts)
-            has_uncovered = any(s.is_uncovered for s in stmts)
-            # Report line if any branch arm is uncovered
-            if has_uncovered:
+            if any(s.is_uncovered for s in stmts):
                 partial.append(line)
         return sorted(partial)
 
@@ -169,20 +169,10 @@ class ClassGap:
 # ---------------------------------------------------------------------------
 
 def _normalise_source(raw: str) -> str:
-    """
-    Convert an absolute Windows or Unix source path from the XML into a
-    relative src/main/scala/… path for agent consumption.
-
-    Strategy:
-      1. Replace Windows backslashes.
-      2. Find the 'src/' anchor and take everything from there.
-      3. Fall back to the package-derived path if no anchor found.
-    """
     normalised = raw.replace("\\", "/")
     match = re.search(r"(src/(?:main|test)/scala/.+)", normalised)
     if match:
         return match.group(1)
-    # Fallback: just the filename portion
     return normalised.split("/")[-1]
 
 
@@ -190,11 +180,10 @@ def _normalise_source(raw: str) -> str:
 # Parser
 # ---------------------------------------------------------------------------
 
-def parse_scoverage_xml(xml_path: str) -> list[ClassGap]:
+def parse_scoverage_xml(xml_path: str) -> tuple[dict, list[ClassGap]]:
     tree = ET.parse(xml_path)
     root = tree.getroot()
 
-    # ── Authoritative project-level totals from <scoverage> root element ──────
     project_stats = {
         "total_statements":    int(root.get("statement-count", 0)),
         "covered_statements":  int(root.get("statements-invoked", 0)),
@@ -202,17 +191,16 @@ def parse_scoverage_xml(xml_path: str) -> list[ClassGap]:
         "branch_coverage_pct": float(root.get("branch-rate", 0.0)),
     }
     project_stats["missed_statements"] = (
-        project_stats["total_statements"] - project_stats["covered_statements"]
+            project_stats["total_statements"] - project_stats["covered_statements"]
     )
 
-    class_map: dict[str, ClassGap] = {}   # full-class-name → ClassGap
+    class_map: dict[str, ClassGap] = {}
 
     for package in root.findall("packages/package"):
         for cls_elem in package.findall("classes/class"):
             class_name = cls_elem.get("name", "")
             filename   = cls_elem.get("filename", "")
 
-            # Authoritative per-class totals from <class> attributes
             cls_total     = int(cls_elem.get("statement-count", 0))
             cls_invoked   = int(cls_elem.get("statements-invoked", 0))
             cls_stmt_rate = float(cls_elem.get("statement-rate", 0.0))
@@ -221,11 +209,8 @@ def parse_scoverage_xml(xml_path: str) -> list[ClassGap]:
             for method_elem in cls_elem.findall("methods/method"):
                 method_name = method_elem.get("name", "")
 
-                # Authoritative per-method totals from <method> attributes
-                m_total     = int(method_elem.get("statement-count", 0))
-                m_invoked   = int(method_elem.get("statements-invoked", 0))
-                m_stmt_rate = float(method_elem.get("statement-rate", 0.0))
-                m_br_rate   = float(method_elem.get("branch-rate", 0.0))
+                m_total   = int(method_elem.get("statement-count", 0))
+                m_invoked = int(method_elem.get("statements-invoked", 0))
 
                 for stmt_elem in method_elem.findall("statements/statement"):
                     raw_source = stmt_elem.get("source", filename)
@@ -257,7 +242,6 @@ def parse_scoverage_xml(xml_path: str) -> list[ClassGap]:
                         method=method_name,
                     ))
 
-                # Register method-level gap using authoritative XML stats
                 cg = next(
                     (v for v in class_map.values() if v.class_name == class_name),
                     None,
@@ -268,7 +252,6 @@ def parse_scoverage_xml(xml_path: str) -> list[ClassGap]:
                 uncov_lines        = sorted({s.line for s in active if s.is_uncovered})
                 uncov_branch_lines = sorted({s.line for s in active if s.is_branch and s.is_uncovered})
                 if uncov_lines or uncov_branch_lines:
-                    # Count branches from statement-level data (not in method XML attrs)
                     total_b = sum(1 for s in active if s.is_branch)
                     cov_b   = sum(1 for s in active if s.is_branch and s.is_covered)
                     mg = MethodGap(
@@ -282,7 +265,6 @@ def parse_scoverage_xml(xml_path: str) -> list[ClassGap]:
                     )
                     cg.method_gaps.append(mg)
 
-    # ── Project stats injected so formatters never recount from statements ────
     return project_stats, [cg for cg in class_map.values() if cg.has_gaps]
 
 
@@ -310,103 +292,60 @@ def _compact_ranges(numbers: list[int]) -> str:
 # Formatters
 # ---------------------------------------------------------------------------
 
-def _pct_bar(pct: float, width: int = 20) -> str:
-    """Render a compact ASCII progress bar, e.g. [████░░░░░░░░░░░░░░░░] 23.5%"""
-    filled = round(pct / 100 * width)
-    bar = "█" * filled + "░" * (width - filled)
-    return f"[{bar}] {pct:.1f}%"
-
-
 def format_agent(project_stats: dict, classes: list[ClassGap]) -> str:
+    """
+    Compact agent format — optimised for low token count.
+    Emits only actionable gaps: file path, uncovered lines, branch-gap lines,
+    and a per-method breakdown. No ASCII bars, no redundant tables.
+    """
     lines: list[str] = []
-    lines.append("# scoverage Coverage Gaps — Agent Action Report")
-    lines.append("")
 
-    # ---- Project-level totals (authoritative from <scoverage> root element) ----
-    total_stmts      = project_stats["total_statements"]
-    covered_stmts    = project_stats["covered_statements"]
-    missed_stmts     = project_stats["missed_statements"]
+    total_stmts        = project_stats["total_statements"]
+    covered_stmts      = project_stats["covered_statements"]
+    missed_stmts       = project_stats["missed_statements"]
     overall_stmt_pct   = project_stats["stmt_coverage_pct"]
     overall_branch_pct = project_stats["branch_coverage_pct"]
-    total_branch_lines = sum(len(c.uncovered_branch_lines) for c in classes)
-    # Branch totals: count from statement data (scoverage root has no branch count attr)
-    total_branches   = sum(c.total_branches for c in classes)
-    covered_branches = sum(c.covered_branches for c in classes)
-    missed_branches  = sum(c.missed_branches for c in classes)
+    total_branches     = sum(c.total_branches for c in classes)
+    covered_branches   = sum(c.covered_branches for c in classes)
+    missed_branches    = total_branches - covered_branches
 
-    lines.append("## Project Coverage Summary")
-    lines.append("")
-    lines.append(f"| Metric            | Covered | Total | Missed | Coverage |")
-    lines.append(f"|-------------------|---------|-------|--------|----------|")
-    lines.append(f"| Statements        | {covered_stmts:>7} | {total_stmts:>5} | {missed_stmts:>6} | {_pct_bar(overall_stmt_pct)} |")
-    lines.append(f"| Branch paths      | {covered_branches:>7} | {total_branches:>5} | {missed_branches:>6} | {_pct_bar(overall_branch_pct)} |")
-    lines.append(f"| Files with gaps   | {'—':>7} | {len(classes):>5} | {'—':>6} | {'—'} |")
-    lines.append(f"| Lines w/ br. gaps | {'—':>7} | {total_branch_lines:>5} | {'—':>6} | {'—'} |")
-    lines.append("")
-    lines.append("---")
-    lines.append("")
-    lines.append("## Files Requiring Tests")
-    lines.append("")
-    lines.append("> Each entry lists the SOURCE FILE PATH, uncovered LINE NUMBERS,")
-    lines.append("> and the METHODS that contain those gaps.")
-    lines.append("> Write or extend unit/integration tests to exercise these paths.")
+    lines.append("# scoverage Coverage Gaps")
+    lines.append(
+        f"stmt: {overall_stmt_pct:.1f}% ({missed_stmts}/{total_stmts} missed) | "
+        f"branches: {overall_branch_pct:.1f}% ({missed_branches}/{total_branches} missed) | "
+        f"files with gaps: {len(classes)}"
+    )
     lines.append("")
 
     sorted_classes = sorted(classes, key=lambda c: -(c.missed_statements + c.missed_branches))
 
     for cls in sorted_classes:
-        lines.append(f"### `{cls.source_path}`")
-        lines.append(f"**Class**: `{cls.class_name}`")
-        lines.append("")
-        lines.append(f"| Metric       | Covered | Total | Missed | Coverage |")
-        lines.append(f"|--------------|---------|-------|--------|----------|")
-        lines.append(f"| Statements   | {cls.covered_statements:>7} | {cls.total_statements:>5} | {cls.missed_statements:>6} | {_pct_bar(cls.stmt_coverage_pct)} |")
-        if cls.total_branches:
-            lines.append(f"| Branch paths | {cls.covered_branches:>7} | {cls.total_branches:>5} | {cls.missed_branches:>6} | {_pct_bar(cls.branch_coverage_pct)} |")
-        lines.append("")
-
-        uncov = cls.all_uncovered_lines
-        if uncov:
-            lines.append("#### ❌ Uncovered Statements")
-            lines.append(f"Lines never executed: `{_compact_ranges(uncov)}`")
-            lines.append("")
-
+        uncov        = cls.all_uncovered_lines
         branch_lines = cls.uncovered_branch_lines
-        if branch_lines:
-            lines.append("#### ⚠️  Missing Branch Coverage (Conditional Paths)")
-            lines.append(f"Lines where not all conditional paths are taken: `{_compact_ranges(branch_lines)}`")
-            lines.append("")
+
+        lines.append(f"## {cls.source_path}")
+        lines.append(
+            f"stmt: {cls.stmt_coverage_pct:.1f}% ({cls.missed_statements} missed)"
+            + (f" | branches: {cls.branch_coverage_pct:.1f}% ({cls.missed_branches} missed)"
+               if cls.total_branches else "")
+        )
+        if uncov:
+            lines.append(f"uncovered lines: {_compact_ranges(uncov)}")
+        only_branch = [l for l in branch_lines if l not in cls.all_uncovered_lines]
+        if only_branch:
+            lines.append(f"partial branches: {_compact_ranges(only_branch)}")
 
         if cls.method_gaps:
-            lines.append("#### Methods with Gaps")
-            lines.append("")
-            lines.append("| Method | Stmt Coverage | Branch Coverage | Uncovered Lines | Branch Gap Lines |")
-            lines.append("|--------|--------------|-----------------|-----------------|------------------|")
+            lines.append("methods:")
             for mg in cls.method_gaps:
-                stmt_cell   = f"{_pct_bar(mg.stmt_coverage_pct, 10)} ({mg.total_statements - mg.covered_statements}/{mg.total_statements} missed)"
-                branch_cell = f"{_pct_bar(mg.branch_coverage_pct, 10)} ({mg.missed_branches}/{mg.total_branches} missed)" if mg.total_branches else "n/a"
-                uncov_cell  = f"`{_compact_ranges(mg.uncovered_lines)}`"        if mg.uncovered_lines        else "—"
-                br_cell     = f"`{_compact_ranges(mg.uncovered_branch_lines)}`" if mg.uncovered_branch_lines else "—"
-                lines.append(f"| `{mg.short_name}` | {stmt_cell} | {branch_cell} | {uncov_cell} | {br_cell} |")
-            lines.append("")
+                parts = [f"  {mg.short_name}"]
+                if mg.uncovered_lines:
+                    parts.append(f"lines={_compact_ranges(mg.uncovered_lines)}")
+                if mg.uncovered_branch_lines:
+                    parts.append(f"branches={_compact_ranges(mg.uncovered_branch_lines)}")
+                lines.append(" ".join(parts))
 
-        lines.append("**Action**: Add tests that exercise the lines/branches listed above.")
         lines.append("")
-        lines.append("---")
-        lines.append("")
-
-    lines.append("## Quick Reference: All Uncovered Locations")
-    lines.append("")
-    lines.append("Copy-paste friendly list for IDE navigation or grep:")
-    lines.append("")
-    lines.append("```")
-    for cls in sorted_classes:
-        for ln in cls.all_uncovered_lines:
-            lines.append(f"{cls.source_path}:{ln}  # uncovered statement")
-        for ln in cls.uncovered_branch_lines:
-            if ln not in cls.all_uncovered_lines:
-                lines.append(f"{cls.source_path}:{ln}  # partial branch")
-    lines.append("```")
 
     return "\n".join(lines)
 
@@ -512,6 +451,87 @@ def format_markdown(project_stats: dict, classes: list[ClassGap]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Scan-modules mode
+# ---------------------------------------------------------------------------
+
+# Candidate sub-paths within a module directory where scoverage.xml may live.
+_SCOVERAGE_SUBPATHS = [
+    # Gradle / default layout
+    "build/reports/scoverageTest/scoverage.xml",
+    # sbt default (scala version wildcard resolved via glob)
+    "target/scala-*/scoverage-report/scoverage.xml",
+    # Maven / flat layout
+    "target/scoverage-report/scoverage.xml",
+    # Already at root of module
+    "scoverage.xml",
+]
+
+
+def _find_scoverage_xml(module_dir: Path) -> Optional[Path]:
+    """Return the first scoverage.xml found inside *module_dir*, or None."""
+    for pattern in _SCOVERAGE_SUBPATHS:
+        hits = sorted(module_dir.glob(pattern))
+        if hits:
+            return hits[0]
+    return None
+
+
+def format_module_gaps(module_name: str, classes: list[ClassGap], stmt_pct: float) -> str:
+    """
+    One summary line per module. If coverage is not 100%, append an agent hint.
+    """
+    if not classes:
+        return f"[{module_name}] stmt: {stmt_pct:.1f}% ✅"
+
+    line = f"[{module_name}] stmt: {stmt_pct:.1f}%  files_with_gaps: {len(classes)}"
+    if stmt_pct < 100.0:
+        line += f"  # hint: run ./coverage {module_name} for details"
+    return line
+
+
+def run_scan_modules(modules_dir: str, package_filter: Optional[str], min_coverage: float) -> None:
+    base = Path(modules_dir)
+    if not base.is_dir():
+        print(f"ERROR: modules directory not found: {base}", file=sys.stderr)
+        sys.exit(1)
+
+    module_dirs = sorted(p for p in base.iterdir() if p.is_dir())
+    if not module_dirs:
+        print(f"No sub-directories found in {base}", file=sys.stderr)
+        sys.exit(1)
+
+    results: list[str] = []
+    missing: list[str] = []
+
+    for mod_dir in module_dirs:
+        if mod_dir.name.startswith("build"):
+            continue
+        xml_path = _find_scoverage_xml(mod_dir)
+        if xml_path is None:
+            missing.append(mod_dir.name)
+            continue
+
+        project_stats, classes = parse_scoverage_xml(str(xml_path))
+
+        if package_filter:
+            classes = [c for c in classes if c.class_name.startswith(package_filter)]
+        if min_coverage > 0:
+            classes = [c for c in classes if c.stmt_coverage_pct < min_coverage]
+
+        results.append(
+            format_module_gaps(mod_dir.name, classes, project_stats["stmt_coverage_pct"])
+        )
+
+    print("\n".join(results))
+
+    if missing:
+        print(
+            f"\n# Modules without scoverage.xml: {', '.join(missing)}",
+            file=sys.stderr,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -519,7 +539,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Report missing statement & branch coverage from a scoverage XML report."
     )
-    parser.add_argument("xml_file", help="Path to scoverage.xml report file")
+
+    # Positional xml_file is optional when --scan-modules is used
+    parser.add_argument(
+        "xml_file",
+        nargs="?",
+        help="Path to scoverage.xml report file (not required with --scan-modules)",
+    )
     parser.add_argument(
         "--output", "-o",
         choices=["agent", "json", "markdown"],
@@ -537,7 +563,29 @@ def main() -> None:
         default=None,
         help="Only report classes in this package prefix (e.g. de.nowchess.chess.controller)",
     )
+    # ── Scan-modules mode ──────────────────────────────────────────────────
+    parser.add_argument(
+        "--scan-modules",
+        action="store_true",
+        help=(
+            "Scan every sub-directory of --modules-dir for a scoverage.xml "
+            "and print a compact coverage-gaps summary per module."
+        ),
+    )
+    parser.add_argument(
+        "--modules-dir",
+        default="./modules",
+        help="Root directory that contains one sub-directory per module (default: ./modules)",
+    )
+
     args = parser.parse_args()
+
+    # ── Scan-modules path (explicit flag, or default when no xml_file given) ──
+    if args.scan_modules or not args.xml_file:
+        run_scan_modules(args.modules_dir, args.package_filter, args.min_coverage)
+        return
+
+    # ── Single-file path ──────────────────────────────────────────────────
 
     xml_path = Path(args.xml_file)
     if not xml_path.exists():
