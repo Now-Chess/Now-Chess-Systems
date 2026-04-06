@@ -1,21 +1,17 @@
 package de.nowchess.chess.observer
 
-import de.nowchess.api.board.{Board, Color, Square}
-import de.nowchess.chess.logic.GameHistory
+import de.nowchess.api.board.{Color, Square}
+import de.nowchess.api.game.GameContext
 
 /** Base trait for all game state events.
  *  Events are immutable snapshots of game state changes.
  */
 sealed trait GameEvent:
-  def board: Board
-  def history: GameHistory
-  def turn: Color
+  def context: GameContext
 
 /** Fired when a move is successfully executed. */
 case class MoveExecutedEvent(
-  board: Board,
-  history: GameHistory,
-  turn: Color,
+  context: GameContext,
   fromSquare: String,
   toSquare: String,
   capturedPiece: Option[String]
@@ -23,77 +19,57 @@ case class MoveExecutedEvent(
 
 /** Fired when the current player is in check. */
 case class CheckDetectedEvent(
-  board: Board,
-  history: GameHistory,
-  turn: Color
+  context: GameContext
 ) extends GameEvent
 
 /** Fired when the game reaches checkmate. */
 case class CheckmateEvent(
-  board: Board,
-  history: GameHistory,
-  turn: Color,
+  context: GameContext,
   winner: Color
 ) extends GameEvent
 
 /** Fired when the game reaches stalemate. */
 case class StalemateEvent(
-  board: Board,
-  history: GameHistory,
-  turn: Color
+  context: GameContext
 ) extends GameEvent
 
 /** Fired when a move is invalid. */
 case class InvalidMoveEvent(
-  board: Board,
-  history: GameHistory,
-  turn: Color,
+  context: GameContext,
   reason: String
 ) extends GameEvent
 
 /** Fired when a pawn reaches the back rank and the player must choose a promotion piece. */
 case class PromotionRequiredEvent(
-  board: Board,
-  history: GameHistory,
-  turn: Color,
+  context: GameContext,
   from: Square,
   to: Square
 ) extends GameEvent
 
 /** Fired when the board is reset. */
 case class BoardResetEvent(
-  board: Board,
-  history: GameHistory,
-  turn: Color
+  context: GameContext
 ) extends GameEvent
 
 /** Fired after any move where the half-move clock reaches 100 — the 50-move rule is now claimable. */
 case class FiftyMoveRuleAvailableEvent(
-  board: Board,
-  history: GameHistory,
-  turn: Color
+  context: GameContext
 ) extends GameEvent
 
 /** Fired when a player successfully claims a draw under the 50-move rule. */
 case class DrawClaimedEvent(
-  board: Board,
-  history: GameHistory,
-  turn: Color
+  context: GameContext
 ) extends GameEvent
 
 /** Fired when a move is undone, carrying PGN notation of the reversed move. */
 case class MoveUndoneEvent(
-  board: Board,
-  history: GameHistory,
-  turn: Color,
+  context: GameContext,
   pgnNotation: String
 ) extends GameEvent
 
 /** Fired when a previously undone move is redone, carrying PGN notation of the replayed move. */
 case class MoveRedoneEvent(
-  board: Board,
-  history: GameHistory,
-  turn: Color,
+  context: GameContext,
   pgnNotation: String,
   fromSquare: String,
   toSquare: String,
@@ -102,9 +78,7 @@ case class MoveRedoneEvent(
 
 /** Fired after a PGN string is successfully loaded and all moves are replayed into history. */
 case class PgnLoadedEvent(
-  board: Board,
-  history: GameHistory,
-  turn: Color
+  context: GameContext
 ) extends GameEvent
 
 /** Observer trait: implement to receive game state updates. */

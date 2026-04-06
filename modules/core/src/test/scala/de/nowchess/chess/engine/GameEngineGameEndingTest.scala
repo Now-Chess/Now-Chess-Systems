@@ -2,7 +2,6 @@ package de.nowchess.chess.engine
 
 import scala.collection.mutable
 import de.nowchess.api.board.{Board, Color}
-import de.nowchess.chess.logic.GameHistory
 import de.nowchess.chess.observer.{Observer, GameEvent, CheckDetectedEvent, CheckmateEvent, StalemateEvent}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
@@ -22,12 +21,11 @@ class GameEngineGameEndingTest extends AnyFunSuite with Matchers:
     
     observer.events.clear()
     engine.processUserInput("d8h4")
+
+    // Verify CheckmateEvent (engine also fires MoveExecutedEvent before CheckmateEvent)
+    observer.events.last shouldBe a[CheckmateEvent]
     
-    // Verify CheckmateEvent
-    observer.events.size shouldBe 1
-    observer.events.head shouldBe a[CheckmateEvent]
-    
-    val event = observer.events.head.asInstanceOf[CheckmateEvent]
+    val event = observer.events.last.asInstanceOf[CheckmateEvent]
     event.winner shouldBe Color.Black
     
     // Board should be reset after checkmate
@@ -50,7 +48,7 @@ class GameEngineGameEndingTest extends AnyFunSuite with Matchers:
     
     val checkEvents = observer.events.collect { case e: CheckDetectedEvent => e }
     checkEvents.size shouldBe 1
-    checkEvents.head.turn shouldBe Color.Black // Black is now in check
+    checkEvents.head.context.turn shouldBe Color.Black // Black is now in check
     
   // Shortest known stalemate is 19 moves. Here is a faster one:
   // e3 a5 Qh5 Ra6 Qxa5 h5 h4 Rah6 Qxc7 f6 Qxd7+ Kf7 Qxb7 Qd3 Qxb8 Qh7 Qxc8 Kg6 Qe6

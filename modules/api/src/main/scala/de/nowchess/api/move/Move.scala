@@ -9,7 +9,7 @@ enum PromotionPiece:
 /** Classifies special move semantics beyond a plain quiet move or capture. */
 enum MoveType:
   /** A normal move or capture with no special rule. */
-  case Normal
+  case Normal(isCapture: Boolean = false)
   /** Kingside castling (O-O). */
   case CastleKingside
   /** Queenside castling (O-O-O). */
@@ -29,5 +29,5 @@ enum MoveType:
 final case class Move(
   from: Square,
   to: Square,
-  moveType: MoveType = MoveType.Normal
+  moveType: MoveType = MoveType.Normal()
 )

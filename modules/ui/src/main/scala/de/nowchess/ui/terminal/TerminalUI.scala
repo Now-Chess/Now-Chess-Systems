@@ -3,8 +3,8 @@ package de.nowchess.ui.terminal
 import scala.io.StdIn
 import de.nowchess.api.move.PromotionPiece
 import de.nowchess.chess.engine.GameEngine
-import de.nowchess.chess.observer.{Observer, GameEvent, *}
-import de.nowchess.chess.view.Renderer
+import de.nowchess.chess.observer.*
+import de.nowchess.ui.utils.Renderer
 
 /** Terminal UI that implements Observer pattern.
  *  Subscribes to GameEngine and receives state change events.
@@ -19,23 +19,35 @@ class TerminalUI(engine: GameEngine) extends Observer:
     event match
       case e: MoveExecutedEvent =>
         println()
-        print(Renderer.render(e.board))
+        print(Renderer.render(e.context.board))
         e.capturedPiece.foreach: cap =>
           println(s"Captured: $cap on ${e.toSquare}")
-        printPrompt(e.turn)
+        printPrompt(e.context.turn)
+
+      case e: MoveUndoneEvent =>
+        println(s"Undo: ${e.pgnNotation}")
+        println()
+        print(Renderer.render(e.context.board))
+        printPrompt(e.context.turn)
+
+      case e: MoveRedoneEvent =>
+        println(s"Redo: ${e.pgnNotation}")
+        println()
+        print(Renderer.render(e.context.board))
+        printPrompt(e.context.turn)
 
       case e: CheckDetectedEvent =>
-        println(s"${e.turn.label} is in check!")
+        println(s"${e.context.turn.label} is in check!")
 
       case e: CheckmateEvent =>
         println(s"Checkmate! ${e.winner.label} wins.")
         println()
-        print(Renderer.render(e.board))
+        print(Renderer.render(e.context.board))
 
       case e: StalemateEvent =>
         println("Stalemate! The game is a draw.")
         println()
-        print(Renderer.render(e.board))
+        print(Renderer.render(e.context.board))
 
       case e: InvalidMoveEvent =>
         println(s"⚠️  ${e.reason}")
@@ -43,8 +55,8 @@ class TerminalUI(engine: GameEngine) extends Observer:
       case e: BoardResetEvent =>
         println("Board has been reset to initial position.")
         println()
-        print(Renderer.render(e.board))
-        printPrompt(e.turn)
+        print(Renderer.render(e.context.board))
+        printPrompt(e.context.turn)
 
       case _: PromotionRequiredEvent =>
         println("Promote to: q=Queen, r=Rook, b=Bishop, n=Knight")
@@ -55,6 +67,12 @@ class TerminalUI(engine: GameEngine) extends Observer:
         print(Renderer.render(engine.board))
       case _: FiftyMoveRuleAvailableEvent =>
         println("50-move rule available! The game is a draw.")
+
+      case e: PgnLoadedEvent =>
+        println("PGN loaded successfully.")
+        println()
+        print(Renderer.render(e.context.board))
+        printPrompt(e.context.turn)
 
   /** Start the terminal UI game loop. */
   def start(): Unit =

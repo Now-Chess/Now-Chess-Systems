@@ -39,3 +39,19 @@ object Square:
           if n >= 1 && n <= 8 then Some(Rank.values(n - 1)) else None
         )
       for f <- fileOpt; r <- rankOpt yield Square(f, r)
+
+  val all: IndexedSeq[Square] =
+    for
+      r <- Rank.values.toIndexedSeq
+      f <- File.values.toIndexedSeq
+    yield Square(f, r)
+
+  /** Compute a target square by offsetting file and rank.
+   *  Returns None if the resulting square is outside the board (0-7 range). */
+  extension (sq: Square)
+    def offset(fileDelta: Int, rankDelta: Int): Option[Square] =
+      val newFileOrd = sq.file.ordinal + fileDelta
+      val newRankOrd = sq.rank.ordinal + rankDelta
+      if newFileOrd >= 0 && newFileOrd < 8 && newRankOrd >= 0 && newRankOrd < 8 then
+        Some(Square(File.values(newFileOrd), Rank.values(newRankOrd)))
+      else None

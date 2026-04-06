@@ -1,3 +1,6 @@
+import org.gradle.api.file.DuplicatesStrategy
+import org.gradle.jvm.tasks.Jar
+
 plugins {
     id("scala")
     id("org.scoverage")
@@ -21,7 +24,9 @@ scala {
 scoverage {
     scoverageVersion.set(versions["SCOVERAGE"]!!)
     excludedPackages.set(listOf(
-        "de.nowchess.ui.gui"
+        "de.nowchess.ui.gui",
+        "de.nowchess.ui.terminal",
+        "de.nowchess.ui.Main",
     ))
 }
 
@@ -38,6 +43,10 @@ tasks.named<JavaExec>("run") {
     standardInput = System.`in`
 }
 
+tasks.named<Jar>("jar") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 dependencies {
 
     implementation("org.scala-lang:scala3-compiler_3") {
@@ -52,7 +61,9 @@ dependencies {
     }
 
     implementation(project(":modules:core"))
+    implementation(project(":modules:rule"))
     implementation(project(":modules:api"))
+    implementation(project(":modules:io"))
 
     // ScalaFX dependencies
     implementation("org.scalafx:scalafx_3:${versions["SCALAFX"]!!}")

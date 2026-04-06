@@ -1,20 +1,22 @@
 package de.nowchess.ui.gui
 
+import scala.compiletime.uninitialized
 import scalafx.Includes.*
 import scalafx.application.Platform
 import scalafx.geometry.{Insets, Pos}
 import scalafx.scene.control.{Button, ButtonType, ChoiceDialog, Label}
-import scalafx.scene.layout.{BorderPane, GridPane, HBox, VBox, StackPane}
+import scalafx.scene.layout.{BorderPane, GridPane, HBox, StackPane, VBox}
 import scalafx.scene.paint.Color as FXColor
 import scalafx.scene.shape.Rectangle
 import scalafx.scene.text.{Font, Text}
 import scalafx.stage.Stage
-import de.nowchess.api.board.{Board, Color, Piece, PieceType, Square, File, Rank}
-import de.nowchess.api.game.{CastlingRights, GameState, GameStatus}
+import de.nowchess.api.board.{Board, Color, File, Piece, PieceType, Rank, Square}
 import de.nowchess.api.move.PromotionPiece
+import de.nowchess.chess.command.{MoveCommand, MoveResult}
 import de.nowchess.chess.engine.GameEngine
-import de.nowchess.chess.logic.{CastlingRightsCalculator, EnPassantCalculator, GameHistory, GameRules, withCastle}
-import de.nowchess.chess.notation.{FenExporter, FenParser, PgnExporter, PgnParser}
+import de.nowchess.io.fen.{FenExporter, FenParser}
+import de.nowchess.io.pgn.{PgnExporter, PgnParser}
+import de.nowchess.io.{GameContextExport, GameContextImport}
 
 /** ScalaFX chess board view that displays the game state.
  *  Uses chess sprites and color palette.
@@ -36,6 +38,9 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
   private var selectedSquare: Option[Square] = None
   private val squareViews = scala.collection.mutable.Map[(Int, Int), StackPane]()
   
+  private var undoButton: Button = uninitialized
+  private var redoButton: Button = uninitialized
+
   // Initialize UI
   initializeBoard()
   
@@ -69,15 +74,23 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
         spacing = 10
         alignment = Pos.Center
         children = Seq(
-          new Button("Undo") {
-            font = Font.font(comicSansFontFamily, 12)
-            onAction = _ => if engine.canUndo then engine.undo()
-            style = "-fx-background-radius: 8; -fx-background-color: #B9DAD1;"
+          {
+            undoButton = new Button("Undo") {
+              font = Font.font(comicSansFontFamily, 12)
+              onAction = _ => if engine.canUndo then engine.undo()
+              style = "-fx-background-radius: 8; -fx-background-color: #B9DAD1;"
+              disable = !engine.canUndo
+            }
+            undoButton
           },
-          new Button("Redo") {
-            font = Font.font(comicSansFontFamily, 12)
-            onAction = _ => if engine.canRedo then engine.redo()
-            style = "-fx-background-radius: 8; -fx-background-color: #B9C2DA;"
+          {
+            redoButton = new Button("Redo") {
+              font = Font.font(comicSansFontFamily, 12)
+              onAction = _ => if engine.canRedo then engine.redo()
+              style = "-fx-background-radius: 8; -fx-background-color: #B9C2DA;"
+              disable = !engine.canRedo
+            }
+            redoButton
           },
           new Button("Reset") {
             font = Font.font(comicSansFontFamily, 12)
@@ -164,10 +177,11 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
           if piece.color == currentTurn then
             selectedSquare = Some(clickedSquare)
             highlightSquare(rank, file, PieceSprites.SquareColors.Selected)
-            val legalDests = GameRules.legalMoves(currentBoard, engine.history, currentTurn)
-              .collect { case (`clickedSquare`, to) => to }
+
+            val legalDests = engine.ruleSet.legalMoves(engine.context, clickedSquare)
+               .collect { case move if move.from == clickedSquare => move.to }
             legalDests.foreach { sq =>
-              highlightSquare(sq.rank.ordinal, sq.file.ordinal, PieceSprites.SquareColors.ValidMove)
+               highlightSquare(sq.rank.ordinal, sq.file.ordinal, PieceSprites.SquareColors.ValidMove)
             }
         }
       
@@ -216,7 +230,13 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
         
         stackPane.children = children
       }
-  
+
+    updateUndoRedoButtons()
+
+  def updateUndoRedoButtons(): Unit =
+    if undoButton != null then undoButton.disable = !engine.canUndo
+    if redoButton != null then redoButton.disable = !engine.canRedo
+
   private def highlightSquare(rank: Int, file: Int, color: String): Unit =
     squareViews.get((rank, file)).foreach { stackPane =>
       val bgRect = new Rectangle {
@@ -258,56 +278,32 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
       case _ => engine.completePromotion(PromotionPiece.Queen) // Default
 
   private def doFenExport(): Unit =
-    val state = GameState(
-      piecePlacement  = FenExporter.boardToFen(currentBoard),
-      activeColor     = currentTurn,
-      castlingWhite   = CastlingRightsCalculator.deriveCastlingRights(engine.history, Color.White),
-      castlingBlack   = CastlingRightsCalculator.deriveCastlingRights(engine.history, Color.Black),
-      enPassantTarget = EnPassantCalculator.enPassantTarget(currentBoard, engine.history),
-      halfMoveClock   = 0,
-      fullMoveNumber  = engine.history.moves.size / 2 + 1,
-      status          = GameStatus.InProgress
-    )
-    showCopyDialog("FEN Export", FenExporter.gameStateToFen(state))
+    doExport(FenExporter, "FEN")
 
   private def doFenImport(): Unit =
-    showInputDialog("FEN Import", rows = 1).foreach { fen =>
-      FenParser.parseFen(fen) match
-        case None => showMessage("Invalid FEN")
-        case Some(state) =>
-          FenParser.parseBoard(state.piecePlacement) match
-            case None => showMessage("Invalid FEN board")
-            case Some(board) => engine.loadPosition(board, GameHistory.empty, state.activeColor)
-    }
+    doImport(FenParser, "FEN")
 
   private def doPgnExport(): Unit =
-    showCopyDialog("PGN Export", PgnExporter.exportGame(Map.empty, engine.history))
+    doExport(PgnExporter, "PGN")
 
   private def doPgnImport(): Unit =
-    showInputDialog("PGN Import", rows = 6).foreach { pgn =>
-      PgnParser.parsePgn(pgn) match
-        case None => showMessage("Invalid PGN")
-        case Some(pgnGame) =>
-          val (finalBoard, finalHistory) = pgnGame.moves.foldLeft((Board.initial, GameHistory.empty)):
-            case ((board, history), move) =>
-              val color = if history.moves.size % 2 == 0 then Color.White else Color.Black
-              val newBoard = move.castleSide match
-                case Some(side) => board.withCastle(color, side)
-                case None =>
-                  val (b, _) = board.withMove(move.from, move.to)
-                  move.promotionPiece match
-                    case Some(pp) =>
-                      val pt = pp match
-                        case PromotionPiece.Queen  => PieceType.Queen
-                        case PromotionPiece.Rook   => PieceType.Rook
-                        case PromotionPiece.Bishop => PieceType.Bishop
-                        case PromotionPiece.Knight => PieceType.Knight
-                      b.updated(move.to, Piece(color, pt))
-                    case None => b
-              (newBoard, history.addMove(move))
-          val finalTurn = if finalHistory.moves.size % 2 == 0 then Color.White else Color.Black
-          engine.loadPosition(finalBoard, finalHistory, finalTurn)
+    doImport(PgnParser, "PGN")
+
+  private def doExport(exporter: GameContextExport, formatName: String): Unit = {
+    val exported = exporter.exportGameContext(engine.context)
+    showCopyDialog(s"$formatName Export", exported)
+  }
+
+  private def doImport(importer: GameContextImport, formatName: String): Unit = {
+    showInputDialog(s"$formatName Import", rows = 5).foreach { input =>
+      importer.importGameContext(input) match
+        case Right(gameContext) =>
+          engine.loadPosition(gameContext)
+          showMessage(s"✓ $formatName loaded successfully!")
+        case Left(err) =>
+          showMessage(s"⚠️  $formatName Error: $err")
     }
+  }
 
   private def showCopyDialog(title: String, content: String): Unit =
     val area = new javafx.scene.control.TextArea(content)
@@ -339,3 +335,4 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
     dialog.initOwner(stage.delegate)
     val result = dialog.showAndWait()
     if result.isPresent && result.get != null && result.get.nonEmpty then Some(result.get) else None
+

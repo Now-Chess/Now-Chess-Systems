@@ -1,5 +1,6 @@
 package de.nowchess.api.board
 
+import de.nowchess.api.move.Move
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
@@ -7,13 +8,9 @@ class BoardTest extends AnyFunSuite with Matchers:
 
   private val e2 = Square(File.E, Rank.R2)
   private val e4 = Square(File.E, Rank.R4)
-  private val d7 = Square(File.D, Rank.R7)
 
-  test("pieceAt returns Some for occupied square") {
+  test("pieceAt resolves occupied and empty squares") {
     Board.initial.pieceAt(e2) shouldBe Some(Piece.WhitePawn)
-  }
-
-  test("pieceAt returns None for empty square") {
     Board.initial.pieceAt(e4) shouldBe None
   }
 
@@ -34,38 +31,20 @@ class BoardTest extends AnyFunSuite with Matchers:
     board.pieceAt(from) shouldBe None
   }
 
-  test("pieces returns the underlying map") {
-    val map = Map(e2 -> Piece.WhitePawn)
-    val b   = Board(map)
-    b.pieces shouldBe map
-  }
-
-  test("Board.apply constructs board from map") {
+  test("Board.apply and pieces expose the wrapped map") {
     val map = Map(e2 -> Piece.WhitePawn)
     val b   = Board(map)
     b.pieceAt(e2) shouldBe Some(Piece.WhitePawn)
+    b.pieces shouldBe map
   }
 
-  test("initial board has 32 pieces") {
+  test("initial board has expected material and pawn placement") {
     Board.initial.pieces should have size 32
-  }
-
-  test("initial board has 16 white pieces") {
     Board.initial.pieces.values.count(_.color == Color.White) shouldBe 16
-  }
-
-  test("initial board has 16 black pieces") {
     Board.initial.pieces.values.count(_.color == Color.Black) shouldBe 16
-  }
 
-  test("initial board white pawns on rank 2") {
     File.values.foreach { file =>
       Board.initial.pieceAt(Square(file, Rank.R2)) shouldBe Some(Piece.WhitePawn)
-    }
-  }
-
-  test("initial board black pawns on rank 7") {
-    File.values.foreach { file =>
       Board.initial.pieceAt(Square(file, Rank.R7)) shouldBe Some(Piece.BlackPawn)
     }
   }
@@ -101,17 +80,14 @@ class BoardTest extends AnyFunSuite with Matchers:
       Board.initial.pieceAt(Square(file, rank)) shouldBe None
   }
 
-  test("updated adds or replaces piece at square") {
+  test("updated adds and replaces piece at squares") {
     val b = Board(Map(e2 -> Piece.WhitePawn))
-    val updated = b.updated(e4, Piece.WhiteKnight)
-    updated.pieceAt(e2) shouldBe Some(Piece.WhitePawn)
-    updated.pieceAt(e4) shouldBe Some(Piece.WhiteKnight)
-  }
+    val added = b.updated(e4, Piece.WhiteKnight)
+    added.pieceAt(e2) shouldBe Some(Piece.WhitePawn)
+    added.pieceAt(e4) shouldBe Some(Piece.WhiteKnight)
 
-  test("updated replaces existing piece") {
-    val b = Board(Map(e2 -> Piece.WhitePawn))
-    val updated = b.updated(e2, Piece.WhiteKnight)
-    updated.pieceAt(e2) shouldBe Some(Piece.WhiteKnight)
+    val replaced = b.updated(e2, Piece.WhiteKnight)
+    replaced.pieceAt(e2) shouldBe Some(Piece.WhiteKnight)
   }
 
   test("removed deletes piece from board") {
@@ -120,3 +96,13 @@ class BoardTest extends AnyFunSuite with Matchers:
     removed.pieceAt(e2) shouldBe None
     removed.pieceAt(e4) shouldBe Some(Piece.WhiteKnight)
   }
+
+  test("applyMove uses move.from and move.to to relocate a piece") {
+    val b = Board(Map(e2 -> Piece.WhitePawn))
+
+    val moved = b.applyMove(Move(e2, e4))
+
+    moved.pieceAt(e4) shouldBe Some(Piece.WhitePawn)
+    moved.pieceAt(e2) shouldBe None
+  }
+

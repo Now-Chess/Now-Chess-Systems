@@ -14,6 +14,9 @@ object Board:
       val captured = b.get(to)
       val updatedBoard = b.removed(from).updated(to, b(from))
       (updatedBoard, captured)
+    def applyMove(move: de.nowchess.api.move.Move): Board =
+      val (updatedBoard, _) = b.withMove(move.from, move.to)
+      updatedBoard
     def pieces: Map[Square, Piece] = b
 
   val initial: Board =

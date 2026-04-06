@@ -1,7 +1,7 @@
 package de.nowchess.chess.command
 
-import de.nowchess.api.board.{Square, Board, Color, Piece}
-import de.nowchess.chess.logic.GameHistory
+import de.nowchess.api.board.{Square, Piece}
+import de.nowchess.api.game.GameContext
 
 /** Marker trait for all commands that can be executed and undone.
  *  Commands encapsulate user actions and game state transitions.
@@ -23,23 +23,22 @@ case class MoveCommand(
   from: Square,
   to: Square,
   moveResult: Option[MoveResult] = None,
-  previousBoard: Option[Board] = None,
-  previousHistory: Option[GameHistory] = None,
-  previousTurn: Option[Color] = None
+  previousContext: Option[GameContext] = None,
+  notation: String = ""
 ) extends Command:
 
   override def execute(): Boolean =
     moveResult.isDefined
 
   override def undo(): Boolean =
-    previousBoard.isDefined && previousHistory.isDefined && previousTurn.isDefined
+    previousContext.isDefined
 
   override def description: String = s"Move from $from to $to"
 
 // Sealed hierarchy of move outcomes (for tracking state changes)
 sealed trait MoveResult
 object MoveResult:
-  case class Successful(newBoard: Board, newHistory: GameHistory, newTurn: Color, captured: Option[Piece]) extends MoveResult
+  case class Successful(newContext: GameContext, captured: Option[Piece]) extends MoveResult
   case object InvalidFormat extends MoveResult
   case object InvalidMove extends MoveResult
 
@@ -51,14 +50,12 @@ case class QuitCommand() extends Command:
 
 /** Command to reset the board to initial position. */
 case class ResetCommand(
-  previousBoard: Option[Board] = None,
-  previousHistory: Option[GameHistory] = None,
-  previousTurn: Option[Color] = None
+  previousContext: Option[GameContext] = None
 ) extends Command:
 
   override def execute(): Boolean = true
 
   override def undo(): Boolean =
-    previousBoard.isDefined && previousHistory.isDefined && previousTurn.isDefined
+    previousContext.isDefined
 
   override def description: String = "Reset board"

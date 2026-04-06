@@ -17,38 +17,57 @@ class GUIObserver(private val boardView: ChessBoardView) extends Observer:
     Platform.runLater {
       event match
         case e: MoveExecutedEvent =>
-          boardView.updateBoard(e.board, e.turn)
+          boardView.updateBoard(e.context.board, e.context.turn)
           e.capturedPiece.foreach { piece =>
             boardView.showMessage(s"Captured: $piece on ${e.toSquare}")
           }
 
         case e: CheckDetectedEvent =>
-          boardView.updateBoard(e.board, e.turn)
-          boardView.showMessage(s"${e.turn.label} is in check!")
+          boardView.updateBoard(e.context.board, e.context.turn)
+          boardView.showMessage(s"${e.context.turn.label} is in check!")
 
         case e: CheckmateEvent =>
-          boardView.updateBoard(e.board, e.turn)
+          boardView.updateBoard(e.context.board, e.context.turn)
           showAlert(AlertType.Information, "Game Over", s"Checkmate! ${e.winner.label} wins.")
 
         case e: StalemateEvent =>
-          boardView.updateBoard(e.board, e.turn)
+          boardView.updateBoard(e.context.board, e.context.turn)
           showAlert(AlertType.Information, "Game Over", "Stalemate! The game is a draw.")
 
         case e: InvalidMoveEvent =>
           boardView.showMessage(s"⚠️  ${e.reason}")
 
         case e: BoardResetEvent =>
-          boardView.updateBoard(e.board, e.turn)
+          boardView.updateBoard(e.context.board, e.context.turn)
           boardView.showMessage("Board has been reset to initial position.")
 
         case e: PromotionRequiredEvent =>
           boardView.showPromotionDialog(e.from, e.to)
 
         case e: DrawClaimedEvent =>
-          boardView.updateBoard(e.board, e.turn)
+          boardView.updateBoard(e.context.board, e.context.turn)
           showAlert(AlertType.Information, "Draw Claimed", "Draw claimed! The game is a draw.")
-        case e: FiftyMoveRuleAvailableEvent => 
+
+        case e: FiftyMoveRuleAvailableEvent =>
           boardView.showMessage("50-move rule available! The game is a draw.")
+
+        case e: MoveUndoneEvent =>
+          boardView.updateBoard(e.context.board, e.context.turn)
+          boardView.showMessage(s"↶ Undo: ${e.pgnNotation}")
+          boardView.updateUndoRedoButtons()
+
+        case e: MoveRedoneEvent =>
+          boardView.updateBoard(e.context.board, e.context.turn)
+          if e.capturedPiece.isDefined then
+            boardView.showMessage(s"↷ Redo: ${e.pgnNotation} — Captured: ${e.capturedPiece.get}")
+          else
+            boardView.showMessage(s"↷ Redo: ${e.pgnNotation}")
+          boardView.updateUndoRedoButtons()
+
+        case e: PgnLoadedEvent =>
+          boardView.updateBoard(e.context.board, e.context.turn)
+          boardView.showMessage("✓ PGN loaded successfully!")
+          boardView.updateUndoRedoButtons()
     }
 
   private def showAlert(alertType: AlertType, titleText: String, content: String): Unit =

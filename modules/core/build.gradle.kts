@@ -1,7 +1,6 @@
 plugins {
     id("scala")
     id("org.scoverage") version "8.1"
-    application
 }
 
 group = "de.nowchess"
@@ -22,17 +21,8 @@ scoverage {
     scoverageVersion.set(versions["SCOVERAGE"]!!)
 }
 
-application {
-    mainClass.set("de.nowchess.chess.Main")
-}
-
 tasks.withType<ScalaCompile> {
     scalaCompileOptions.additionalParameters = listOf("-encoding", "UTF-8")
-}
-
-tasks.named<JavaExec>("run") {
-    jvmArgs("-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8")
-    standardInput = System.`in`
 }
 
 dependencies {
@@ -49,6 +39,8 @@ dependencies {
     }
 
     implementation(project(":modules:api"))
+    implementation(project(":modules:io"))
+    implementation(project(":modules:rule"))
 
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")

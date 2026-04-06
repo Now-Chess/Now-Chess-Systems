@@ -1,10 +1,12 @@
 package de.nowchess.chess.engine
 
 import de.nowchess.api.board.{Board, Color, File, Piece, PieceType, Rank, Square}
-import de.nowchess.api.move.PromotionPiece
-import de.nowchess.chess.logic.GameHistory
-import de.nowchess.chess.notation.FenParser
+import de.nowchess.api.game.GameContext
+import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
+import de.nowchess.io.fen.FenParser
 import de.nowchess.chess.observer.*
+import de.nowchess.rules.RuleSet
+import de.nowchess.rules.sets.DefaultRules
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
@@ -17,9 +19,12 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
     engine.subscribe(new Observer { def onGameEvent(e: GameEvent): Unit = events += e })
     events
 
+  private def engineWith(board: Board, turn: Color = Color.White): GameEngine =
+    new GameEngine(initialContext = GameContext.initial.withBoard(board).withTurn(turn))
+
   test("processUserInput fires PromotionRequiredEvent when pawn reaches back rank") {
     val promotionBoard = FenParser.parseBoard("8/4P3/4k3/8/8/8/8/8").get
-    val engine = new GameEngine(initialBoard = promotionBoard)
+    val engine = engineWith(promotionBoard)
     val events = captureEvents(engine)
 
     engine.processUserInput("e7e8")
@@ -30,7 +35,7 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
 
   test("isPendingPromotion is true after PromotionRequired input") {
     val promotionBoard = FenParser.parseBoard("8/4P3/4k3/8/8/8/8/8").get
-    val engine = new GameEngine(initialBoard = promotionBoard)
+    val engine = engineWith(promotionBoard)
     captureEvents(engine)
 
     engine.processUserInput("e7e8")
@@ -45,7 +50,7 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
 
   test("completePromotion fires MoveExecutedEvent with promoted piece") {
     val promotionBoard = FenParser.parseBoard("8/4P3/4k3/8/8/8/8/8").get
-    val engine = new GameEngine(initialBoard = promotionBoard)
+    val engine = engineWith(promotionBoard)
     val events = captureEvents(engine)
 
     engine.processUserInput("e7e8")
@@ -54,13 +59,13 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
     engine.isPendingPromotion should be (false)
     engine.board.pieceAt(sq(File.E, Rank.R8)) should be (Some(Piece(Color.White, PieceType.Queen)))
     engine.board.pieceAt(sq(File.E, Rank.R7)) should be (None)
-    engine.history.moves.head.promotionPiece should be (Some(PromotionPiece.Queen))
+    engine.context.moves.last.moveType shouldBe MoveType.Promotion(PromotionPiece.Queen)
     events.exists(_.isInstanceOf[MoveExecutedEvent]) should be (true)
   }
 
   test("completePromotion with rook underpromotion") {
     val promotionBoard = FenParser.parseBoard("8/4P3/4k3/8/8/8/8/8").get
-    val engine = new GameEngine(initialBoard = promotionBoard)
+    val engine = engineWith(promotionBoard)
     captureEvents(engine)
 
     engine.processUserInput("e7e8")
@@ -81,7 +86,7 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
 
   test("completePromotion fires CheckDetectedEvent when promotion gives check") {
     val promotionBoard = FenParser.parseBoard("3k4/4P3/8/8/8/8/8/8").get
-    val engine = new GameEngine(initialBoard = promotionBoard)
+    val engine = engineWith(promotionBoard)
     val events = captureEvents(engine)
 
     engine.processUserInput("e7e8")
@@ -91,9 +96,8 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
   }
 
   test("completePromotion results in Moved when promotion doesn't give check") {
-    // White pawn on e7, black king on a2 (far away, not in check after promotion)
     val board = FenParser.parseBoard("8/4P3/8/8/8/8/k7/8").get
-    val engine = new GameEngine(initialBoard = board)
+    val engine = engineWith(board)
     val events = captureEvents(engine)
 
     engine.processUserInput("e7e8")
@@ -106,10 +110,8 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
   }
 
   test("completePromotion results in Checkmate when promotion delivers checkmate") {
-    // Black king on a8, white king on b6, white pawn on h7
-    // h7->h8=Q delivers checkmate
     val board = FenParser.parseBoard("k7/7P/1K6/8/8/8/8/8").get
-    val engine = new GameEngine(initialBoard = board)
+    val engine = engineWith(board)
     val events = captureEvents(engine)
 
     engine.processUserInput("h7h8")
@@ -120,10 +122,8 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
   }
 
   test("completePromotion results in Stalemate when promotion creates stalemate") {
-    // Black king on a8, white pawn on b7, white bishop on c7, white king on b6
-    // b7->b8=N: no check; Ka8 has no legal moves -> stalemate
     val board = FenParser.parseBoard("k7/1PB5/1K6/8/8/8/8/8").get
-    val engine = new GameEngine(initialBoard = board)
+    val engine = engineWith(board)
     val events = captureEvents(engine)
 
     engine.processUserInput("b7b8")
@@ -134,10 +134,8 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
   }
 
   test("completePromotion with black pawn promotion results in Moved") {
-    // Black pawn e2, white king h3 (not on rank 1 or file e), black king a8
-    // e2->e1=Q: queen on e1 does not attack h3 -> normal Moved
     val board = FenParser.parseBoard("k7/8/8/8/8/7K/4p3/8").get
-    val engine = new GameEngine(initialBoard = board, initialTurn = Color.Black)
+    val engine = engineWith(board, Color.Black)
     val events = captureEvents(engine)
 
     engine.processUserInput("e2e1")
@@ -149,19 +147,51 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
     events.exists(_.isInstanceOf[CheckDetectedEvent]) should be (false)
   }
 
-  test("completePromotion catch-all fires InvalidMoveEvent for unexpected MoveResult") {
-    // Inject a function that returns an unexpected MoveResult to hit the catch-all case
+  test("completePromotion fires InvalidMoveEvent when legalMoves returns only Normal moves to back rank") {
+    // Custom RuleSet: delegates all methods to StandardRules except legalMoves,
+    // which strips Promotion move types and returns Normal moves instead.
+    // This makes completePromotion unable to find Move(from, to, Promotion(Queen)),
+    // triggering the "Error completing promotion." branch.
+    val delegatingRuleSet: RuleSet = new RuleSet:
+      def candidateMoves(context: GameContext, square: Square): List[Move] =
+        DefaultRules.candidateMoves(context, square)
+      def legalMoves(context: GameContext, square: Square): List[Move] =
+        DefaultRules.legalMoves(context, square).map { m =>
+          m.moveType match
+            case MoveType.Promotion(_) => Move(m.from, m.to, MoveType.Normal())
+            case _                     => m
+        }
+      def allLegalMoves(context: GameContext): List[Move] =
+        DefaultRules.allLegalMoves(context)
+      def isCheck(context: GameContext): Boolean =
+        DefaultRules.isCheck(context)
+      def isCheckmate(context: GameContext): Boolean =
+        DefaultRules.isCheckmate(context)
+      def isStalemate(context: GameContext): Boolean =
+        DefaultRules.isStalemate(context)
+      def isInsufficientMaterial(context: GameContext): Boolean =
+        DefaultRules.isInsufficientMaterial(context)
+      def isFiftyMoveRule(context: GameContext): Boolean =
+        DefaultRules.isFiftyMoveRule(context)
+      def applyMove(context: GameContext, move: Move): GameContext =
+        DefaultRules.applyMove(context, move)
+
     val promotionBoard = FenParser.parseBoard("8/4P3/4k3/8/8/8/8/8").get
-    val stubFn: (de.nowchess.api.board.Board, de.nowchess.chess.logic.GameHistory, Square, Square, PromotionPiece, Color) => de.nowchess.chess.controller.MoveResult =
-      (_, _, _, _, _, _) => de.nowchess.chess.controller.MoveResult.NoPiece
-    val engine = new GameEngine(initialBoard = promotionBoard, completePromotionFn = stubFn)
+    val initialCtx = GameContext.initial.withBoard(promotionBoard).withTurn(Color.White)
+    val engine = new GameEngine(initialCtx, delegatingRuleSet)
     val events = captureEvents(engine)
 
+    // isPromotionMove will fire because pawn is on rank 7 heading to rank 8,
+    // and legalMoves returns Normal candidates (still non-empty) — sets pendingPromotion
     engine.processUserInput("e7e8")
     engine.isPendingPromotion should be (true)
 
+    // completePromotion looks for Move(e7, e8, Promotion(Queen)) in legalMoves,
+    // but only Normal moves exist → fires InvalidMoveEvent
     engine.completePromotion(PromotionPiece.Queen)
 
     engine.isPendingPromotion should be (false)
     events.exists(_.isInstanceOf[InvalidMoveEvent]) should be (true)
+    val invalidEvt = events.collect { case e: InvalidMoveEvent => e }.last
+    invalidEvt.reason should include ("Error completing promotion")
   }
