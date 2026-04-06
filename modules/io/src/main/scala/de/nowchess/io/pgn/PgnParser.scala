@@ -29,7 +29,7 @@ object PgnParser extends GameContextImport:
    *  Returns Left(error message) if validation fails or move replay encounters an issue. */
   def importGameContext(input: String): Either[String, GameContext] =
     validatePgn(input).flatMap { game =>
-      Right(game.moves.foldLeft(GameContext.initial)(DefaultRules.applyMove))
+      Right(game.moves.foldLeft(GameContext.initial)((ctx, move) => DefaultRules.applyMove(ctx)(move)))
     }
 
   /** Parse a complete PGN text into a PgnGame with headers and moves.
@@ -59,7 +59,7 @@ object PgnParser extends GameContextImport:
           parseAlgebraicMove(token, ctx, color) match
             case None       => state
             case Some(move) =>
-              val nextCtx    = DefaultRules.applyMove(ctx, move)
+              val nextCtx    = DefaultRules.applyMove(ctx)(move)
               (nextCtx, color.opposite, acc :+ move)
     moves
 
@@ -77,12 +77,12 @@ object PgnParser extends GameContextImport:
       case "O-O" | "O-O+" | "O-O#" =>
         val rank = if color == Color.White then Rank.R1 else Rank.R8
         val move = Move(Square(File.E, rank), Square(File.G, rank), MoveType.CastleKingside)
-        Option.when(DefaultRules.legalMoves(ctx, Square(File.E, rank)).contains(move))(move)
+        Option.when(DefaultRules.legalMoves(ctx)(Square(File.E, rank)).contains(move))(move)
 
       case "O-O-O" | "O-O-O+" | "O-O-O#" =>
         val rank = if color == Color.White then Rank.R1 else Rank.R8
         val move = Move(Square(File.E, rank), Square(File.C, rank), MoveType.CastleQueenside)
-        Option.when(DefaultRules.legalMoves(ctx, Square(File.E, rank)).contains(move))(move)
+        Option.when(DefaultRules.legalMoves(ctx)(Square(File.E, rank)).contains(move))(move)
 
       case _ =>
         parseRegularMove(notation, ctx, color)
@@ -176,7 +176,7 @@ object PgnParser extends GameContextImport:
             parseAlgebraicMove(token, ctx, color) match
               case None       => Left(s"Illegal or impossible move: '$token'")
               case Some(move) =>
-                val nextCtx  = DefaultRules.applyMove(ctx, move)
+                val nextCtx  = DefaultRules.applyMove(ctx)(move)
                 Right((nextCtx, color.opposite, moves :+ move))
         }
     }.map(_._3)

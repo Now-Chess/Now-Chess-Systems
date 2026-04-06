@@ -30,7 +30,7 @@ object PgnExporter extends GameContextExport:
       var ctx = GameContext.initial
       val sanMoves = moves.map { move =>
         val algebraic = moveToAlgebraic(move, ctx.board)
-        ctx = DefaultRules.applyMove(ctx, move)
+        ctx = DefaultRules.applyMove(ctx)(move)
         algebraic
       }
 

@@ -9,10 +9,10 @@ import de.nowchess.api.move.Move
  */
 trait RuleSet:
   /** All pseudo-legal moves for the piece on `square` (ignores check). */
-  def candidateMoves(context: GameContext, square: Square): List[Move]
+  def candidateMoves(context: GameContext)(square: Square): List[Move]
 
   /** Legal moves for `square`: candidates that don't leave own king in check. */
-  def legalMoves(context: GameContext, square: Square): List[Move]
+  def legalMoves(context: GameContext)(square: Square): List[Move]
 
   /** All legal moves for the side to move. */
   def allLegalMoves(context: GameContext): List[Move]
@@ -36,4 +36,4 @@ trait RuleSet:
    *  Handles all special move types: castling, en passant, promotion.
    *  Updates castling rights, en passant square, half-move clock, turn, and move history.
    */
-  def applyMove(context: GameContext, move: Move): GameContext
+  def applyMove(context: GameContext)(move: Move): GameContext

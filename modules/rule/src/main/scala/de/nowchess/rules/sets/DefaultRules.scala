@@ -26,7 +26,7 @@ object DefaultRules extends RuleSet:
 
   // ── Public API ─────────────────────────────────────────────────────
 
-  override def candidateMoves(context: GameContext, square: Square): List[Move] =
+  override def candidateMoves(context: GameContext)(square: Square): List[Move] =
     context.board.pieceAt(square).fold(List.empty[Move]) { piece =>
       if piece.color != context.turn then List.empty[Move]
       else piece.pieceType match
@@ -38,13 +38,13 @@ object DefaultRules extends RuleSet:
         case PieceType.King => kingCandidates(context, square, piece.color)
     }
 
-  override def legalMoves(context: GameContext, square: Square): List[Move] =
-    candidateMoves(context, square).filter { move =>
+  override def legalMoves(context: GameContext)(square: Square): List[Move] =
+    candidateMoves(context)(square).filter { move =>
       !leavesKingInCheck(context, move)
     }
 
   override def allLegalMoves(context: GameContext): List[Move] =
-    Square.all.flatMap(sq => legalMoves(context, sq)).toList
+    Square.all.flatMap(sq => legalMoves(context)(sq)).toList
 
   override def isCheck(context: GameContext): Boolean =
     kingSquare(context.board, context.turn)
@@ -284,7 +284,7 @@ object DefaultRules extends RuleSet:
 
   // ── Move application ───────────────────────────────────────────────
 
-  override def applyMove(context: GameContext, move: Move): GameContext =
+  override def applyMove(context: GameContext)(move: Move): GameContext =
     val color = context.turn
     val board  = context.board
 

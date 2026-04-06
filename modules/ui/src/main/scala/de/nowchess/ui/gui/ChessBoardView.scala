@@ -178,7 +178,7 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
             selectedSquare = Some(clickedSquare)
             highlightSquare(rank, file, PieceSprites.SquareColors.Selected)
 
-            val legalDests = engine.ruleSet.legalMoves(engine.context, clickedSquare)
+            val legalDests = engine.ruleSet.legalMoves(engine.context)(clickedSquare)
                .collect { case move if move.from == clickedSquare => move.to }
             legalDests.foreach { sq =>
                highlightSquare(sq.rank.ordinal, sq.file.ordinal, PieceSprites.SquareColors.ValidMove)

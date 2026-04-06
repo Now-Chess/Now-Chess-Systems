@@ -153,10 +153,10 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
     // This makes completePromotion unable to find Move(from, to, Promotion(Queen)),
     // triggering the "Error completing promotion." branch.
     val delegatingRuleSet: RuleSet = new RuleSet:
-      def candidateMoves(context: GameContext, square: Square): List[Move] =
-        DefaultRules.candidateMoves(context, square)
-      def legalMoves(context: GameContext, square: Square): List[Move] =
-        DefaultRules.legalMoves(context, square).map { m =>
+      def candidateMoves(context: GameContext)(square: Square): List[Move] =
+        DefaultRules.candidateMoves(context)(square)
+      def legalMoves(context: GameContext)(square: Square): List[Move] =
+        DefaultRules.legalMoves(context)(square).map { m =>
           m.moveType match
             case MoveType.Promotion(_) => Move(m.from, m.to, MoveType.Normal())
             case _                     => m
@@ -173,8 +173,8 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
         DefaultRules.isInsufficientMaterial(context)
       def isFiftyMoveRule(context: GameContext): Boolean =
         DefaultRules.isFiftyMoveRule(context)
-      def applyMove(context: GameContext, move: Move): GameContext =
-        DefaultRules.applyMove(context, move)
+      def applyMove(context: GameContext)(move: Move): GameContext =
+        DefaultRules.applyMove(context)(move)
 
     val promotionBoard = FenParser.parseBoard("8/4P3/4k3/8/8/8/8/8").get
     val initialCtx = GameContext.initial.withBoard(promotionBoard).withTurn(Color.White)

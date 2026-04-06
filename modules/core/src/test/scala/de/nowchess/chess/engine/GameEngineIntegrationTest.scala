@@ -89,8 +89,8 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
     val promotionMove = Move(sq("e2"), sq("e8"), MoveType.Promotion(PromotionPiece.Queen))
 
     val permissiveRules = new RuleSet:
-      def candidateMoves(context: GameContext, square: Square): List[Move] = legalMoves(context, square)
-      def legalMoves(context: GameContext, square: Square): List[Move] =
+      def candidateMoves(context: GameContext)(square: Square): List[Move] = legalMoves(context)(square)
+      def legalMoves(context: GameContext)(square: Square): List[Move] =
         if square == sq("e2") then List(promotionMove) else List.empty
       def allLegalMoves(context: GameContext): List[Move] = List(promotionMove)
       def isCheck(context: GameContext): Boolean = false
@@ -98,7 +98,7 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
       def isStalemate(context: GameContext): Boolean = false
       def isInsufficientMaterial(context: GameContext): Boolean = false
       def isFiftyMoveRule(context: GameContext): Boolean = false
-      def applyMove(context: GameContext, move: Move): GameContext = DefaultRules.applyMove(context, move)
+      def applyMove(context: GameContext)(move: Move): GameContext = DefaultRules.applyMove(context)(move)
 
     val engine = new GameEngine(ruleSet = permissiveRules)
     val importer = new GameContextImport:
@@ -111,15 +111,15 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
   test("loadGame replay restores previous context when promotion cannot be completed"):
     val promotionMove = Move(sq("e2"), sq("e8"), MoveType.Promotion(PromotionPiece.Queen))
     val noLegalMoves = new RuleSet:
-      def candidateMoves(context: GameContext, square: Square): List[Move] = List.empty
-      def legalMoves(context: GameContext, square: Square): List[Move] = List.empty
+      def candidateMoves(context: GameContext)(square: Square): List[Move] = List.empty
+      def legalMoves(context: GameContext)(square: Square): List[Move] = List.empty
       def allLegalMoves(context: GameContext): List[Move] = List.empty
       def isCheck(context: GameContext): Boolean = false
       def isCheckmate(context: GameContext): Boolean = false
       def isStalemate(context: GameContext): Boolean = false
       def isInsufficientMaterial(context: GameContext): Boolean = false
       def isFiftyMoveRule(context: GameContext): Boolean = false
-      def applyMove(context: GameContext, move: Move): GameContext = context
+      def applyMove(context: GameContext)(move: Move): GameContext = context
 
     val engine = new GameEngine(ruleSet = noLegalMoves)
     engine.processUserInput("e2e4")

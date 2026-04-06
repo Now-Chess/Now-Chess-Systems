@@ -88,7 +88,7 @@ class GameEngine(
       case Some(piece) if piece.color != currentContext.turn =>
         notifyObservers(InvalidMoveEvent(currentContext, "That is not your piece."))
       case Some(piece) =>
-        val legal = ruleSet.legalMoves(currentContext, from)
+        val legal = ruleSet.legalMoves(currentContext)(from)
         // Find all legal moves going to `to`
         val candidates = legal.filter(_.to == to)
         candidates match
@@ -119,7 +119,7 @@ class GameEngine(
         pendingPromotion = None
         val move = Move(pending.from, pending.to, MoveType.Promotion(piece))
         // Verify it's actually legal
-        val legal = ruleSet.legalMoves(currentContext, pending.from)
+        val legal = ruleSet.legalMoves(currentContext)(pending.from)
         if legal.contains(move) then
           executeMove(move)
         else
@@ -203,7 +203,7 @@ class GameEngine(
 
   private def executeMove(move: Move): Unit =
     val contextBefore = currentContext
-    val nextContext = ruleSet.applyMove(currentContext, move)
+    val nextContext = ruleSet.applyMove(currentContext)(move)
     val captured = computeCaptured(currentContext, move)
 
     val cmd = MoveCommand(
