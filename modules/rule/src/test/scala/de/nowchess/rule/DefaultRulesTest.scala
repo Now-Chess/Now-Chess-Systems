@@ -52,7 +52,7 @@ class DefaultRulesTest extends AnyFunSuite with Matchers:
     val moves = rules.allLegalMoves(context)
 
     // King must move; e2 should be valid but d1 might be blocked by rook if still on same file
-    moves.filter(m => m.from == Square(File.E, Rank.R1)).nonEmpty shouldBe true
+    moves.exists(m => m.from == Square(File.E, Rank.R1)) shouldBe true
 
   test("king cannot move to square attacked by opponent"):
     // FEN: white king e1, black rook e2 defended by black king e3
@@ -107,6 +107,28 @@ class DefaultRulesTest extends AnyFunSuite with Matchers:
     val moves = rules.allLegalMoves(context)
 
     val castles = moves.filter(m => m.moveType == MoveType.CastleKingside)
+    castles.isEmpty shouldBe true
+
+  test("castling queenside is illegal when knight blocks on b8"):
+    // Black king e8, black rook a8, black knight b8 (blocks queenside path)
+    val board = Board(Map(
+      Square(File.A, Rank.R8) -> Piece(Color.Black, PieceType.Rook),
+      Square(File.B, Rank.R8) -> Piece(Color.Black, PieceType.Knight),
+      Square(File.E, Rank.R8) -> Piece(Color.Black, PieceType.King),
+      Square(File.A, Rank.R1) -> Piece(Color.White, PieceType.Rook),
+      Square(File.E, Rank.R1) -> Piece(Color.White, PieceType.King)
+    ))
+    val context = GameContext(
+      board = board,
+      turn = Color.Black,
+      castlingRights = CastlingRights(whiteKingSide = true, whiteQueenSide = true, blackKingSide = true, blackQueenSide = true),
+      enPassantSquare = None,
+      halfMoveClock = 0,
+      moves = List.empty
+    )
+    val moves = rules.allLegalMoves(context)
+
+    val castles = moves.filter(m => m.moveType == MoveType.CastleQueenside)
     castles.isEmpty shouldBe true
 
   // ── En passant legality ──────────────────────────────────────────

@@ -163,6 +163,12 @@ object DefaultRules extends RuleSet:
         CastlingMove("e8", "c8", "d8", "a8", MoveType.CastleQueenside))
       moves.toList
 
+  private def queensideBSquare(kingToAlg: String): List[String] =
+    kingToAlg match
+      case "c1" => List("b1")
+      case "c8" => List("b8")
+      case _    => List.empty
+
   private def addCastleMove(
     context: GameContext,
     moves: scala.collection.mutable.ListBuffer[Move],
@@ -170,7 +176,8 @@ object DefaultRules extends RuleSet:
     castlingMove: CastlingMove
   ): Unit =
     if castlingRight then
-      val clearSqs = List(castlingMove.middleAlg, castlingMove.kingToAlg).flatMap(Square.fromAlgebraic)
+      val clearSqs = (List(castlingMove.middleAlg, castlingMove.kingToAlg) ++ queensideBSquare(castlingMove.kingToAlg))
+        .flatMap(Square.fromAlgebraic)
       if squaresEmpty(context.board, clearSqs) then
         for
           kf <- Square.fromAlgebraic(castlingMove.kingFromAlg)
