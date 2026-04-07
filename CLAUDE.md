@@ -1,58 +1,50 @@
-# CLAUDE.md — NowChessSystems
+# Now-Chess
 
-## Stack
-Scala 3.5.x · Quarkus + quarkus-scala3 · Hibernate/Jakarta · Lanterna TUI · K8s + ArgoCD + Kargo · Frontend TBD (Vite/React/Angular/Vue)
-
-### Memory
-
-Your memory is saved under .claude/memory/MEMORY.md.
-
-## Structure
-```
-build.gradle.kts / settings.gradle.kts   # root; include(":modules:<svc>") per service
-modules/<svc>/build.gradle.kts + src/
-docs/adr/  docs/api/  docs/unresolved.md
-```
-Versions in root `extra["VERSIONS"]`; modules read via `rootProject.extra["VERSIONS"] as Map<String,String>`.
+Scala 3.5.1 · Gradle 9
 
 ## Commands
-```bash
-./gradlew build
-./gradlew :modules:<svc>:build|test
-./gradlew :modules:<svc>:test --tests "de.nowchess.<svc>.<Class>"
+
 ```
-
-## Workflow
-1. **Plan** — restate requirement, list files, flag risks. Proceed unless genuine ambiguity.
-2. **Tests first** — cover only new behaviour.
-3. **Implement** — no scope creep.
-4. **Verify** — check each requirement; confirm green build.
-
-## Scala/Quarkus Rules
-- `given`/`using` only (no `implicit`); `Option`/`Either`/`Try` (no `null`/`.get`)
-- `jakarta.*` only; reactive I/O (`Uni`/`Multi`), no blocking on event loop
-- Always exclude `org.scala-lang:scala-library` from Quarkus BOM
-- Unit tests: `extends AnyFunSuite with Matchers` — no `@Test`, no `: Unit`
-- Integration tests: `@QuarkusTest` + JUnit 5 — `@Test` methods need explicit `: Unit`
-
-## Coverage
-Line = 100% · Branch = 100% · Method = 100% · Regression tests · document exceptions
-Check: `jacoco-reporter/scoverage_coverage_gaps.py modules/{svc}/build/reports/scoverageTest/scoverage.xml`
-⚠️ Use `scoverageTest/`, NOT `scoverage/`.
-
-## Bug Fixing
-Fix failures immediately without asking. After 3 failed attempts → log in `docs/unresolved.md` + surface summary.
-
-## Agents (new service)
-Sequential: architect → scala-implementer → test-writer → gradle-builder → code-reviewer (review only, no self-fix)
-Parallel: only when services are fully independent (no shared contracts/state).
-
-## Unresolved (`docs/unresolved.md`)
-Append only, never delete:
+./clean      # Clear build dirs — only when necessary
+./compile    # Compile all modules — always run
+./test       # Run all tests
+./coverage   # Check coverage
 ```
-## [YYYY-MM-DD] <title>
-**Requirement/Bug:** **Root Cause:** **Attempted Fixes:** **Next Step:**
-```
+Try to stick to these commands for consistency.
 
-## Done Checklist
-- [ ] Plan written · files created/modified · tests green · requirements verified · unresolved logged
+## Modules
+
+| Module | Role | Depends on |
+|--------|------|-----------|
+| `api`  | Model / shared types | (none) |
+| `core` | Primary business logic | api, rule |
+| `rule` | Game rules | api |
+| `io`   | Export formats | api, core |
+| `ui`   | Entrypoint & UI | core, io |
+
+## Style
+
+- Use immutable data and pure functions.
+- Keep functions under 30 lines. If you need "and" to describe it, split it.
+- Keep cyclomatic complexity under 15.
+- Avoid comments. Let names carry intent; comment only non-obvious algorithms.
+- Scan for duplicated logic before finishing. Extract it.
+- Follow default Sonar style for Scala.
+- Use `Option` or `Either` for fallible operations; avoid exceptions for control flow.
+- Naming: types are PascalCase, functions/values are camelCase.
+
+## Code Quality
+
+- **Coverage:** 100% condition coverage required in `api`, `core`, `rule`, `io` (mandatory); `ui` exempt.
+
+## Architecture Decisions
+
+- **Immutable state as primary model:** GameContext (api) holds board, history, player state — immutable, passed through the system. Each move creates a new GameContext, enabling undo/redo without side effects.
+- **Observer pattern for UI decoupling:** GameEngine publishes move/state events; CommandInvoker queues moves; UI listens to events, not polling. GameEngine never imports UI code.
+- **RuleSet trait encapsulates rules:** Move generation, check, castling, en passant all in RuleSet impl. GameEngine calls rules as a black box; rules don't know about the rest of core.
+
+## Rules
+
+- **Tests are the spec.** Never modify tests to pass; modify requirements or code. Update tests only if requirements change.
+- Never read build folders. Ask permission if needed.
+- Keep this file up to date with any important decisions or conventions.
