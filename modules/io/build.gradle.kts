@@ -38,6 +38,8 @@ dependencies {
         }
     }
 
+    implementation("org.scala-lang.modules:scala-parser-combinators_3:${versions["SCALA_PARSER_COMBINATORS"]!!}")
+
     implementation(project(":modules:api"))
     implementation(project(":modules:rule"))
 
