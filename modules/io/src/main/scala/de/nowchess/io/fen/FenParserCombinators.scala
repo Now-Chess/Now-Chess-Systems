@@ -4,21 +4,13 @@ import de.nowchess.api.board.*
 import de.nowchess.api.game.GameContext
 import de.nowchess.io.GameContextImport
 import scala.util.parsing.combinator.RegexParsers
+import FenParserSupport.*
 
 object FenParserCombinators extends RegexParsers with GameContextImport:
 
   override val skipWhitespace: Boolean = false
 
   // ── Piece character ──────────────────────────────────────────────────────
-
-  private val charToPieceType: Map[Char, PieceType] = Map(
-    'p' -> PieceType.Pawn,
-    'r' -> PieceType.Rook,
-    'n' -> PieceType.Knight,
-    'b' -> PieceType.Bishop,
-    'q' -> PieceType.Queen,
-    'k' -> PieceType.King
-  )
 
   private def pieceChar: Parser[Piece] =
     "[prnbqkPRNBQK]".r ^^ { s =>
@@ -32,11 +24,6 @@ object FenParserCombinators extends RegexParsers with GameContextImport:
 
   // ── Rank parser ──────────────────────────────────────────────────────────
 
-  /** Parse a sequence of piece-chars and empty-counts, returning tagged tokens. */
-  private sealed trait RankToken
-  private case class PieceToken(piece: Piece) extends RankToken
-  private case class EmptyToken(count: Int)   extends RankToken
-
   private def rankToken: Parser[RankToken] =
     pieceChar ^^ PieceToken.apply | emptyCount ^^ EmptyToken.apply
 
@@ -46,21 +33,9 @@ object FenParserCombinators extends RegexParsers with GameContextImport:
    *  Fails if total file count != 8 or any piece placement exceeds board bounds. */
   private def rankParser(rank: Rank): Parser[List[(Square, Piece)]] =
     rankTokens >> { tokens =>
-      val result = tokens.foldLeft(Option((List.empty[(Square, Piece)], 0))):
-        case (None, _) => None
-        case (Some((acc, fileIdx)), PieceToken(piece)) =>
-          if fileIdx > 7 then None
-          else
-            val sq = Square(File.values(fileIdx), rank)
-            Some((acc :+ (sq -> piece), fileIdx + 1))
-        case (Some((acc, fileIdx)), EmptyToken(n)) =>
-          val next = fileIdx + n
-          if next > 8 then None
-          else Some((acc, next))
-      result match
-        case Some((squares, 8)) => success(squares)
-        case Some((_, total))   => failure(s"Rank $rank has $total files, expected 8")
-        case None               => failure(s"Rank $rank exceeds board width")
+      buildSquares(rank, tokens) match
+        case Some(squares) => success(squares)
+        case None          => failure(s"Rank $rank is invalid")
     }
 
   // ── Board parser ─────────────────────────────────────────────────────────

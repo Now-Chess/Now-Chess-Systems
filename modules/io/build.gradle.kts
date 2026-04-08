@@ -39,6 +39,7 @@ dependencies {
     }
 
     implementation("org.scala-lang.modules:scala-parser-combinators_3:${versions["SCALA_PARSER_COMBINATORS"]!!}")
+    implementation("com.lihaoyi:fastparse_3:${versions["FASTPARSE"]!!}")
 
     implementation(project(":modules:api"))
     implementation(project(":modules:rule"))
