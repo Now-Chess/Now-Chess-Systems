@@ -1,0 +1,396 @@
+{
+  "nodes": [
+    {
+      "id": "claude_md_project_instructions",
+      "label": "Now-Chess Project Instructions (CLAUDE.md)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "agents_md_config",
+      "label": "Agents Configuration (AGENTS.md)",
+      "file_type": "document",
+      "source_file": "AGENTS.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "api_changelog",
+      "label": "API Module Changelog",
+      "file_type": "document",
+      "source_file": "modules/api/CHANGELOG.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "ui_changelog",
+      "label": "UI Module Changelog",
+      "file_type": "document",
+      "source_file": "modules/ui/CHANGELOG.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "rule_changelog",
+      "label": "Rule Module Changelog",
+      "file_type": "document",
+      "source_file": "modules/rule/CHANGELOG.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "io_changelog",
+      "label": "IO Module Changelog",
+      "file_type": "document",
+      "source_file": "modules/io/CHANGELOG.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_changelog",
+      "label": "Core Module Changelog",
+      "file_type": "document",
+      "source_file": "modules/core/CHANGELOG.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "bot_python_readme",
+      "label": "Bot Python Module README",
+      "file_type": "document",
+      "source_file": "modules/bot/python/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "bot_python_requirements",
+      "label": "Bot Python Requirements",
+      "file_type": "document",
+      "source_file": "modules/bot/python/requirements.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "bot_python_positions",
+      "label": "Bot Python Positions Dataset",
+      "file_type": "document",
+      "source_file": "modules/bot/python/data/positions.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "security_doc",
+      "label": "Security Documentation",
+      "file_type": "document",
+      "source_file": "docs/Security.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_skills_doc",
+      "label": "Claude Skills Documentation",
+      "file_type": "document",
+      "source_file": "docs/Claude-Skills.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "idea_doc",
+      "label": "Idea Documentation",
+      "file_type": "document",
+      "source_file": "docs/idea.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "arabian_chess_license",
+      "label": "Arabian Chess License",
+      "file_type": "document",
+      "source_file": "ARABIAN CHESS/license.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "ui_board_sprite_black",
+      "label": "UI Board Square Black Sprite",
+      "file_type": "image",
+      "source_file": "modules/ui/src/main/resources/sprites/board/board_square_black.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "ui_board_sprite_white",
+      "label": "UI Board Square White Sprite",
+      "file_type": "image",
+      "source_file": "modules/ui/src/main/resources/sprites/board/board_square_white.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "ui_board_sprite_bottom",
+      "label": "UI Board Bottom Sprite",
+      "file_type": "image",
+      "source_file": "modules/ui/src/main/resources/sprites/board/board_bottom.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "ui_piece_sprite_black_rook",
+      "label": "UI Black Rook Piece Sprite",
+      "file_type": "image",
+      "source_file": "modules/ui/src/main/resources/sprites/pieces/black_rook.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "ui_piece_sprite_white_pawn",
+      "label": "UI White Pawn Piece Sprite",
+      "file_type": "image",
+      "source_file": "modules/ui/src/main/resources/sprites/pieces/white_pawn.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "ui_piece_sprite_white_knight",
+      "label": "UI White Knight Piece Sprite",
+      "file_type": "image",
+      "source_file": "modules/ui/src/main/resources/sprites/pieces/white_knight.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "ui_piece_sprite_black_knight",
+      "label": "UI Black Knight Piece Sprite",
+      "file_type": "image",
+      "source_file": "modules/ui/src/main/resources/sprites/pieces/black_knight.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "claude_md_project_instructions",
+      "target": "agents_md_config",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "bot_python_readme",
+      "target": "bot_python_requirements",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "modules/bot/python/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "bot_python_readme",
+      "target": "bot_python_positions",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "modules/bot/python/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "ui_changelog",
+      "target": "ui_board_sprite_black",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "modules/ui/CHANGELOG.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "ui_changelog",
+      "target": "ui_board_sprite_white",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "modules/ui/CHANGELOG.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "ui_changelog",
+      "target": "ui_piece_sprite_black_rook",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "modules/ui/CHANGELOG.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "ui_changelog",
+      "target": "ui_piece_sprite_white_pawn",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "modules/ui/CHANGELOG.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "ui_changelog",
+      "target": "ui_piece_sprite_white_knight",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "modules/ui/CHANGELOG.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "ui_changelog",
+      "target": "ui_piece_sprite_black_knight",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "modules/ui/CHANGELOG.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "ui_changelog",
+      "target": "ui_board_sprite_bottom",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "modules/ui/CHANGELOG.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_skills_doc",
+      "target": "agents_md_config",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "docs/Claude-Skills.md",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "module_changelogs",
+      "label": "Module Changelog Documentation",
+      "nodes": [
+        "api_changelog",
+        "ui_changelog",
+        "rule_changelog",
+        "io_changelog",
+        "core_changelog"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "modules"
+    },
+    {
+      "id": "ui_sprite_assets",
+      "label": "UI Sprite Asset Collection",
+      "nodes": [
+        "ui_board_sprite_black",
+        "ui_board_sprite_white",
+        "ui_board_sprite_bottom",
+        "ui_piece_sprite_black_rook",
+        "ui_piece_sprite_white_pawn",
+        "ui_piece_sprite_white_knight",
+        "ui_piece_sprite_black_knight"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "modules/ui/src/main/resources/sprites"
+    },
+    {
+      "id": "bot_python_components",
+      "label": "Bot Python Implementation Components",
+      "nodes": [
+        "bot_python_readme",
+        "bot_python_requirements",
+        "bot_python_positions"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "modules/bot/python"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

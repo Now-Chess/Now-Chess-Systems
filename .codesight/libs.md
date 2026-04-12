@@ -1,0 +1,150 @@
+# Libraries
+
+- `jacoco-reporter/scoverage_coverage_gaps.py`
+  - function parse_scoverage_xml: (xml_path) -> tuple[dict, list[ClassGap]]
+  - function format_agent: (project_stats, classes) -> str
+  - function format_json: (project_stats, classes) -> str
+  - function format_markdown: (project_stats, classes) -> str
+  - function format_module_gaps: (module_name, classes, stmt_pct) -> str
+  - function run_scan_modules: (modules_dir, package_filter, min_coverage) -> None
+  - _...4 more_
+- `jacoco-reporter/test_gaps.py`
+  - function parse_suite_xml: (xml_path) -> SuiteResult
+  - function load_module: (module_dir, results_subdir) -> Optional[ModuleResult]
+  - function format_module: (mod) -> str
+  - function run: (modules_dir, results_subdir, module_filter) -> None
+  - function main: () -> None
+  - class TestCase
+  - _...2 more_
+- `modules/api/src/main/scala/de/nowchess/api/board/Board.scala`
+  - class Board
+  - function apply
+  - function pieceAt
+  - function updated
+  - function removed
+  - function withMove
+  - _...2 more_
+- `modules/api/src/main/scala/de/nowchess/api/board/CastlingRights.scala`
+  - function hasAnyRights
+  - function hasRights
+  - function revokeColor
+  - function revokeKingSide
+  - function revokeQueenSide
+  - class CastlingRights
+- `modules/api/src/main/scala/de/nowchess/api/board/Color.scala` — function opposite, function label
+- `modules/api/src/main/scala/de/nowchess/api/board/Piece.scala` — class Piece
+- `modules/api/src/main/scala/de/nowchess/api/board/PieceType.scala` — function label
+- `modules/api/src/main/scala/de/nowchess/api/board/Square.scala`
+  - class Square
+  - function fromAlgebraic
+  - function offset
+- `modules/api/src/main/scala/de/nowchess/api/game/GameContext.scala`
+  - function withBoard
+  - function withTurn
+  - function withCastlingRights
+  - function withEnPassantSquare
+  - function withHalfMoveClock
+  - function withMove
+  - _...2 more_
+- `modules/api/src/main/scala/de/nowchess/api/player/PlayerInfo.scala` — class PlayerId, function apply
+- `modules/api/src/main/scala/de/nowchess/api/response/ApiResponse.scala`
+  - class ApiResponse
+  - function error
+  - function totalPages
+- `modules/core/src/main/scala/de/nowchess/chess/command/Command.scala`
+  - class Command
+  - function execute
+  - function undo
+  - function description
+  - class MoveResult
+- `modules/core/src/main/scala/de/nowchess/chess/command/CommandInvoker.scala`
+  - class CommandInvoker
+  - function execute
+  - function undo
+  - function redo
+  - function history
+  - function getCurrentIndex
+  - _...3 more_
+- `modules/core/src/main/scala/de/nowchess/chess/controller/Parser.scala` — class Parser, function parseMove
+- `modules/core/src/main/scala/de/nowchess/chess/engine/GameEngine.scala`
+  - class GameEngine
+  - function isPendingPromotion
+  - function board
+  - function turn
+  - function context
+  - function canUndo
+  - _...10 more_
+- `modules/core/src/main/scala/de/nowchess/chess/observer/Observer.scala`
+  - function context
+  - class Observer
+  - function onGameEvent
+  - class Observable
+  - function subscribe
+  - function unsubscribe
+  - _...1 more_
+- `modules/io/src/main/scala/de/nowchess/io/GameContextExport.scala` — class GameContextExport, function exportGameContext
+- `modules/io/src/main/scala/de/nowchess/io/GameContextImport.scala` — class GameContextImport, function importGameContext
+- `modules/io/src/main/scala/de/nowchess/io/fen/FenExporter.scala`
+  - class FenExporter
+  - function boardToFen
+  - function gameContextToFen
+  - function exportGameContext
+- `modules/io/src/main/scala/de/nowchess/io/fen/FenParser.scala`
+  - class FenParser
+  - function parseFen
+  - function importGameContext
+  - function parseBoard
+- `modules/io/src/main/scala/de/nowchess/io/fen/FenParserCombinators.scala`
+  - class FenParserCombinators
+  - function parseFen
+  - function parseBoard
+  - function importGameContext
+- `modules/io/src/main/scala/de/nowchess/io/fen/FenParserFastParse.scala`
+  - class FenParserFastParse
+  - function parseFen
+  - function parseBoard
+  - function importGameContext
+- `modules/io/src/main/scala/de/nowchess/io/fen/FenParserSupport.scala` — function buildSquares
+- `modules/io/src/main/scala/de/nowchess/io/pgn/PgnExporter.scala`
+  - class PgnExporter
+  - function exportGameContext
+  - function exportGame
+- `modules/io/src/main/scala/de/nowchess/io/pgn/PgnParser.scala`
+  - class PgnParser
+  - function validatePgn
+  - function importGameContext
+  - function parsePgn
+  - function parseAlgebraicMove
+- `modules/rule/src/main/scala/de/nowchess/rules/RuleSet.scala`
+  - class RuleSet
+  - function candidateMoves
+  - function legalMoves
+  - function allLegalMoves
+  - function isCheck
+  - function isCheckmate
+  - _...4 more_
+- `modules/rule/src/main/scala/de/nowchess/rules/sets/DefaultRules.scala`
+  - class DefaultRules
+  - function loop
+  - function toMoves
+  - function loop
+- `modules/ui/src/main/scala/de/nowchess/ui/Main.scala` — class Main, function main
+- `modules/ui/src/main/scala/de/nowchess/ui/gui/ChessBoardView.scala`
+  - class ChessBoardView
+  - function updateBoard
+  - function updateUndoRedoButtons
+  - function showMessage
+  - function showPromotionDialog
+- `modules/ui/src/main/scala/de/nowchess/ui/gui/ChessGUI.scala`
+  - class ChessGUIApp
+  - class ChessGUILauncher
+  - function getEngine
+  - function launch
+- `modules/ui/src/main/scala/de/nowchess/ui/gui/GUIObserver.scala` — class GUIObserver
+- `modules/ui/src/main/scala/de/nowchess/ui/gui/PieceSprites.scala`
+  - class PieceSprites
+  - function loadPieceImage
+  - class SquareColors
+- `modules/ui/src/main/scala/de/nowchess/ui/terminal/TerminalUI.scala` — class TerminalUI, function start
+- `modules/ui/src/main/scala/de/nowchess/ui/utils/PieceUnicode.scala` — function unicode
+- `modules/ui/src/main/scala/de/nowchess/ui/utils/Renderer.scala` — class Renderer, function render
