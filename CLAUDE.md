@@ -37,6 +37,11 @@ Try to stick to these commands for consistency.
 
 - **Coverage:** 100% condition coverage required in `api`, `core`, `rule`, `io` (mandatory); `ui` exempt.
 
+### Linters
+
+- **scalafmt** — enforces formatting; run `./gradlew spotlessScalaCheck` to check and `./gradlew spotlessScalaApply` to refactor.
+- **scalafix** — enforces style and detects unused imports/code; run `./gradlew scalafix` to apply rules.
+
 ## Architecture Decisions
 
 - **Immutable state as primary model:** GameContext (api) holds board, history, player state — immutable, passed through the system. Each move creates a new GameContext, enabling undo/redo without side effects.

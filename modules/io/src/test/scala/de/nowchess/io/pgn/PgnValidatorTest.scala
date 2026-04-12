@@ -37,17 +37,20 @@ class PgnValidatorTest extends AnyFunSuite with Matchers:
     qCastle.map(_.moves.last.moveType) shouldBe Right(MoveType.CastleQueenside)
 
   test("validatePgn rejects impossible illegal and garbage tokens"):
-    PgnParser.validatePgn("""[Event "Test"]
+    PgnParser
+      .validatePgn("""[Event "Test"]
 
 1. Qd4
 """).isLeft shouldBe true
 
-    PgnParser.validatePgn("""[Event "Test"]
+    PgnParser
+      .validatePgn("""[Event "Test"]
 
 1. O-O
 """).isLeft shouldBe true
 
-    PgnParser.validatePgn("""[Event "Test"]
+    PgnParser
+      .validatePgn("""[Event "Test"]
 
 1. e4 GARBAGE e5
 """).isLeft shouldBe true
@@ -55,4 +58,3 @@ class PgnValidatorTest extends AnyFunSuite with Matchers:
   test("validatePgn accepts empty move text and minimal valid header"):
     PgnParser.validatePgn("[Event \"Test\"]\n[White \"A\"]\n[Black \"B\"]\n").map(_.moves) shouldBe Right(List.empty)
     PgnParser.validatePgn("[Event \"T\"]\n\n1. e4").isRight shouldBe true
-

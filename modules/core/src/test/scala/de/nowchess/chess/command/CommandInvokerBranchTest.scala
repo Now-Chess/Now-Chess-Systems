@@ -1,6 +1,6 @@
 package de.nowchess.chess.command
 
-import de.nowchess.api.board.{Square, File, Rank}
+import de.nowchess.api.board.{File, Rank, Square}
 import de.nowchess.api.game.GameContext
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
@@ -10,13 +10,16 @@ class CommandInvokerBranchTest extends AnyFunSuite with Matchers:
   private def sq(f: File, r: Rank): Square = Square(f, r)
 
   private case class FailingCommand() extends Command:
-    override def execute(): Boolean = false
-    override def undo(): Boolean = false
+    override def execute(): Boolean  = false
+    override def undo(): Boolean     = false
     override def description: String = "Failing command"
 
-  private case class ConditionalFailCommand(var shouldFailOnUndo: Boolean = false, var shouldFailOnExecute: Boolean = false) extends Command:
-    override def execute(): Boolean = !shouldFailOnExecute
-    override def undo(): Boolean = !shouldFailOnUndo
+  private case class ConditionalFailCommand(
+      var shouldFailOnUndo: Boolean = false,
+      var shouldFailOnExecute: Boolean = false,
+  ) extends Command:
+    override def execute(): Boolean  = !shouldFailOnExecute
+    override def undo(): Boolean     = !shouldFailOnUndo
     override def description: String = "Conditional fail"
 
   private def createMoveCommand(from: Square, to: Square, executeSucceeds: Boolean = true): MoveCommand =
@@ -24,12 +27,12 @@ class CommandInvokerBranchTest extends AnyFunSuite with Matchers:
       from = from,
       to = to,
       moveResult = if executeSucceeds then Some(MoveResult.Successful(GameContext.initial, None)) else None,
-      previousContext = Some(GameContext.initial)
+      previousContext = Some(GameContext.initial),
     )
 
   test("execute rejects failing commands and keeps history unchanged"):
     val invoker = new CommandInvoker()
-    val cmd = FailingCommand()
+    val cmd     = FailingCommand()
     invoker.execute(cmd) shouldBe false
     invoker.history.size shouldBe 0
     invoker.getCurrentIndex shouldBe -1
@@ -52,8 +55,8 @@ class CommandInvokerBranchTest extends AnyFunSuite with Matchers:
 
     {
       val invoker = new CommandInvoker()
-      val cmd1 = createMoveCommand(sq(File.E, Rank.R2), sq(File.E, Rank.R4))
-      val cmd2 = createMoveCommand(sq(File.E, Rank.R7), sq(File.E, Rank.R5))
+      val cmd1    = createMoveCommand(sq(File.E, Rank.R2), sq(File.E, Rank.R4))
+      val cmd2    = createMoveCommand(sq(File.E, Rank.R7), sq(File.E, Rank.R5))
       invoker.execute(cmd1)
       invoker.execute(cmd2)
       invoker.undo()
@@ -62,7 +65,7 @@ class CommandInvokerBranchTest extends AnyFunSuite with Matchers:
     }
 
     {
-      val invoker = new CommandInvoker()
+      val invoker        = new CommandInvoker()
       val failingUndoCmd = ConditionalFailCommand(shouldFailOnUndo = true)
       invoker.execute(failingUndoCmd) shouldBe true
       invoker.canUndo shouldBe true
@@ -71,7 +74,7 @@ class CommandInvokerBranchTest extends AnyFunSuite with Matchers:
     }
 
     {
-      val invoker = new CommandInvoker()
+      val invoker        = new CommandInvoker()
       val successUndoCmd = ConditionalFailCommand()
       invoker.execute(successUndoCmd) shouldBe true
       invoker.undo() shouldBe true
@@ -85,15 +88,15 @@ class CommandInvokerBranchTest extends AnyFunSuite with Matchers:
 
     {
       val invoker = new CommandInvoker()
-      val cmd = createMoveCommand(sq(File.E, Rank.R2), sq(File.E, Rank.R4))
+      val cmd     = createMoveCommand(sq(File.E, Rank.R2), sq(File.E, Rank.R4))
       invoker.execute(cmd)
       invoker.canRedo shouldBe false
       invoker.redo() shouldBe false
     }
 
     {
-      val invoker = new CommandInvoker()
-      val cmd1 = createMoveCommand(sq(File.E, Rank.R2), sq(File.E, Rank.R4))
+      val invoker     = new CommandInvoker()
+      val cmd1        = createMoveCommand(sq(File.E, Rank.R2), sq(File.E, Rank.R4))
       val redoFailCmd = ConditionalFailCommand()
       invoker.execute(cmd1)
       invoker.execute(redoFailCmd)
@@ -106,7 +109,7 @@ class CommandInvokerBranchTest extends AnyFunSuite with Matchers:
 
     {
       val invoker = new CommandInvoker()
-      val cmd = createMoveCommand(sq(File.E, Rank.R2), sq(File.E, Rank.R4))
+      val cmd     = createMoveCommand(sq(File.E, Rank.R2), sq(File.E, Rank.R4))
       invoker.execute(cmd) shouldBe true
       invoker.undo() shouldBe true
       invoker.redo() shouldBe true
@@ -115,9 +118,9 @@ class CommandInvokerBranchTest extends AnyFunSuite with Matchers:
 
     {
       val invoker = new CommandInvoker()
-      val cmd1 = createMoveCommand(sq(File.E, Rank.R2), sq(File.E, Rank.R4))
-      val cmd2 = createMoveCommand(sq(File.E, Rank.R7), sq(File.E, Rank.R5))
-      val cmd3 = createMoveCommand(sq(File.D, Rank.R2), sq(File.D, Rank.R4))
+      val cmd1    = createMoveCommand(sq(File.E, Rank.R2), sq(File.E, Rank.R4))
+      val cmd2    = createMoveCommand(sq(File.E, Rank.R7), sq(File.E, Rank.R5))
+      val cmd3    = createMoveCommand(sq(File.D, Rank.R2), sq(File.D, Rank.R4))
       invoker.execute(cmd1)
       invoker.execute(cmd2)
       invoker.undo()
@@ -130,10 +133,10 @@ class CommandInvokerBranchTest extends AnyFunSuite with Matchers:
 
     {
       val invoker = new CommandInvoker()
-      val cmd1 = createMoveCommand(sq(File.E, Rank.R2), sq(File.E, Rank.R4))
-      val cmd2 = createMoveCommand(sq(File.E, Rank.R7), sq(File.E, Rank.R5))
-      val cmd3 = createMoveCommand(sq(File.G, Rank.R1), sq(File.F, Rank.R3))
-      val cmd4 = createMoveCommand(sq(File.D, Rank.R2), sq(File.D, Rank.R4))
+      val cmd1    = createMoveCommand(sq(File.E, Rank.R2), sq(File.E, Rank.R4))
+      val cmd2    = createMoveCommand(sq(File.E, Rank.R7), sq(File.E, Rank.R5))
+      val cmd3    = createMoveCommand(sq(File.G, Rank.R1), sq(File.F, Rank.R3))
+      val cmd4    = createMoveCommand(sq(File.D, Rank.R2), sq(File.D, Rank.R4))
       invoker.execute(cmd1)
       invoker.execute(cmd2)
       invoker.execute(cmd3)

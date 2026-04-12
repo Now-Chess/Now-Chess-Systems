@@ -1,6 +1,8 @@
 plugins {
     id("org.sonarqube") version "7.2.3.7755"
     id("org.scoverage") version "8.1" apply false
+    id("com.diffplug.spotless") version "8.4.0" apply false
+    id("io.github.cosmicsilence.scalafix") version "0.2.6" apply false
 }
 
 group = "de.nowchess"
@@ -39,4 +41,28 @@ val versions = mapOf(
     "JACKSON_SCALA"         to "2.17.2"
 )
 extra["VERSIONS"] = versions
+
+subprojects {
+    apply(plugin = "com.diffplug.spotless")
+
+    pluginManager.withPlugin("scala") {
+        configure<com.diffplug.gradle.spotless.SpotlessExtension> {
+            scala {
+                scalafmt().configFile(rootProject.file(".scalafmt.conf"))
+            }
+        }
+
+        apply(plugin = "io.github.cosmicsilence.scalafix")
+        configure<io.github.cosmicsilence.scalafix.ScalafixExtension> {
+            configFile.set(rootProject.file(".scalafix.conf"))
+        }
+
+        // Disable SemanticDB config for the scoverage source set — it sets -sourceroot to
+        // the root project dir, which conflicts with scoverage's own -sourceroot and causes
+        // reportTestScoverage to fail with "No source root found".
+        tasks.matching { it.name in setOf("configSemanticDBScoverage", "checkScalafixScoverage", "checkScalafixTest") }.configureEach {
+            enabled = false
+        }
+    }
+}
 

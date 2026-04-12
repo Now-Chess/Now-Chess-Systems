@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 class PgnExporterTest extends AnyFunSuite with Matchers:
 
   test("exportGame renders headers and basic move text"):
-    val headers = Map("Event" -> "Test", "White" -> "A", "Black" -> "B")
+    val headers  = Map("Event" -> "Test", "White" -> "A", "Black" -> "B")
     val emptyPgn = PgnExporter.exportGame(headers, List.empty)
     emptyPgn.contains("[Event \"Test\"]") shouldBe true
     emptyPgn.contains("[White \"A\"]") shouldBe true
@@ -19,13 +19,19 @@ class PgnExporterTest extends AnyFunSuite with Matchers:
     PgnExporter.exportGame(headers, moves).contains("1. e4") shouldBe true
 
   test("exportGame renders castling grouping and result markers"):
-    PgnExporter.exportGame(Map("Event" -> "Test"), List(Move(Square(File.E, Rank.R1), Square(File.G, Rank.R1), MoveType.CastleKingside))) should include("O-O")
-    PgnExporter.exportGame(Map("Event" -> "Test"), List(Move(Square(File.E, Rank.R1), Square(File.C, Rank.R1), MoveType.CastleQueenside))) should include("O-O-O")
+    PgnExporter.exportGame(
+      Map("Event" -> "Test"),
+      List(Move(Square(File.E, Rank.R1), Square(File.G, Rank.R1), MoveType.CastleKingside)),
+    ) should include("O-O")
+    PgnExporter.exportGame(
+      Map("Event" -> "Test"),
+      List(Move(Square(File.E, Rank.R1), Square(File.C, Rank.R1), MoveType.CastleQueenside)),
+    ) should include("O-O-O")
 
     val seq = List(
       Move(Square(File.E, Rank.R2), Square(File.E, Rank.R4), MoveType.Normal()),
       Move(Square(File.C, Rank.R7), Square(File.C, Rank.R5), MoveType.Normal()),
-      Move(Square(File.G, Rank.R1), Square(File.F, Rank.R3), MoveType.Normal())
+      Move(Square(File.G, Rank.R1), Square(File.F, Rank.R3), MoveType.Normal()),
     )
     val grouped = PgnExporter.exportGame(Map("Result" -> "1-0"), seq)
     grouped should include("1. e4 c5")
@@ -37,23 +43,24 @@ class PgnExporterTest extends AnyFunSuite with Matchers:
 
   test("exportGame handles promotion suffixes and normal move formatting"):
     List(
-      PromotionPiece.Queen -> "=Q",
-      PromotionPiece.Rook -> "=R",
+      PromotionPiece.Queen  -> "=Q",
+      PromotionPiece.Rook   -> "=R",
       PromotionPiece.Bishop -> "=B",
-      PromotionPiece.Knight -> "=N"
+      PromotionPiece.Knight -> "=N",
     ).foreach { (piece, suffix) =>
       val move = Move(Square(File.E, Rank.R7), Square(File.E, Rank.R8), MoveType.Promotion(piece))
       PgnExporter.exportGame(Map.empty, List(move)) should include(s"e8$suffix")
     }
 
-    val normal = PgnExporter.exportGame(Map.empty, List(Move(Square(File.E, Rank.R2), Square(File.E, Rank.R4), MoveType.Normal())))
+    val normal =
+      PgnExporter.exportGame(Map.empty, List(Move(Square(File.E, Rank.R2), Square(File.E, Rank.R4), MoveType.Normal())))
     normal should include("e4")
     normal should not include "="
 
   test("exportGameContext preserves moves and default headers"):
     val moves = List(
       Move(Square(File.E, Rank.R2), Square(File.E, Rank.R4), MoveType.Normal()),
-      Move(Square(File.E, Rank.R7), Square(File.E, Rank.R5), MoveType.Normal())
+      Move(Square(File.E, Rank.R7), Square(File.E, Rank.R5), MoveType.Normal()),
     )
     val withMoves = PgnExporter.exportGameContext(GameContext.initial.copy(moves = moves))
     withMoves.contains("e4") shouldBe true
@@ -78,7 +85,7 @@ class PgnExporterTest extends AnyFunSuite with Matchers:
       Move(sq("c7"), sq("c6")),
       Move(sq("d1"), sq("d7"), MoveType.Normal(true)),
       Move(sq("d8"), sq("d7"), MoveType.Normal(true)),
-      Move(sq("e1"), sq("e2"), MoveType.Normal(true))
+      Move(sq("e1"), sq("e2"), MoveType.Normal(true)),
     )
 
     val pgn = PgnExporter.exportGame(Map("Result" -> "*"), moves)
@@ -91,18 +98,17 @@ class PgnExporterTest extends AnyFunSuite with Matchers:
     pgn should include("Kxe2")
 
   test("exportGame emits en-passant and promotion capture notation"):
-    val enPassant = Move(sq("e2"), sq("d3"), MoveType.EnPassant)
-    val promotionCapture = Move(sq("e7"), sq("f8"), MoveType.Promotion(PromotionPiece.Queen))
-    val pawnCapture = Move(sq("e2"), sq("d3"), MoveType.Normal(isCapture = true))
+    val enPassant           = Move(sq("e2"), sq("d3"), MoveType.EnPassant)
+    val promotionCapture    = Move(sq("e7"), sq("f8"), MoveType.Promotion(PromotionPiece.Queen))
+    val pawnCapture         = Move(sq("e2"), sq("d3"), MoveType.Normal(isCapture = true))
     val promotionQuietSetup = Move(sq("e8"), sq("e7"))
-    val promotionQuiet = Move(sq("e2"), sq("e8"), MoveType.Promotion(PromotionPiece.Queen))
+    val promotionQuiet      = Move(sq("e2"), sq("e8"), MoveType.Promotion(PromotionPiece.Queen))
 
-    val pgn = PgnExporter.exportGame(Map.empty, List(enPassant, promotionCapture))
-    val pawnCapturePgn = PgnExporter.exportGame(Map.empty, List(pawnCapture))
+    val pgn               = PgnExporter.exportGame(Map.empty, List(enPassant, promotionCapture))
+    val pawnCapturePgn    = PgnExporter.exportGame(Map.empty, List(pawnCapture))
     val quietPromotionPgn = PgnExporter.exportGame(Map.empty, List(promotionQuietSetup, promotionQuiet))
 
     pgn should include("exd3")
     pgn should include("exf8=Q")
     pawnCapturePgn should include("exd3")
     quietPromotionPgn should include("e8=Q")
-

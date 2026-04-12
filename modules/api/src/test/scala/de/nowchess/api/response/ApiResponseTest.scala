@@ -14,9 +14,9 @@ class ApiResponseTest extends AnyFunSuite with Matchers:
     ApiResponse.error(err) shouldBe ApiResponse.Failure(List(err))
 
     val e = ApiError("CODE", "message")
-    e.code    shouldBe "CODE"
+    e.code shouldBe "CODE"
     e.message shouldBe "message"
-    e.field   shouldBe None
+    e.field shouldBe None
     ApiError("INVALID", "bad value", Some("email")).field shouldBe Some("email")
   }
 
@@ -31,6 +31,6 @@ class ApiResponseTest extends AnyFunSuite with Matchers:
   test("PagedResponse holds items and pagination") {
     val pagination = Pagination(page = 1, pageSize = 5, totalItems = 20)
     val pr         = PagedResponse(List("a", "b"), pagination)
-    pr.items      shouldBe List("a", "b")
+    pr.items shouldBe List("a", "b")
     pr.pagination shouldBe pagination
   }

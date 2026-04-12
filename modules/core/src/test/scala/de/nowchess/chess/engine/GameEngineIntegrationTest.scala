@@ -92,12 +92,12 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
       def candidateMoves(context: GameContext)(square: Square): List[Move] = legalMoves(context)(square)
       def legalMoves(context: GameContext)(square: Square): List[Move] =
         if square == sq("e2") then List(promotionMove) else List.empty
-      def allLegalMoves(context: GameContext): List[Move] = List(promotionMove)
-      def isCheck(context: GameContext): Boolean = false
-      def isCheckmate(context: GameContext): Boolean = false
-      def isStalemate(context: GameContext): Boolean = false
-      def isInsufficientMaterial(context: GameContext): Boolean = false
-      def isFiftyMoveRule(context: GameContext): Boolean = false
+      def allLegalMoves(context: GameContext): List[Move]          = List(promotionMove)
+      def isCheck(context: GameContext): Boolean                   = false
+      def isCheckmate(context: GameContext): Boolean               = false
+      def isStalemate(context: GameContext): Boolean               = false
+      def isInsufficientMaterial(context: GameContext): Boolean    = false
+      def isFiftyMoveRule(context: GameContext): Boolean           = false
       def applyMove(context: GameContext)(move: Move): GameContext = DefaultRules.applyMove(context)(move)
 
     val engine = new GameEngine(ruleSet = permissiveRules)
@@ -112,14 +112,14 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
     val promotionMove = Move(sq("e2"), sq("e8"), MoveType.Promotion(PromotionPiece.Queen))
     val noLegalMoves = new RuleSet:
       def candidateMoves(context: GameContext)(square: Square): List[Move] = List.empty
-      def legalMoves(context: GameContext)(square: Square): List[Move] = List.empty
-      def allLegalMoves(context: GameContext): List[Move] = List.empty
-      def isCheck(context: GameContext): Boolean = false
-      def isCheckmate(context: GameContext): Boolean = false
-      def isStalemate(context: GameContext): Boolean = false
-      def isInsufficientMaterial(context: GameContext): Boolean = false
-      def isFiftyMoveRule(context: GameContext): Boolean = false
-      def applyMove(context: GameContext)(move: Move): GameContext = context
+      def legalMoves(context: GameContext)(square: Square): List[Move]     = List.empty
+      def allLegalMoves(context: GameContext): List[Move]                  = List.empty
+      def isCheck(context: GameContext): Boolean                           = false
+      def isCheckmate(context: GameContext): Boolean                       = false
+      def isStalemate(context: GameContext): Boolean                       = false
+      def isInsufficientMaterial(context: GameContext): Boolean            = false
+      def isFiftyMoveRule(context: GameContext): Boolean                   = false
+      def applyMove(context: GameContext)(move: Move): GameContext         = context
 
     val engine = new GameEngine(ruleSet = noLegalMoves)
     engine.processUserInput("e2e4")
@@ -137,20 +137,19 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
 
   test("loadGame replay executes non-promotion moves through default replay branch"):
     val normalMove = Move(sq("e2"), sq("e4"), MoveType.Normal())
-    val engine = new GameEngine()
+    val engine     = new GameEngine()
 
     engine.replayMoves(List(normalMove), engine.context) shouldBe Right(())
     engine.context.moves.lastOption shouldBe Some(normalMove)
 
   test("replayMoves skips later moves after the first move triggers an error"):
-    val engine = new GameEngine()
-    val saved = engine.context
+    val engine           = new GameEngine()
+    val saved            = engine.context
     val illegalPromotion = Move(sq("e2"), sq("e1"), MoveType.Promotion(PromotionPiece.Queen))
-    val trailingMove = Move(sq("e2"), sq("e4"))
+    val trailingMove     = Move(sq("e2"), sq("e4"))
 
     engine.replayMoves(List(illegalPromotion, trailingMove), saved) shouldBe Left("Promotion required for move e2e1")
     engine.context shouldBe saved
-
 
   test("normalMoveNotation handles missing source piece"):
     val engine = new GameEngine()
@@ -174,5 +173,3 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
     engine.observerCount shouldBe 1
     engine.unsubscribe(observer)
     engine.observerCount shouldBe 0
-
-

@@ -8,7 +8,7 @@ class JsonParserErrorHandlingSuite extends AnyFunSuite with Matchers:
 
   test("parse completely invalid JSON returns error") {
     val invalidJson = "{ this is not valid json at all }"
-    val result = JsonParser.importGameContext(invalidJson)
+    val result      = JsonParser.importGameContext(invalidJson)
     assert(result.isLeft)
     assert(result.left.toOption.get.contains("JSON parsing error"))
   }
@@ -26,26 +26,26 @@ class JsonParserErrorHandlingSuite extends AnyFunSuite with Matchers:
 
   test("parse malformed JSON object returns error") {
     val malformed = """{"metadata": {"unclosed": """
-    val result = JsonParser.importGameContext(malformed)
+    val result    = JsonParser.importGameContext(malformed)
     assert(result.isLeft)
     assert(result.left.toOption.get.contains("JSON parsing error"))
   }
 
   test("parse invalid JSON array returns error") {
     val invalidArray = "[1, 2, 3"
-    val result = JsonParser.importGameContext(invalidArray)
+    val result       = JsonParser.importGameContext(invalidArray)
     assert(result.isLeft)
   }
 
   test("parse JSON with missing required fields") {
-    val json = """{"metadata": {}}"""
+    val json   = """{"metadata": {}}"""
     val result = JsonParser.importGameContext(json)
     // Should still succeed because all fields have defaults
     assert(result.isRight)
   }
 
   test("parse valid JSON with invalid turn falls back to default") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {"turn": "White", "board": []},
       "moves": []

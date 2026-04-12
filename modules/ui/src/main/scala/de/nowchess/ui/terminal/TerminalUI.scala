@@ -6,12 +6,11 @@ import de.nowchess.chess.engine.GameEngine
 import de.nowchess.chess.observer.*
 import de.nowchess.ui.utils.Renderer
 
-/** Terminal UI that implements Observer pattern.
- *  Subscribes to GameEngine and receives state change events.
- *  Handles all I/O and user interaction in the terminal.
- */
+/** Terminal UI that implements Observer pattern. Subscribes to GameEngine and receives state change events. Handles all
+  * I/O and user interaction in the terminal.
+  */
 class TerminalUI(engine: GameEngine) extends Observer:
-  private var running = true
+  private var running           = true
   private var awaitingPromotion = false
 
   /** Called by GameEngine whenever a game event occurs. */

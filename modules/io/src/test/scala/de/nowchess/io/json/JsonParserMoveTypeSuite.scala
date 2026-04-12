@@ -1,7 +1,7 @@
 package de.nowchess.io.json
 
 import de.nowchess.api.game.GameContext
-import de.nowchess.api.board.{Color, PieceType, Piece, Square, File, Rank}
+import de.nowchess.api.board.{Color, File, Piece, PieceType, Rank, Square}
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 class JsonParserMoveTypeSuite extends AnyFunSuite with Matchers:
 
   test("parse all move type variations") {
-    val json = """{
+    val json   = """{
       "metadata": {"event": "Game", "result": "*"},
       "gameState": {"turn": "White", "board": []},
       "moves": [
@@ -34,7 +34,7 @@ class JsonParserMoveTypeSuite extends AnyFunSuite with Matchers:
   }
 
   test("parse invalid move type defaults to None") {
-    val json = """{
+    val json   = """{
       "metadata": {"event": "Game"},
       "gameState": {"turn": "White", "board": []},
       "moves": [{"from": "e2", "to": "e4", "type": {"type": "unknown"}}]
@@ -45,7 +45,7 @@ class JsonParserMoveTypeSuite extends AnyFunSuite with Matchers:
   }
 
   test("parse promotion with default piece") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {"turn": "White", "board": []},
       "moves": [{"from": "a7", "to": "a8", "type": {"type": "promotion", "promotionPiece": "invalid"}}]
@@ -56,7 +56,7 @@ class JsonParserMoveTypeSuite extends AnyFunSuite with Matchers:
   }
 
   test("parse move with missing from/to skips it") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {"turn": "White", "board": []},
       "moves": [{"from": "e2", "to": "invalid", "type": {"type": "normal"}}]
@@ -69,26 +69,26 @@ class JsonParserMoveTypeSuite extends AnyFunSuite with Matchers:
   }
 
   test("parse with invalid JSON returns error") {
-    val json = """{"invalid json"""
+    val json   = """{"invalid json"""
     val result = JsonParser.importGameContext(json)
     assert(result.isLeft)
   }
 
   test("parse normal move with isCapture true") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {"turn": "White", "board": []},
       "moves": [{"from": "e4", "to": "d5", "type": {"type": "normal", "isCapture": true}}]
     }"""
     val result = JsonParser.importGameContext(json)
     assert(result.isRight)
-    val ctx = result.toOption.get
+    val ctx  = result.toOption.get
     val move = ctx.moves.head
     assert(move.moveType == MoveType.Normal(true))
   }
 
   test("parse board with invalid pieces filters them") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {
         "turn": "White",

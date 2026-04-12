@@ -10,7 +10,7 @@ class CastlingRightsTest extends AnyFunSuite with Matchers:
       whiteKingSide = true,
       whiteQueenSide = false,
       blackKingSide = false,
-      blackQueenSide = true
+      blackQueenSide = true,
     )
 
     rights.hasAnyRights shouldBe true
@@ -54,4 +54,3 @@ class CastlingRightsTest extends AnyFunSuite with Matchers:
     val blackQueenSideRevoked = all.revokeQueenSide(Color.Black)
     blackQueenSideRevoked.blackKingSide shouldBe true
     blackQueenSideRevoked.blackQueenSide shouldBe false
-

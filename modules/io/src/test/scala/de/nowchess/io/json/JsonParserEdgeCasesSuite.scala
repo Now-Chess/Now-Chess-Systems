@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
 class JsonParserEdgeCasesSuite extends AnyFunSuite with Matchers:
 
   test("parse invalid turn color returns error") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {"turn": "Invalid", "board": []},
       "moves": []
@@ -19,7 +19,7 @@ class JsonParserEdgeCasesSuite extends AnyFunSuite with Matchers:
   }
 
   test("parse invalid piece type filters it out") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {
         "turn": "White",
@@ -36,7 +36,7 @@ class JsonParserEdgeCasesSuite extends AnyFunSuite with Matchers:
   }
 
   test("parse invalid color in board filters piece") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {
         "turn": "White",
@@ -53,7 +53,7 @@ class JsonParserEdgeCasesSuite extends AnyFunSuite with Matchers:
   }
 
   test("parse with missing turn uses default") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {"board": []},
       "moves": []
@@ -65,7 +65,7 @@ class JsonParserEdgeCasesSuite extends AnyFunSuite with Matchers:
   }
 
   test("parse with missing board uses empty") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {"turn": "White"},
       "moves": []
@@ -77,7 +77,7 @@ class JsonParserEdgeCasesSuite extends AnyFunSuite with Matchers:
   }
 
   test("parse with missing moves uses empty list") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {"turn": "White", "board": []}
     }"""
@@ -88,7 +88,7 @@ class JsonParserEdgeCasesSuite extends AnyFunSuite with Matchers:
   }
 
   test("parse invalid square in board filters it") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {
         "turn": "White",
@@ -105,7 +105,7 @@ class JsonParserEdgeCasesSuite extends AnyFunSuite with Matchers:
   }
 
   test("parse all valid piece types") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {
         "turn": "White",
@@ -124,11 +124,16 @@ class JsonParserEdgeCasesSuite extends AnyFunSuite with Matchers:
     assert(result.isRight)
     val ctx = result.toOption.get
     assert(ctx.board.pieces.size == 6)
-    assert(ctx.board.pieceAt(de.nowchess.api.board.Square(de.nowchess.api.board.File.A, de.nowchess.api.board.Rank.R1)).get.pieceType == PieceType.Pawn)
+    assert(
+      ctx.board
+        .pieceAt(de.nowchess.api.board.Square(de.nowchess.api.board.File.A, de.nowchess.api.board.Rank.R1))
+        .get
+        .pieceType == PieceType.Pawn,
+    )
   }
 
   test("parse with all castling rights false") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {
         "turn": "White",

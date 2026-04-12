@@ -9,11 +9,11 @@ import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
 /** Tests that exercise moveToPgn branches not covered by other test files:
- *  - CastleQueenside (line 223)
- *  - EnPassant notation (lines 224-225) and computeCaptured EnPassant (lines 254-255)
- *  - Promotion(Bishop) notation (line 230)
- *  - King normal move notation (line 246)
- */
+  *   - CastleQueenside (line 223)
+  *   - EnPassant notation (lines 224-225) and computeCaptured EnPassant (lines 254-255)
+  *   - Promotion(Bishop) notation (line 230)
+  *   - King normal move notation (line 246)
+  */
 class GameEngineNotationTest extends AnyFunSuite with Matchers:
 
   private def captureEvents(engine: GameEngine): collection.mutable.ListBuffer[GameEvent] =
@@ -28,10 +28,10 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
     val board = FenParser.parseBoard("k7/8/8/8/8/8/8/R3K3").get
     // Castling rights: white queen-side only (no king-side rook present)
     val castlingRights = de.nowchess.api.board.CastlingRights(
-      whiteKingSide  = false,
+      whiteKingSide = false,
       whiteQueenSide = true,
-      blackKingSide  = false,
-      blackQueenSide = false
+      blackKingSide = false,
+      blackQueenSide = false,
     )
     val ctx = GameContext.initial
       .withBoard(board)
@@ -43,7 +43,7 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
 
     // White castles queenside: e1c1
     engine.processUserInput("e1c1")
-    events.exists(_.isInstanceOf[MoveExecutedEvent]) should be (true)
+    events.exists(_.isInstanceOf[MoveExecutedEvent]) should be(true)
 
     events.clear()
     engine.undo()
@@ -55,7 +55,7 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
 
   test("undo after en passant emits MoveUndoneEvent with file-x-destination notation"):
     // White pawn on e5, black pawn on d5 (just double-pushed), en passant square d6
-    val board = FenParser.parseBoard("k7/8/8/3pP3/8/8/8/7K").get
+    val board    = FenParser.parseBoard("k7/8/8/3pP3/8/8/8/7K").get
     val epSquare = Square.fromAlgebraic("d6")
     val ctx = GameContext.initial
       .withBoard(board)
@@ -68,12 +68,12 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
 
     // White pawn on e5 captures en passant to d6
     engine.processUserInput("e5d6")
-    events.exists(_.isInstanceOf[MoveExecutedEvent]) should be (true)
+    events.exists(_.isInstanceOf[MoveExecutedEvent]) should be(true)
 
     // Verify the captured pawn was found (computeCaptured EnPassant branch)
     val moveEvt = events.collect { case e: MoveExecutedEvent => e }.head
     moveEvt.capturedPiece shouldBe defined
-    moveEvt.capturedPiece.get should include ("Black")
+    moveEvt.capturedPiece.get should include("Black")
 
     events.clear()
     engine.undo()
@@ -117,11 +117,11 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
 
     // King moves e1 -> f1
     engine.processUserInput("e1f1")
-    events.exists(_.isInstanceOf[MoveExecutedEvent]) should be (true)
+    events.exists(_.isInstanceOf[MoveExecutedEvent]) should be(true)
 
     events.clear()
     engine.undo()
 
     val evt = events.collect { case e: MoveUndoneEvent => e }.head
-    evt.pgnNotation should startWith ("K")
-    evt.pgnNotation should include ("f1")
+    evt.pgnNotation should startWith("K")
+    evt.pgnNotation should include("f1")

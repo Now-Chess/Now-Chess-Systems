@@ -18,9 +18,9 @@ class GameContextTest extends AnyFunSuite with Matchers:
     initial.moves shouldBe List.empty
 
   test("withBoard updates only board"):
-    val square = Square(File.E, Rank.R4)
+    val square       = Square(File.E, Rank.R4)
     val updatedBoard = Board.initial.updated(square, de.nowchess.api.board.Piece.WhiteQueen)
-    val updated = GameContext.initial.withBoard(updatedBoard)
+    val updated      = GameContext.initial.withBoard(updatedBoard)
     updated.board shouldBe updatedBoard
     updated.turn shouldBe GameContext.initial.turn
     updated.castlingRights shouldBe GameContext.initial.castlingRights
@@ -34,13 +34,13 @@ class GameContextTest extends AnyFunSuite with Matchers:
       whiteKingSide = true,
       whiteQueenSide = false,
       blackKingSide = false,
-      blackQueenSide = true
+      blackQueenSide = true,
     )
-    val square = Some(Square(File.E, Rank.R3))
-    val updatedTurn = initial.withTurn(Color.Black)
+    val square        = Some(Square(File.E, Rank.R3))
+    val updatedTurn   = initial.withTurn(Color.Black)
     val updatedRights = initial.withCastlingRights(rights)
-    val updatedEp = initial.withEnPassantSquare(square)
-    val updatedClock = initial.withHalfMoveClock(17)
+    val updatedEp     = initial.withEnPassantSquare(square)
+    val updatedClock  = initial.withHalfMoveClock(17)
 
     updatedTurn.turn shouldBe Color.Black
     updatedTurn.board shouldBe initial.board
@@ -57,4 +57,3 @@ class GameContextTest extends AnyFunSuite with Matchers:
   test("withMove appends move to history"):
     val move = Move(Square(File.E, Rank.R2), Square(File.E, Rank.R4))
     GameContext.initial.withMove(move).moves shouldBe List(move)
-

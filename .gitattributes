@@ -1,0 +1,41 @@
+# Normalize text files in the repo
+* text=auto eol=lf
+
+# Keep Windows command scripts in CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Keep Unix shell scripts in LF
+*.sh text eol=lf
+
+# Binary assets (no EOL normalization / textual diff)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.bmp binary
+*.ico binary
+
+# ML / model / numeric artifacts
+*.bin binary
+*.pt binary
+*.pth binary
+*.onnx binary
+*.h5 binary
+*.hdf5 binary
+*.pb binary
+*.tflite binary
+*.npy binary
+*.npz binary
+*.safetensors binary
+
+# Firmware / hex-like artifacts
+*.hex binary
+
+# Packaged binaries
+*.jar binary
+*.zip binary
+*.7z binary
+*.gz binary
+

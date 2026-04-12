@@ -25,7 +25,7 @@ class MoveTest extends AnyFunSuite with Matchers:
       MoveType.Promotion(PromotionPiece.Queen),
       MoveType.Promotion(PromotionPiece.Rook),
       MoveType.Promotion(PromotionPiece.Bishop),
-      MoveType.Promotion(PromotionPiece.Knight)
+      MoveType.Promotion(PromotionPiece.Knight),
     )
 
     moveTypes.foreach { moveType =>

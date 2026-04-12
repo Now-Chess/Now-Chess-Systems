@@ -9,16 +9,18 @@ import org.scalatest.matchers.should.Matchers
 class FenExporterTest extends AnyFunSuite with Matchers:
 
   private def context(
-    piecePlacement: String,
-    turn: Color,
-    castlingRights: CastlingRights,
-    enPassantSquare: Option[Square],
-    halfMoveClock: Int,
-    moveCount: Int
+      piecePlacement: String,
+      turn: Color,
+      castlingRights: CastlingRights,
+      enPassantSquare: Option[Square],
+      halfMoveClock: Int,
+      moveCount: Int,
   ): GameContext =
-    val board = FenParser.parseBoard(piecePlacement).getOrElse(
-      fail(s"Invalid test board FEN: $piecePlacement")
-    )
+    val board = FenParser
+      .parseBoard(piecePlacement)
+      .getOrElse(
+        fail(s"Invalid test board FEN: $piecePlacement"),
+      )
     val dummyMove = Move(Square(File.A, Rank.R2), Square(File.A, Rank.R3))
     GameContext(
       board = board,
@@ -26,7 +28,7 @@ class FenExporterTest extends AnyFunSuite with Matchers:
       castlingRights = castlingRights,
       enPassantSquare = enPassantSquare,
       halfMoveClock = halfMoveClock,
-      moves = List.fill(moveCount)(dummyMove)
+      moves = List.fill(moveCount)(dummyMove),
     )
 
   test("exportGameContextToFen handles initial and typical developed position"):
@@ -39,7 +41,7 @@ class FenExporterTest extends AnyFunSuite with Matchers:
       castlingRights = CastlingRights.All,
       enPassantSquare = Some(Square(File.E, Rank.R3)),
       halfMoveClock = 0,
-      moveCount = 0
+      moveCount = 0,
     )
     FenExporter.gameContextToFen(gameContext) shouldBe
       "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
@@ -51,7 +53,7 @@ class FenExporterTest extends AnyFunSuite with Matchers:
       castlingRights = CastlingRights.None,
       enPassantSquare = None,
       halfMoveClock = 0,
-      moveCount = 0
+      moveCount = 0,
     )
     FenExporter.gameContextToFen(noCastling) shouldBe
       "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"
@@ -63,11 +65,11 @@ class FenExporterTest extends AnyFunSuite with Matchers:
         whiteKingSide = true,
         whiteQueenSide = false,
         blackKingSide = false,
-        blackQueenSide = true
+        blackQueenSide = true,
       ),
       enPassantSquare = None,
       halfMoveClock = 5,
-      moveCount = 4
+      moveCount = 4,
     )
     FenExporter.gameContextToFen(partialCastling) shouldBe
       "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w Kq - 5 3"
@@ -78,7 +80,7 @@ class FenExporterTest extends AnyFunSuite with Matchers:
       castlingRights = CastlingRights.All,
       enPassantSquare = Some(Square(File.C, Rank.R6)),
       halfMoveClock = 2,
-      moveCount = 4
+      moveCount = 4,
     )
     FenExporter.gameContextToFen(withEnPassant) shouldBe
       "rnbqkbnr/pp1ppppp/8/2pP4/8/8/PPPP1PPP/RNBQKBNR w KQkq c6 2 3"
@@ -90,7 +92,7 @@ class FenExporterTest extends AnyFunSuite with Matchers:
       castlingRights = CastlingRights.All,
       enPassantSquare = None,
       halfMoveClock = 42,
-      moves = List.empty
+      moves = List.empty,
     )
     val fen = FenExporter.gameContextToFen(gameContext)
     FenParser.parseFen(fen) match
@@ -101,4 +103,3 @@ class FenExporterTest extends AnyFunSuite with Matchers:
     val ctx = GameContext.initial
 
     FenExporter.exportGameContext(ctx) shouldBe FenExporter.gameContextToFen(ctx)
-

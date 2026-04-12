@@ -11,7 +11,7 @@ class GameEngineSpecialMovesTest extends AnyFunSuite with Matchers:
   // ── Castling ────────────────────────────────────────────────────
 
   test("kingside castling executes successfully"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
@@ -25,7 +25,7 @@ class GameEngineSpecialMovesTest extends AnyFunSuite with Matchers:
     engine.turn shouldBe Color.Black
 
   test("queenside castling executes successfully"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
@@ -39,7 +39,7 @@ class GameEngineSpecialMovesTest extends AnyFunSuite with Matchers:
     engine.turn shouldBe Color.Black
 
   test("undo castling emits PGN notation"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
@@ -57,7 +57,7 @@ class GameEngineSpecialMovesTest extends AnyFunSuite with Matchers:
   // ── En passant ──────────────────────────────────────────────────
 
   test("en passant capture executes successfully"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
@@ -69,10 +69,10 @@ class GameEngineSpecialMovesTest extends AnyFunSuite with Matchers:
 
     observer.hasEvent[MoveExecutedEvent] shouldBe true
     val moveEvt = observer.getEvent[MoveExecutedEvent]
-    moveEvt.get.capturedPiece shouldBe defined  // pawn was captured
+    moveEvt.get.capturedPiece shouldBe defined // pawn was captured
 
   test("undo en passant emits file-x-destination notation"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
@@ -90,7 +90,7 @@ class GameEngineSpecialMovesTest extends AnyFunSuite with Matchers:
   // ── Pawn promotion ─────────────────────────────────────────────
 
   test("pawn reaching back rank requires promotion"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
@@ -143,7 +143,7 @@ class GameEngineSpecialMovesTest extends AnyFunSuite with Matchers:
     engine.turn shouldBe Color.Black
 
   test("promotion to Queen with discovered check emits CheckDetectedEvent"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
@@ -157,7 +157,7 @@ class GameEngineSpecialMovesTest extends AnyFunSuite with Matchers:
     observer.hasEvent[CheckDetectedEvent] shouldBe true
 
   test("promotion to Queen with checkmate emits CheckmateEvent"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
@@ -171,7 +171,7 @@ class GameEngineSpecialMovesTest extends AnyFunSuite with Matchers:
     observer.hasEvent[CheckmateEvent] shouldBe true
 
   test("undo promotion emits notation with piece suffix"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 

@@ -8,31 +8,31 @@ import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.api.game.GameContext
 import de.nowchess.io.GameContextExport
 import de.nowchess.io.pgn.PgnExporter
-import java.time.{LocalDate, ZonedDateTime, ZoneId}
+import java.time.{LocalDate, ZoneId, ZonedDateTime}
 
 /** Exports a GameContext to a comprehensive JSON format using Jackson.
- *
- *  The JSON includes:
- *  - Game metadata (players, event, date, result)
- *  - Board state (all pieces and their positions)
- *  - Current game state (turn, castling rights, en passant, half-move clock)
- *  - Move history in both algebraic notation (PGN) and detailed move objects
- *  - Captured pieces tracking (which pieces have been removed)
- *  - Timestamp for record-keeping
- */
+  *
+  * The JSON includes:
+  *   - Game metadata (players, event, date, result)
+  *   - Board state (all pieces and their positions)
+  *   - Current game state (turn, castling rights, en passant, half-move clock)
+  *   - Move history in both algebraic notation (PGN) and detailed move objects
+  *   - Captured pieces tracking (which pieces have been removed)
+  *   - Timestamp for record-keeping
+  */
 object JsonExporter extends GameContextExport:
   private val mapper = createMapper()
-  
+
   private def createMapper(): ObjectMapper =
     val mapper = new ObjectMapper()
       .registerModule(DefaultScalaModule)
-    
+
     // Configure pretty printer with custom spacing to match test expectations
     val indenter = new DefaultIndenter("  ", "\n")
-    val printer = new DefaultPrettyPrinter()
+    val printer  = new DefaultPrettyPrinter()
     printer.indentArraysWith(indenter)
     printer.indentObjectsWith(indenter)
-    
+
     mapper.setDefaultPrettyPrinter(printer)
     mapper.enable(SerializationFeature.INDENT_OUTPUT)
     mapper
@@ -42,18 +42,19 @@ object JsonExporter extends GameContextExport:
     formatJson(mapper.writeValueAsString(record))
 
   private def buildGameRecord(context: GameContext): JsonGameRecord =
-    val pgn = try {
-      Some(PgnExporter.exportGameContext(context))
-    } catch {
-      case _: Exception => None
-    }
+    val pgn =
+      try
+        Some(PgnExporter.exportGameContext(context))
+      catch {
+        case _: Exception => None
+      }
     JsonGameRecord(
       metadata = Some(buildMetadata()),
       gameState = Some(buildGameState(context)),
       moveHistory = pgn,
       moves = Some(buildMoves(context.moves)),
       capturedPieces = Some(buildCapturedPieces(context.board)),
-      timestamp = Some(ZonedDateTime.now(ZoneId.of("UTC")).toString)
+      timestamp = Some(ZonedDateTime.now(ZoneId.of("UTC")).toString),
     )
 
   private def buildMetadata(): JsonMetadata =
@@ -61,7 +62,7 @@ object JsonExporter extends GameContextExport:
       event = Some("Game"),
       players = Some(Map("white" -> "White Player", "black" -> "Black Player")),
       date = Some(LocalDate.now().toString),
-      result = Some("*")
+      result = Some("*"),
     )
 
   private def buildGameState(context: GameContext): JsonGameState =
@@ -70,7 +71,7 @@ object JsonExporter extends GameContextExport:
       turn = Some(context.turn.label),
       castlingRights = Some(buildCastlingRights(context.castlingRights)),
       enPassantSquare = context.enPassantSquare.map(_.toString),
-      halfMoveClock = Some(context.halfMoveClock)
+      halfMoveClock = Some(context.halfMoveClock),
     )
 
   private def buildBoardPieces(board: Board): List[JsonPiece] =
@@ -83,7 +84,7 @@ object JsonExporter extends GameContextExport:
       Some(rights.whiteKingSide),
       Some(rights.whiteQueenSide),
       Some(rights.blackKingSide),
-      Some(rights.blackQueenSide)
+      Some(rights.blackQueenSide),
     )
 
   private def buildMoves(moves: List[Move]): List[JsonMove] =
@@ -128,12 +129,11 @@ object JsonExporter extends GameContextExport:
     val captured = Square.all.flatMap { square =>
       initialBoard.pieceAt(square).flatMap { initialPiece =>
         board.pieceAt(square) match
-          case None => Some(initialPiece)
+          case None    => Some(initialPiece)
           case Some(_) => None
       }
     }
-    
+
     val whiteCaptured = captured.filter(_.color == Color.White).map(_.pieceType.label).toList
     val blackCaptured = captured.filter(_.color == Color.Black).map(_.pieceType.label).toList
     (blackCaptured, whiteCaptured)
-

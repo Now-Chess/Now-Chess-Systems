@@ -1,18 +1,17 @@
 package de.nowchess.api.game
 
-import de.nowchess.api.board.{Board, Color, Square, CastlingRights}
+import de.nowchess.api.board.{Board, CastlingRights, Color, Square}
 import de.nowchess.api.move.Move
 
-/** Immutable bundle of complete game state.
- *  All state changes produce new GameContext instances.
- */
+/** Immutable bundle of complete game state. All state changes produce new GameContext instances.
+  */
 case class GameContext(
-  board: Board,
-  turn: Color,
-  castlingRights: CastlingRights,
-  enPassantSquare: Option[Square],
-  halfMoveClock: Int,
-  moves: List[Move]
+    board: Board,
+    turn: Color,
+    castlingRights: CastlingRights,
+    enPassantSquare: Option[Square],
+    halfMoveClock: Int,
+    moves: List[Move],
 ):
   /** Create new context with updated board. */
   def withBoard(newBoard: Board): GameContext = copy(board = newBoard)
@@ -40,5 +39,5 @@ object GameContext:
     castlingRights = CastlingRights.Initial,
     enPassantSquare = None,
     halfMoveClock = 0,
-    moves = List.empty
+    moves = List.empty,
   )

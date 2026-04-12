@@ -19,16 +19,16 @@ class RendererAndUnicodeTest extends AnyFunSuite with Matchers:
       (Piece(Color.Black, PieceType.Rook), "\u265C"),
       (Piece(Color.Black, PieceType.Bishop), "\u265D"),
       (Piece(Color.Black, PieceType.Knight), "\u265E"),
-      (Piece(Color.Black, PieceType.Pawn), "\u265F")
+      (Piece(Color.Black, PieceType.Pawn), "\u265F"),
     )
     pieces.foreach { (piece, expected) =>
       piece.unicode shouldBe expected
     }
 
   test("render outputs coordinates ranks ansi escapes and piece glyphs"):
-    val board = Board(Map(Square(File.E, Rank.R4) -> Piece(Color.White, PieceType.Queen)))
+    val board    = Board(Map(Square(File.E, Rank.R4) -> Piece(Color.White, PieceType.Queen)))
     val rendered = Renderer.render(Board(Map.empty))
-    val lines = rendered.trim.split("\\n").toList.map(_.trim)
+    val lines    = rendered.trim.split("\\n").toList.map(_.trim)
 
     lines.head shouldBe "a  b  c  d  e  f  g  h"
     lines.last shouldBe "a  b  c  d  e  f  g  h"
@@ -38,9 +38,7 @@ class RendererAndUnicodeTest extends AnyFunSuite with Matchers:
     Renderer.render(board) should include("\u001b[")
 
   test("render applies black piece color for black pieces"):
-    val board = Board(Map(Square(File.A, Rank.R1) -> Piece(Color.Black, PieceType.King)))
+    val board    = Board(Map(Square(File.A, Rank.R1) -> Piece(Color.Black, PieceType.King)))
     val rendered = Renderer.render(board)
-    rendered should include("\u265A")  // Black king unicode
-    rendered should include("\u001b[30m")  // ANSI black text color
-
-
+    rendered should include("\u265A")     // Black king unicode
+    rendered should include("\u001b[30m") // ANSI black text color

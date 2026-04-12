@@ -22,9 +22,9 @@ class BoardTest extends AnyFunSuite with Matchers:
   }
 
   test("withMove returns captured piece when destination is occupied") {
-    val from = Square(File.A, Rank.R1)
-    val to   = Square(File.A, Rank.R8)
-    val b    = Board(Map(from -> Piece.WhiteRook, to -> Piece.BlackRook))
+    val from              = Square(File.A, Rank.R1)
+    val to                = Square(File.A, Rank.R8)
+    val b                 = Board(Map(from -> Piece.WhiteRook, to -> Piece.BlackRook))
     val (board, captured) = b.withMove(from, to)
     captured shouldBe Some(Piece.BlackRook)
     board.pieceAt(to) shouldBe Some(Piece.WhiteRook)
@@ -51,8 +51,14 @@ class BoardTest extends AnyFunSuite with Matchers:
 
   test("initial board white back rank") {
     val expectedBackRank = Vector(
-      PieceType.Rook, PieceType.Knight, PieceType.Bishop, PieceType.Queen,
-      PieceType.King, PieceType.Bishop, PieceType.Knight, PieceType.Rook
+      PieceType.Rook,
+      PieceType.Knight,
+      PieceType.Bishop,
+      PieceType.Queen,
+      PieceType.King,
+      PieceType.Bishop,
+      PieceType.Knight,
+      PieceType.Rook,
     )
     File.values.zipWithIndex.foreach { (file, i) =>
       Board.initial.pieceAt(Square(file, Rank.R1)) shouldBe
@@ -62,8 +68,14 @@ class BoardTest extends AnyFunSuite with Matchers:
 
   test("initial board black back rank") {
     val expectedBackRank = Vector(
-      PieceType.Rook, PieceType.Knight, PieceType.Bishop, PieceType.Queen,
-      PieceType.King, PieceType.Bishop, PieceType.Knight, PieceType.Rook
+      PieceType.Rook,
+      PieceType.Knight,
+      PieceType.Bishop,
+      PieceType.Queen,
+      PieceType.King,
+      PieceType.Bishop,
+      PieceType.Knight,
+      PieceType.Rook,
     )
     File.values.zipWithIndex.foreach { (file, i) =>
       Board.initial.pieceAt(Square(file, Rank.R8)) shouldBe
@@ -76,12 +88,11 @@ class BoardTest extends AnyFunSuite with Matchers:
     for
       rank <- emptyRanks
       file <- File.values
-    do
-      Board.initial.pieceAt(Square(file, rank)) shouldBe None
+    do Board.initial.pieceAt(Square(file, rank)) shouldBe None
   }
 
   test("updated adds and replaces piece at squares") {
-    val b = Board(Map(e2 -> Piece.WhitePawn))
+    val b     = Board(Map(e2 -> Piece.WhitePawn))
     val added = b.updated(e4, Piece.WhiteKnight)
     added.pieceAt(e2) shouldBe Some(Piece.WhitePawn)
     added.pieceAt(e4) shouldBe Some(Piece.WhiteKnight)
@@ -91,7 +102,7 @@ class BoardTest extends AnyFunSuite with Matchers:
   }
 
   test("removed deletes piece from board") {
-    val b = Board(Map(e2 -> Piece.WhitePawn, e4 -> Piece.WhiteKnight))
+    val b       = Board(Map(e2 -> Piece.WhitePawn, e4 -> Piece.WhiteKnight))
     val removed = b.removed(e2)
     removed.pieceAt(e2) shouldBe None
     removed.pieceAt(e4) shouldBe Some(Piece.WhiteKnight)
@@ -105,4 +116,3 @@ class BoardTest extends AnyFunSuite with Matchers:
     moved.pieceAt(e4) shouldBe Some(Piece.WhitePawn)
     moved.pieceAt(e2) shouldBe None
   }
-

@@ -65,7 +65,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove clears en passant square for non double pawn push"):
     val context = contextFromFen("4k3/8/8/8/8/8/4P3/4K3 w - d6 3 1")
-    val move = Move(sq("e2"), sq("e3"))
+    val move    = Move(sq("e2"), sq("e3"))
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -73,7 +73,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove resets halfMoveClock on pawn move"):
     val context = contextFromFen("4k3/8/8/8/8/8/4P3/4K3 w - - 12 1")
-    val move = Move(sq("e2"), sq("e4"))
+    val move    = Move(sq("e2"), sq("e4"))
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -81,7 +81,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove increments halfMoveClock on quiet non pawn move"):
     val context = contextFromFen("4k3/8/8/8/8/8/8/4K1N1 w - - 7 1")
-    val move = Move(sq("g1"), sq("f3"))
+    val move    = Move(sq("g1"), sq("f3"))
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -89,7 +89,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove resets halfMoveClock on capture"):
     val context = contextFromFen("r3k3/8/8/8/8/8/8/R3K3 w Qq - 9 1")
-    val move = Move(sq("a1"), sq("a8"), MoveType.Normal(isCapture = true))
+    val move    = Move(sq("a1"), sq("a8"), MoveType.Normal(isCapture = true))
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -98,7 +98,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove updates castling rights after king move"):
     val context = contextFromFen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
-    val move = Move(sq("e1"), sq("e2"))
+    val move    = Move(sq("e1"), sq("e2"))
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -109,7 +109,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove updates castling rights after rook move from h1"):
     val context = contextFromFen("r3k2r/8/8/8/8/8/8/4K2R w KQkq - 0 1")
-    val move = Move(sq("h1"), sq("h2"))
+    val move    = Move(sq("h1"), sq("h2"))
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -118,7 +118,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove revokes opponent castling right when rook on starting square is captured"):
     val context = contextFromFen("r3k3/8/8/8/8/8/8/R3K3 w Qq - 2 1")
-    val move = Move(sq("a1"), sq("a8"), MoveType.Normal(isCapture = true))
+    val move    = Move(sq("a1"), sq("a8"), MoveType.Normal(isCapture = true))
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -126,7 +126,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove executes kingside castling and repositions king and rook"):
     val context = contextFromFen("4k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1")
-    val move = Move(sq("e1"), sq("g1"), MoveType.CastleKingside)
+    val move    = Move(sq("e1"), sq("g1"), MoveType.CastleKingside)
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -137,7 +137,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove executes queenside castling and repositions king and rook"):
     val context = contextFromFen("r3k3/8/8/8/8/8/8/R3K2R w KQq - 0 1")
-    val move = Move(sq("e1"), sq("c1"), MoveType.CastleQueenside)
+    val move    = Move(sq("e1"), sq("c1"), MoveType.CastleQueenside)
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -148,7 +148,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove executes en passant and removes captured pawn"):
     val context = contextFromFen("k7/8/8/3pP3/8/8/8/7K w - d6 0 1")
-    val move = Move(sq("e5"), sq("d6"), MoveType.EnPassant)
+    val move    = Move(sq("e5"), sq("d6"), MoveType.EnPassant)
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -158,7 +158,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove executes promotion with selected piece type"):
     val context = contextFromFen("4k3/P7/8/8/8/8/8/4K3 w - - 0 1")
-    val move = Move(sq("a7"), sq("a8"), MoveType.Promotion(PromotionPiece.Knight))
+    val move    = Move(sq("a7"), sq("a8"), MoveType.Promotion(PromotionPiece.Knight))
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -179,7 +179,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove preserves black castling rights after white kingside castling"):
     val context = contextFromFen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
-    val move = Move(sq("e1"), sq("g1"), MoveType.CastleKingside)
+    val move    = Move(sq("e1"), sq("g1"), MoveType.CastleKingside)
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -190,16 +190,18 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove can revoke both white castling rights when both rooks are captured"):
     val context = GameContext(
-      board = contextFromFen("4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1").board.updated(sq("a8"), Piece(Color.Black, PieceType.Queen)),
+      board =
+        contextFromFen("4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1").board.updated(sq("a8"), Piece(Color.Black, PieceType.Queen)),
       turn = Color.Black,
       castlingRights = CastlingRights(true, true, false, false),
       enPassantSquare = None,
       halfMoveClock = 0,
-      moves = List.empty
+      moves = List.empty,
     )
 
     val afterA1Capture = DefaultRules.applyMove(context)(Move(sq("a8"), sq("a1"), MoveType.Normal(isCapture = true)))
-    val afterH1Capture = DefaultRules.applyMove(afterA1Capture)(Move(sq("a1"), sq("h1"), MoveType.Normal(isCapture = true)))
+    val afterH1Capture =
+      DefaultRules.applyMove(afterA1Capture)(Move(sq("a1"), sq("h1"), MoveType.Normal(isCapture = true)))
 
     afterH1Capture.castlingRights.whiteKingSide shouldBe false
     afterH1Capture.castlingRights.whiteQueenSide shouldBe false
@@ -233,7 +235,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove executes black kingside castling and repositions pieces on rank 8"):
     val context = contextFromFen("r3k2r/8/8/8/8/8/8/4K3 b kq - 0 1")
-    val move = Move(sq("e8"), sq("g8"), MoveType.CastleKingside)
+    val move    = Move(sq("e8"), sq("g8"), MoveType.CastleKingside)
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -244,7 +246,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove revokes black castling rights when black rook moves from h8"):
     val context = contextFromFen("r3k2r/8/8/8/8/8/8/4K3 b kq - 0 1")
-    val move = Move(sq("h8"), sq("h7"))
+    val move    = Move(sq("h8"), sq("h7"))
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -253,7 +255,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove revokes black queenside castling right when black rook moves from a8"):
     val context = contextFromFen("r3k2r/8/8/8/8/8/8/4K3 b kq - 0 1")
-    val move = Move(sq("a8"), sq("a7"))
+    val move    = Move(sq("a8"), sq("a7"))
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -262,7 +264,7 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("applyMove revokes black kingside castling right when rook on h8 is captured"):
     val context = contextFromFen("4k2r/8/8/8/8/8/8/4K2R w Kk - 0 1")
-    val move = Move(sq("h1"), sq("h8"), MoveType.Normal(isCapture = true))
+    val move    = Move(sq("h1"), sq("h8"), MoveType.Normal(isCapture = true))
 
     val next = DefaultRules.applyMove(context)(move)
 
@@ -270,31 +272,25 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   test("candidateMoves creates all promotion move variants for black pawn"):
     val context = contextFromFen("4k3/8/8/8/8/8/p7/4K3 b - - 0 1")
-    val to = sq("a1")
+    val to      = sq("a1")
 
-    val pawnMoves = DefaultRules.candidateMoves(context)(sq("a2"))
+    val pawnMoves  = DefaultRules.candidateMoves(context)(sq("a2"))
     val promotions = pawnMoves.collect { case Move(_, `to`, MoveType.Promotion(piece)) => piece }
 
     promotions.toSet shouldBe Set(
       PromotionPiece.Queen,
       PromotionPiece.Rook,
       PromotionPiece.Bishop,
-      PromotionPiece.Knight
+      PromotionPiece.Knight,
     )
 
   test("applyMove promotion supports queen rook and bishop targets"):
     val base = contextFromFen("4k3/P7/8/8/8/8/8/4K3 w - - 0 1")
 
-    val queen = DefaultRules.applyMove(base)(Move(sq("a7"), sq("a8"), MoveType.Promotion(PromotionPiece.Queen)))
-    val rook = DefaultRules.applyMove(base)(Move(sq("a7"), sq("a8"), MoveType.Promotion(PromotionPiece.Rook)))
+    val queen  = DefaultRules.applyMove(base)(Move(sq("a7"), sq("a8"), MoveType.Promotion(PromotionPiece.Queen)))
+    val rook   = DefaultRules.applyMove(base)(Move(sq("a7"), sq("a8"), MoveType.Promotion(PromotionPiece.Rook)))
     val bishop = DefaultRules.applyMove(base)(Move(sq("a7"), sq("a8"), MoveType.Promotion(PromotionPiece.Bishop)))
 
     queen.board.pieceAt(sq("a8")) shouldBe Some(Piece(Color.White, PieceType.Queen))
     rook.board.pieceAt(sq("a8")) shouldBe Some(Piece(Color.White, PieceType.Rook))
     bishop.board.pieceAt(sq("a8")) shouldBe Some(Piece(Color.White, PieceType.Bishop))
-
-
-
-
-
-

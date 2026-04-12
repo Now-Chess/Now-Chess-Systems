@@ -1,6 +1,6 @@
 package de.nowchess.chess.command
 
-import de.nowchess.api.board.{Square, File, Rank}
+import de.nowchess.api.board.{File, Rank, Square}
 import de.nowchess.api.game.GameContext
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
@@ -21,7 +21,7 @@ class MoveCommandTest extends AnyFunSuite with Matchers:
     val executable = MoveCommand(
       from = sq(File.E, Rank.R2),
       to = sq(File.E, Rank.R4),
-      moveResult = Some(MoveResult.Successful(GameContext.initial, None))
+      moveResult = Some(MoveResult.Successful(GameContext.initial, None)),
     )
     executable.execute() shouldBe true
 
@@ -29,7 +29,7 @@ class MoveCommandTest extends AnyFunSuite with Matchers:
       from = sq(File.E, Rank.R2),
       to = sq(File.E, Rank.R4),
       moveResult = Some(MoveResult.Successful(GameContext.initial, None)),
-      previousContext = Some(GameContext.initial)
+      previousContext = Some(GameContext.initial),
     )
     undoable.undo() shouldBe true
 
@@ -39,7 +39,7 @@ class MoveCommandTest extends AnyFunSuite with Matchers:
     val result = MoveResult.Successful(GameContext.initial, None)
     val cmd2 = cmd1.copy(
       moveResult = Some(result),
-      previousContext = Some(GameContext.initial)
+      previousContext = Some(GameContext.initial),
     )
 
     cmd1.moveResult shouldBe None
@@ -52,14 +52,14 @@ class MoveCommandTest extends AnyFunSuite with Matchers:
       from = sq(File.E, Rank.R2),
       to = sq(File.E, Rank.R4),
       moveResult = None,
-      previousContext = None
+      previousContext = None,
     )
 
     val eq2 = MoveCommand(
       from = sq(File.E, Rank.R2),
       to = sq(File.E, Rank.R4),
       moveResult = None,
-      previousContext = None
+      previousContext = None,
     )
 
     eq1 shouldBe eq2

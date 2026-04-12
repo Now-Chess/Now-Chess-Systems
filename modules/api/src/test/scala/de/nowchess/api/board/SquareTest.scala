@@ -16,7 +16,7 @@ class SquareTest extends AnyFunSuite with Matchers:
       "a1" -> Square(File.A, Rank.R1),
       "e4" -> Square(File.E, Rank.R4),
       "h8" -> Square(File.H, Rank.R8),
-      "E4" -> Square(File.E, Rank.R4)
+      "E4" -> Square(File.E, Rank.R4),
     )
     expected.foreach { case (raw, sq) =>
       Square.fromAlgebraic(raw) shouldBe Some(sq)
@@ -34,4 +34,3 @@ class SquareTest extends AnyFunSuite with Matchers:
     Square(File.A, Rank.R1).offset(-1, 0) shouldBe None
     Square(File.H, Rank.R8).offset(0, 1) shouldBe None
   }
-

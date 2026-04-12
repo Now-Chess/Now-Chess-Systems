@@ -3,13 +3,12 @@ package de.nowchess.ui.gui
 import scalafx.application.Platform
 import scalafx.scene.control.Alert
 import scalafx.scene.control.Alert.AlertType
-import de.nowchess.chess.observer.{Observer, GameEvent, *}
+import de.nowchess.chess.observer.{GameEvent, Observer, *}
 import de.nowchess.api.board.Board
 
-/** GUI Observer that implements the Observer pattern.
- *  Receives game events from GameEngine and updates the ScalaFX UI.
- *  All UI updates must be done on the JavaFX Application Thread.
- */
+/** GUI Observer that implements the Observer pattern. Receives game events from GameEngine and updates the ScalaFX UI.
+  * All UI updates must be done on the JavaFX Application Thread.
+  */
 class GUIObserver(private val boardView: ChessBoardView) extends Observer:
 
   override def onGameEvent(event: GameEvent): Unit =
@@ -60,8 +59,7 @@ class GUIObserver(private val boardView: ChessBoardView) extends Observer:
           boardView.updateBoard(e.context.board, e.context.turn)
           if e.capturedPiece.isDefined then
             boardView.showMessage(s"↷ Redo: ${e.pgnNotation} — Captured: ${e.capturedPiece.get}")
-          else
-            boardView.showMessage(s"↷ Redo: ${e.pgnNotation}")
+          else boardView.showMessage(s"↷ Redo: ${e.pgnNotation}")
           boardView.updateUndoRedoButtons()
 
         case e: PgnLoadedEvent =>

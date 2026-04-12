@@ -10,24 +10,30 @@ enum PromotionPiece:
 enum MoveType:
   /** A normal move or capture with no special rule. */
   case Normal(isCapture: Boolean = false)
+
   /** Kingside castling (O-O). */
   case CastleKingside
+
   /** Queenside castling (O-O-O). */
   case CastleQueenside
+
   /** En-passant pawn capture. */
   case EnPassant
+
   /** Pawn promotion; carries the chosen promotion piece. */
   case Promotion(piece: PromotionPiece)
 
-/**
- * A half-move (ply) in a chess game.
- *
- * @param from     origin square
- * @param to       destination square
- * @param moveType special semantics; defaults to Normal
- */
+/** A half-move (ply) in a chess game.
+  *
+  * @param from
+  *   origin square
+  * @param to
+  *   destination square
+  * @param moveType
+  *   special semantics; defaults to Normal
+  */
 final case class Move(
-  from: Square,
-  to: Square,
-  moveType: MoveType = MoveType.Normal()
+    from: Square,
+    to: Square,
+    moveType: MoveType = MoveType.Normal(),
 )

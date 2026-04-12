@@ -3,21 +3,19 @@ package de.nowchess.chess.command
 /** Manages command execution and history for undo/redo support. */
 class CommandInvoker:
   private val executedCommands = scala.collection.mutable.ListBuffer[Command]()
+  @SuppressWarnings(Array("DisableSyntax.var"))
   private var currentIndex = -1
 
-  /** Execute a command and add it to history.
-   *  Discards any redo history if not at the end of the stack.
-   */
+  /** Execute a command and add it to history. Discards any redo history if not at the end of the stack.
+    */
   def execute(command: Command): Boolean = synchronized {
     if command.execute() then
       // Remove any commands after current index (redo stack is discarded)
-      while currentIndex < executedCommands.size - 1 do
-        executedCommands.remove(executedCommands.size - 1)
+      while currentIndex < executedCommands.size - 1 do executedCommands.remove(executedCommands.size - 1)
       executedCommands += command
       currentIndex += 1
       true
-    else
-      false
+    else false
   }
 
   /** Undo the last executed command if possible. */
@@ -27,10 +25,8 @@ class CommandInvoker:
       if command.undo() then
         currentIndex -= 1
         true
-      else
-        false
-    else
-      false
+      else false
+    else false
   }
 
   /** Redo the next command in history if available. */
@@ -40,10 +36,8 @@ class CommandInvoker:
       if command.execute() then
         currentIndex += 1
         true
-      else
-        false
-    else
-      false
+      else false
+    else false
   }
 
   /** Get the history of all executed commands. */

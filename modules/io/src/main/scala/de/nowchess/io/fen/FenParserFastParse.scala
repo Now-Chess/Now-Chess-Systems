@@ -13,7 +13,7 @@ object FenParserFastParse extends GameContextImport:
 
   private def pieceChar(using P[Any]): P[Piece] =
     CharIn("prnbqkPRNBQK").!.map { s =>
-      val c = s.head
+      val c     = s.head
       val color = if c.isUpper then Color.White else Color.Black
       Piece(color, charToPieceType(c.toLower))
     }
@@ -39,13 +39,13 @@ object FenParserFastParse extends GameContextImport:
 
   private def boardParser(using P[Any]): P[Board] =
     (rankParser(Rank.R8) ~ sep ~
-     rankParser(Rank.R7) ~ sep ~
-     rankParser(Rank.R6) ~ sep ~
-     rankParser(Rank.R5) ~ sep ~
-     rankParser(Rank.R4) ~ sep ~
-     rankParser(Rank.R3) ~ sep ~
-     rankParser(Rank.R2) ~ sep ~
-     rankParser(Rank.R1)).map { case (r8, r7, r6, r5, r4, r3, r2, r1) =>
+      rankParser(Rank.R7) ~ sep ~
+      rankParser(Rank.R6) ~ sep ~
+      rankParser(Rank.R5) ~ sep ~
+      rankParser(Rank.R4) ~ sep ~
+      rankParser(Rank.R3) ~ sep ~
+      rankParser(Rank.R2) ~ sep ~
+      rankParser(Rank.R1)).map { case (r8, r7, r6, r5, r4, r3, r2, r1) =>
       Board((r8 ++ r7 ++ r6 ++ r5 ++ r4 ++ r3 ++ r2 ++ r1).toMap)
     }
 
@@ -61,20 +61,20 @@ object FenParserFastParse extends GameContextImport:
 
   private def castlingParser(using P[Any]): P[CastlingRights] =
     LiteralStr("-").map(_ => CastlingRights.None) |
-    CharsWhileIn("KQkq").!.map { s =>
-      CastlingRights(
-        whiteKingSide  = s.contains('K'),
-        whiteQueenSide = s.contains('Q'),
-        blackKingSide  = s.contains('k'),
-        blackQueenSide = s.contains('q')
-      )
-    }
+      CharsWhileIn("KQkq").!.map { s =>
+        CastlingRights(
+          whiteKingSide = s.contains('K'),
+          whiteQueenSide = s.contains('Q'),
+          blackKingSide = s.contains('k'),
+          blackQueenSide = s.contains('q'),
+        )
+      }
 
   // ── En passant parser ────────────────────────────────────────────────────
 
   private def enPassantParser(using P[Any]): P[Option[Square]] =
     LiteralStr("-").map(_ => Option.empty[Square]) |
-    (CharIn("a-h") ~ CharIn("1-8")).!.map(s => Square.fromAlgebraic(s))
+      (CharIn("a-h") ~ CharIn("1-8")).!.map(s => Square.fromAlgebraic(s))
 
   // ── Clock parser ─────────────────────────────────────────────────────────
 
@@ -89,15 +89,15 @@ object FenParserFastParse extends GameContextImport:
 
   private def fenParser(using P[Any]): P[GameContext] =
     (boardParser ~ sp ~ colorParser ~ sp ~ castlingParser ~ sp ~
-     enPassantParser ~ sp ~ clockParser ~ sp ~ clockParser ~ End).map {
+      enPassantParser ~ sp ~ clockParser ~ sp ~ clockParser ~ End).map {
       case (board, color, castling, ep, halfMove, _) =>
         GameContext(
-          board           = board,
-          turn            = color,
-          castlingRights  = castling,
+          board = board,
+          turn = color,
+          castlingRights = castling,
           enPassantSquare = ep,
-          halfMoveClock   = halfMove,
-          moves           = List.empty
+          halfMoveClock = halfMove,
+          moves = List.empty,
         )
     }
 

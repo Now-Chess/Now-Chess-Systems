@@ -1,6 +1,6 @@
 package de.nowchess.chess.engine
 
-import de.nowchess.api.board.{Color, File, Rank, Square, Piece}
+import de.nowchess.api.board.{Color, File, Piece, Rank, Square}
 import de.nowchess.api.game.GameContext
 import de.nowchess.chess.observer.*
 import de.nowchess.io.fen.FenParser
@@ -13,7 +13,7 @@ class GameEngineScenarioTest extends AnyFunSuite with Matchers:
   // ── Observer wiring ────────────────────────────────────────────
 
   test("observer subscribe and unsubscribe behavior"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
     engine.processUserInput("e2e4")
@@ -56,28 +56,28 @@ class GameEngineScenarioTest extends AnyFunSuite with Matchers:
   // ── Invalid moves (minimal) ────────────────────────────────────
 
   test("invalid move forms trigger InvalidMoveEvent and keep turn where relevant"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
     engine.processUserInput("h3h4")
 
     observer.hasEvent[InvalidMoveEvent] shouldBe true
-    engine.turn shouldBe Color.White  // turn unchanged
+    engine.turn shouldBe Color.White // turn unchanged
 
-    engine.processUserInput("e7e5")  // try to move black pawn on white's turn
+    engine.processUserInput("e7e5") // try to move black pawn on white's turn
 
     observer.hasEvent[InvalidMoveEvent] shouldBe true
 
     engine.processUserInput("e2e4")
-    engine.processUserInput("e5e4")  // pawn backward
+    engine.processUserInput("e5e4") // pawn backward
 
     observer.hasEvent[InvalidMoveEvent] shouldBe true
 
   // ── Undo/Redo ────────────────────────────────────────────────
 
   test("undo redo success and empty-history failures"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
@@ -103,7 +103,7 @@ class GameEngineScenarioTest extends AnyFunSuite with Matchers:
   // ── Fifty-move rule ────────────────────────────────────────────
 
   test("fifty-move event and draw claim success/failure"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 

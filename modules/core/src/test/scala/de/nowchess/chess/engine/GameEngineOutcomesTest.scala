@@ -10,7 +10,7 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
   // ── Checkmate ───────────────────────────────────────────────────
 
   test("checkmate ends game with CheckmateEvent"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
@@ -24,7 +24,7 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
     observer.hasEvent[CheckmateEvent] shouldBe true
 
   test("checkmate with white winner"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
@@ -45,20 +45,29 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
   // ── Stalemate ───────────────────────────────────────────────────
 
   test("stalemate ends game with StalemateEvent"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
     val moves = List(
-      "e2e3", "a7a5",
-      "d1h5", "a8a6",
-      "h5a5", "h7h5",
-      "h2h4", "a6h6",
-      "a5c7", "f7f6",
-      "c7d7", "e8f7",
-      "d7b7", "d8d3",
-      "b7b8", "d3h7",
-      "b8c8", "f7g6"
+      "e2e3",
+      "a7a5",
+      "d1h5",
+      "a8a6",
+      "h5a5",
+      "h7h5",
+      "h2h4",
+      "a6h6",
+      "a5c7",
+      "f7f6",
+      "c7d7",
+      "e8f7",
+      "d7b7",
+      "d8d3",
+      "b7b8",
+      "d3h7",
+      "b8c8",
+      "f7g6",
     )
     moves.foreach(engine.processUserInput)
     observer.clear()
@@ -68,21 +77,30 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
     observer.hasEvent[StalemateEvent] shouldBe true
 
   test("stalemate when king has no moves and no pieces"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
     val moves = List(
-      "e2e3", "a7a5",
-      "d1h5", "a8a6",
-      "h5a5", "h7h5",
-      "h2h4", "a6h6",
-      "a5c7", "f7f6",
-      "c7d7", "e8f7",
-      "d7b7", "d8d3",
-      "b7b8", "d3h7",
-      "b8c8", "f7g6",
-      "c8e6"
+      "e2e3",
+      "a7a5",
+      "d1h5",
+      "a8a6",
+      "h5a5",
+      "h7h5",
+      "h2h4",
+      "a6h6",
+      "a5c7",
+      "f7f6",
+      "c7d7",
+      "e8f7",
+      "d7b7",
+      "d8d3",
+      "b7b8",
+      "d3h7",
+      "b8c8",
+      "f7g6",
+      "c8e6",
     )
 
     moves.foreach(engine.processUserInput)
@@ -93,7 +111,7 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
   // ── Check detection ────────────────────────────────────────────
 
   test("check detected after move puts king in check"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
@@ -108,7 +126,7 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
     observer.hasEvent[CheckDetectedEvent] shouldBe true
 
   test("check by knight"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
@@ -122,7 +140,7 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
   // ── Fifty-move rule ────────────────────────────────────────────
 
   test("fifty-move rule triggers when half-move clock reaches 100"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
@@ -155,7 +173,7 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
   // ── Draw claim ────────────────────────────────────────────────
 
   test("draw can be claimed when fifty-move rule is available"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
@@ -167,7 +185,7 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
     observer.hasEvent[DrawClaimedEvent] shouldBe true
 
   test("draw cannot be claimed when not available"):
-    val engine = EngineTestHelpers.makeEngine()
+    val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 

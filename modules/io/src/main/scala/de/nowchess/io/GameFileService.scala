@@ -6,10 +6,9 @@ import java.nio.charset.StandardCharsets
 import scala.util.Try
 
 /** Service for persisting and loading game states to/from disk.
- *
- *  Abstracts file I/O operations away from the UI layer.
- *  Handles both reading and writing game files.
- */
+  *
+  * Abstracts file I/O operations away from the UI layer. Handles both reading and writing game files.
+  */
 trait GameFileService:
   def saveGameToFile(context: GameContext, path: Path, exporter: GameContextExport): Either[String, Unit]
   def loadGameFromFile(path: Path, importer: GameContextImport): Either[String, GameContext]
@@ -25,7 +24,7 @@ object FileSystemGameService extends GameFileService:
       ()
     }.fold(
       ex => Left(s"Failed to save file: ${ex.getMessage}"),
-      _ => Right(())
+      _ => Right(()),
     )
 
   /** Load a game context from a file using the specified importer. */
@@ -35,5 +34,5 @@ object FileSystemGameService extends GameFileService:
       importer.importGameContext(json)
     }.fold(
       ex => Left(s"Failed to load file: ${ex.getMessage}"),
-      result => result
+      result => result,
     )

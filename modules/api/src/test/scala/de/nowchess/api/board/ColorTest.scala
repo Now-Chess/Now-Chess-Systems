@@ -8,7 +8,7 @@ class ColorTest extends AnyFunSuite with Matchers:
   test("Color values expose opposite and label consistently"):
     val cases = List(
       (Color.White, Color.Black, "White"),
-      (Color.Black, Color.White, "Black")
+      (Color.Black, Color.White, "Black"),
     )
 
     cases.foreach { (color, opposite, label) =>

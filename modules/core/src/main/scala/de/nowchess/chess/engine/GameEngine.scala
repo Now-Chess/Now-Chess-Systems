@@ -6,45 +6,46 @@ import de.nowchess.api.game.GameContext
 import de.nowchess.chess.controller.Parser
 import de.nowchess.chess.observer.*
 import de.nowchess.chess.command.{CommandInvoker, MoveCommand, MoveResult}
-import de.nowchess.io.{GameContextImport, GameContextExport}
+import de.nowchess.io.{GameContextExport, GameContextImport}
 import de.nowchess.rules.RuleSet
 import de.nowchess.rules.sets.DefaultRules
 
-/** Pure game engine that manages game state and notifies observers of state changes.
- *  All rule queries delegate to the injected RuleSet.
- *  All user interactions go through Commands; state changes are broadcast via GameEvents.
- */
+/** Pure game engine that manages game state and notifies observers of state changes. All rule queries delegate to the
+  * injected RuleSet. All user interactions go through Commands; state changes are broadcast via GameEvents.
+  */
 class GameEngine(
-  val initialContext: GameContext = GameContext.initial,
-  val ruleSet: RuleSet = DefaultRules
+    val initialContext: GameContext = GameContext.initial,
+    val ruleSet: RuleSet = DefaultRules,
 ) extends Observable:
+  @SuppressWarnings(Array("DisableSyntax.var"))
   private var currentContext: GameContext = initialContext
-  private val invoker = new CommandInvoker()
+  private val invoker                     = new CommandInvoker()
 
   /** Pending promotion: the Move that triggered it (from/to only, moveType filled in later). */
   private case class PendingPromotion(from: Square, to: Square, contextBefore: GameContext)
+  @SuppressWarnings(Array("DisableSyntax.var"))
   private var pendingPromotion: Option[PendingPromotion] = None
 
   /** True if a pawn promotion move is pending and needs a piece choice. */
-  def isPendingPromotion: Boolean = synchronized { pendingPromotion.isDefined }
+  def isPendingPromotion: Boolean = synchronized(pendingPromotion.isDefined)
 
   // Synchronized accessors for current state
-  def board: Board   = synchronized { currentContext.board }
-  def turn: Color    = synchronized { currentContext.turn }
-  def context: GameContext = synchronized { currentContext }
+  def board: Board         = synchronized(currentContext.board)
+  def turn: Color          = synchronized(currentContext.turn)
+  def context: GameContext = synchronized(currentContext)
 
   /** Check if undo is available. */
-  def canUndo: Boolean = synchronized { invoker.canUndo }
+  def canUndo: Boolean = synchronized(invoker.canUndo)
 
   /** Check if redo is available. */
-  def canRedo: Boolean = synchronized { invoker.canRedo }
+  def canRedo: Boolean = synchronized(invoker.canRedo)
 
   /** Get the command history for inspection (testing/debugging). */
-  def commandHistory: List[de.nowchess.chess.command.Command] = synchronized { invoker.history }
+  def commandHistory: List[de.nowchess.chess.command.Command] = synchronized(invoker.history)
 
-  /** Process a raw move input string and update game state if valid.
-   *  Notifies all observers of the outcome via GameEvent.
-   */
+  /** Process a raw move input string and update game state if valid. Notifies all observers of the outcome via
+    * GameEvent.
+    */
   def processUserInput(rawInput: String): Unit = synchronized {
     val trimmed = rawInput.trim.toLowerCase
     trimmed match
@@ -62,10 +63,12 @@ class GameEngine(
           invoker.clear()
           notifyObservers(DrawClaimedEvent(currentContext))
         else
-          notifyObservers(InvalidMoveEvent(
-            currentContext,
-            "Draw cannot be claimed: the 50-move rule has not been triggered."
-          ))
+          notifyObservers(
+            InvalidMoveEvent(
+              currentContext,
+              "Draw cannot be claimed: the 50-move rule has not been triggered.",
+            ),
+          )
 
       case "" =>
         notifyObservers(InvalidMoveEvent(currentContext, "Please enter a valid move or command."))
@@ -73,10 +76,12 @@ class GameEngine(
       case moveInput =>
         Parser.parseMove(moveInput) match
           case None =>
-            notifyObservers(InvalidMoveEvent(
-              currentContext,
-              s"Invalid move format '$moveInput'. Use coordinate notation, e.g. e2e4."
-            ))
+            notifyObservers(
+              InvalidMoveEvent(
+                currentContext,
+                s"Invalid move format '$moveInput'. Use coordinate notation, e.g. e2e4.",
+              ),
+            )
           case Some((from, to)) =>
             handleParsedMove(from, to)
   }
@@ -108,9 +113,8 @@ class GameEngine(
       to.rank.ordinal == promoRank
     }
 
-  /** Apply a player's promotion piece choice.
-   *  Must only be called when isPendingPromotion is true.
-   */
+  /** Apply a player's promotion piece choice. Must only be called when isPendingPromotion is true.
+    */
   def completePromotion(piece: PromotionPiece): Unit = synchronized {
     pendingPromotion match
       case None =>
@@ -120,23 +124,19 @@ class GameEngine(
         val move = Move(pending.from, pending.to, MoveType.Promotion(piece))
         // Verify it's actually legal
         val legal = ruleSet.legalMoves(currentContext)(pending.from)
-        if legal.contains(move) then
-          executeMove(move)
-        else
-          notifyObservers(InvalidMoveEvent(currentContext, "Error completing promotion."))
+        if legal.contains(move) then executeMove(move)
+        else notifyObservers(InvalidMoveEvent(currentContext, "Error completing promotion."))
   }
 
   /** Undo the last move. */
-  def undo(): Unit = synchronized { performUndo() }
+  def undo(): Unit = synchronized(performUndo())
 
   /** Redo the last undone move. */
-  def redo(): Unit = synchronized { performRedo() }
+  def redo(): Unit = synchronized(performRedo())
 
-  /** Load a game using the provided importer.
-   *  If the imported context has moves, they are replayed through the command system.
-   *  Otherwise, the position is set directly.
-   *  Notifies observers with PgnLoadedEvent on success.
-   */
+  /** Load a game using the provided importer. If the imported context has moves, they are replayed through the command
+    * system. Otherwise, the position is set directly. Notifies observers with PgnLoadedEvent on success.
+    */
   def loadGame(importer: GameContextImport, input: String): Either[String, Unit] = synchronized {
     importer.importGameContext(input) match
       case Left(err) => Left(err)
@@ -155,29 +155,24 @@ class GameEngine(
     if ctx.moves.isEmpty then
       currentContext = ctx
       Right(())
-    else
-      replayMoves(ctx.moves, savedContext)
+    else replayMoves(ctx.moves, savedContext)
 
   private[engine] def replayMoves(moves: List[Move], savedContext: GameContext): Either[String, Unit] =
-    var error: Option[String] = None
-    moves.foreach: move =>
-      if error.isEmpty then
-        handleParsedMove(move.from, move.to)
+    val result = moves.foldLeft[Either[String, Unit]](Right(())) { (acc, move) =>
+      acc.flatMap(_ => applyReplayMove(move))
+    }
+    result.left.foreach(_ => currentContext = savedContext)
+    result
 
-        move.moveType match {
-          case MoveType.Promotion(pp) =>
-            if pendingPromotion.isDefined then
-              completePromotion(pp)
-            else
-              error = Some(s"Promotion required for move ${move.from}${move.to}")
-          case _ => ()
-        }
-    error match
-      case Some(err) =>
-        currentContext = savedContext
-        Left(err)
-      case None =>
+  private def applyReplayMove(move: Move): Either[String, Unit] =
+    handleParsedMove(move.from, move.to)
+    move.moveType match
+      case MoveType.Promotion(pp) if pendingPromotion.isDefined =>
+        completePromotion(pp)
         Right(())
+      case MoveType.Promotion(_) =>
+        Left(s"Promotion required for move ${move.from}${move.to}")
+      case _ => Right(())
 
   /** Export the current game context using the provided exporter. */
   def exportGame(exporter: GameContextExport): String = synchronized {
@@ -203,25 +198,27 @@ class GameEngine(
 
   private def executeMove(move: Move): Unit =
     val contextBefore = currentContext
-    val nextContext = ruleSet.applyMove(currentContext)(move)
-    val captured = computeCaptured(currentContext, move)
+    val nextContext   = ruleSet.applyMove(currentContext)(move)
+    val captured      = computeCaptured(currentContext, move)
 
     val cmd = MoveCommand(
       from = move.from,
       to = move.to,
       moveResult = Some(MoveResult.Successful(nextContext, captured)),
       previousContext = Some(contextBefore),
-      notation = translateMoveToNotation(move, contextBefore.board)
+      notation = translateMoveToNotation(move, contextBefore.board),
     )
     invoker.execute(cmd)
     currentContext = nextContext
 
-    notifyObservers(MoveExecutedEvent(
-      currentContext,
-      move.from.toString,
-      move.to.toString,
-      captured.map(c => s"${c.color.label} ${c.pieceType.label}")
-    ))
+    notifyObservers(
+      MoveExecutedEvent(
+        currentContext,
+        move.from.toString,
+        move.to.toString,
+        captured.map(c => s"${c.color.label} ${c.pieceType.label}"),
+      ),
+    )
 
     if ruleSet.isCheckmate(currentContext) then
       val winner = currentContext.turn.opposite
@@ -232,18 +229,16 @@ class GameEngine(
       notifyObservers(StalemateEvent(currentContext))
       invoker.clear()
       currentContext = GameContext.initial
-    else if ruleSet.isCheck(currentContext) then
-      notifyObservers(CheckDetectedEvent(currentContext))
+    else if ruleSet.isCheck(currentContext) then notifyObservers(CheckDetectedEvent(currentContext))
 
-    if currentContext.halfMoveClock >= 100 then
-      notifyObservers(FiftyMoveRuleAvailableEvent(currentContext))
+    if currentContext.halfMoveClock >= 100 then notifyObservers(FiftyMoveRuleAvailableEvent(currentContext))
 
   private def translateMoveToNotation(move: Move, boardBefore: Board): String =
     move.moveType match
-      case MoveType.CastleKingside  => "O-O"
-      case MoveType.CastleQueenside => "O-O-O"
-      case MoveType.EnPassant   => enPassantNotation(move)
-      case MoveType.Promotion(pp) => promotionNotation(move, pp)
+      case MoveType.CastleKingside    => "O-O"
+      case MoveType.CastleQueenside   => "O-O-O"
+      case MoveType.EnPassant         => enPassantNotation(move)
+      case MoveType.Promotion(pp)     => promotionNotation(move, pp)
       case MoveType.Normal(isCapture) => normalMoveNotation(move, boardBefore, isCapture)
 
   private def enPassantNotation(move: Move): String =
@@ -295,8 +290,7 @@ class GameEngine(
           moveCmd.previousContext.foreach(currentContext = _)
           invoker.undo()
           notifyObservers(MoveUndoneEvent(currentContext, moveCmd.notation))
-    else
-      notifyObservers(InvalidMoveEvent(currentContext, "Nothing to undo."))
+    else notifyObservers(InvalidMoveEvent(currentContext, "Nothing to undo."))
 
   private def performRedo(): Unit =
     if invoker.canRedo then
@@ -307,12 +301,13 @@ class GameEngine(
             currentContext = nextCtx
             invoker.redo()
             val capturedDesc = cap.map(c => s"${c.color.label} ${c.pieceType.label}")
-            notifyObservers(MoveRedoneEvent(
-              currentContext,
-              moveCmd.notation,
-              moveCmd.from.toString,
-              moveCmd.to.toString,
-              capturedDesc
-            ))
-    else
-      notifyObservers(InvalidMoveEvent(currentContext, "Nothing to redo."))
+            notifyObservers(
+              MoveRedoneEvent(
+                currentContext,
+                moveCmd.notation,
+                moveCmd.from.toString,
+                moveCmd.to.toString,
+                capturedDesc,
+              ),
+            )
+    else notifyObservers(InvalidMoveEvent(currentContext, "Nothing to redo."))

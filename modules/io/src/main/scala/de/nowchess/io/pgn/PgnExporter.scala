@@ -11,39 +11,38 @@ object PgnExporter extends GameContextExport:
   /** Export a GameContext to PGN format. */
   def exportGameContext(context: GameContext): String =
     val headers = Map(
-      "Event" -> "?",
-      "White" -> "?",
-      "Black" -> "?",
-      "Result" -> "*"
+      "Event"  -> "?",
+      "White"  -> "?",
+      "Black"  -> "?",
+      "Result" -> "*",
     )
 
     exportGame(headers, context.moves)
 
   /** Export a game with headers and moves to PGN format. */
   def exportGame(headers: Map[String, String], moves: List[Move]): String =
-    val headerLines = headers.map { case (key, value) =>
-      s"""[$key "$value"]"""
-    }.mkString("\n")
-
-    val moveText = if moves.isEmpty then ""
-    else
-      var ctx = GameContext.initial
-      val sanMoves = moves.map { move =>
-        val algebraic = moveToAlgebraic(move, ctx.board)
-        ctx = DefaultRules.applyMove(ctx)(move)
-        algebraic
+    val headerLines = headers
+      .map { case (key, value) =>
+        s"""[$key "$value"]"""
       }
+      .mkString("\n")
 
-      val groupedMoves = sanMoves.zipWithIndex.groupBy(_._2 / 2)
-      val moveLines = for (moveNumber, movePairs) <- groupedMoves.toList.sortBy(_._1) yield
-        val moveNum = moveNumber + 1
-        val whiteMoveStr = movePairs.find(_._2 % 2 == 0).map(_._1).getOrElse("")
-        val blackMoveStr = movePairs.find(_._2 % 2 == 1).map(_._1).getOrElse("")
-        if blackMoveStr.isEmpty then s"$moveNum. $whiteMoveStr"
-        else s"$moveNum. $whiteMoveStr $blackMoveStr"
+    val moveText =
+      if moves.isEmpty then ""
+      else
+        val contexts = moves.scanLeft(GameContext.initial)((ctx, move) => DefaultRules.applyMove(ctx)(move))
+        val sanMoves = moves.zip(contexts).map { case (move, ctx) => moveToAlgebraic(move, ctx.board) }
 
-      val termination = headers.getOrElse("Result", "*")
-      moveLines.mkString(" ") + s" $termination"
+        val groupedMoves = sanMoves.zipWithIndex.groupBy(_._2 / 2)
+        val moveLines = for (moveNumber, movePairs) <- groupedMoves.toList.sortBy(_._1) yield
+          val moveNum      = moveNumber + 1
+          val whiteMoveStr = movePairs.find(_._2 % 2 == 0).map(_._1).getOrElse("")
+          val blackMoveStr = movePairs.find(_._2 % 2 == 1).map(_._1).getOrElse("")
+          if blackMoveStr.isEmpty then s"$moveNum. $whiteMoveStr"
+          else s"$moveNum. $whiteMoveStr $blackMoveStr"
+
+        val termination = headers.getOrElse("Result", "*")
+        moveLines.mkString(" ") + s" $termination"
 
     if headerLines.isEmpty then moveText
     else if moveText.isEmpty then headerLines
@@ -55,7 +54,7 @@ object PgnExporter extends GameContextExport:
       case MoveType.CastleKingside  => "O-O"
       case MoveType.CastleQueenside => "O-O-O"
       case MoveType.EnPassant       => s"${move.from.file.toString.toLowerCase}x${move.to}"
-      case MoveType.Promotion(pp)   =>
+      case MoveType.Promotion(pp) =>
         val promSuffix = pp match
           case PromotionPiece.Queen  => "=Q"
           case PromotionPiece.Rook   => "=R"
@@ -76,5 +75,3 @@ object PgnExporter extends GameContextExport:
           case PieceType.Rook   => s"R$capStr$dest"
           case PieceType.Queen  => s"Q$capStr$dest"
           case PieceType.King   => s"K$capStr$dest"
-
-

@@ -27,7 +27,7 @@ object EngineTestHelpers:
     private val _events = mutable.ListBuffer[GameEvent]()
 
     def events: mutable.ListBuffer[GameEvent] = _events
-    def eventCount: Int = _events.length
+    def eventCount: Int                       = _events.length
     def hasEvent[T <: GameEvent](implicit ct: scala.reflect.ClassTag[T]): Boolean =
       _events.exists(ct.runtimeClass.isInstance(_))
     def getEvent[T <: GameEvent](implicit ct: scala.reflect.ClassTag[T]): Option[T] =

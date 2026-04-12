@@ -17,37 +17,36 @@ import de.nowchess.chess.engine.GameEngine
 import de.nowchess.io.fen.{FenExporter, FenParser}
 import de.nowchess.io.pgn.{PgnExporter, PgnParser}
 import de.nowchess.io.json.{JsonExporter, JsonParser}
-import de.nowchess.io.{GameContextExport, GameContextImport, GameFileService, FileSystemGameService}
+import de.nowchess.io.{FileSystemGameService, GameContextExport, GameContextImport, GameFileService}
 import java.nio.file.Paths
 import scalafx.stage.FileChooser
 import scalafx.stage.FileChooser.ExtensionFilter
 
-/** ScalaFX chess board view that displays the game state.
- *  Uses chess sprites and color palette.
- *  Handles user interactions (clicks) and sends moves to GameEngine.
- */
+/** ScalaFX chess board view that displays the game state. Uses chess sprites and color palette. Handles user
+  * interactions (clicks) and sends moves to GameEngine.
+  */
 class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends BorderPane:
-  
-  private val squareSize = 70.0
+
+  private val squareSize          = 70.0
   private val comicSansFontFamily = "Comic Sans MS"
-  private val boardGrid = new GridPane()
+  private val boardGrid           = new GridPane()
   private val messageLabel = new Label {
     text = "Welcome!"
     font = Font.font(comicSansFontFamily, 16)
     padding = Insets(10)
   }
-  
-  private var currentBoard: Board = engine.board
-  private var currentTurn: Color = engine.turn
+
+  private var currentBoard: Board            = engine.board
+  private var currentTurn: Color             = engine.turn
   private var selectedSquare: Option[Square] = None
-  private val squareViews = scala.collection.mutable.Map[(Int, Int), StackPane]()
-  
+  private val squareViews                    = scala.collection.mutable.Map[(Int, Int), StackPane]()
+
   private var undoButton: Button = uninitialized
   private var redoButton: Button = uninitialized
 
   // Initialize UI
   initializeBoard()
-  
+
   top = new VBox {
     padding = Insets(10)
     spacing = 5
@@ -58,17 +57,17 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
         font = Font.font(comicSansFontFamily, 24)
         style = "-fx-font-weight: bold;"
       },
-      messageLabel
+      messageLabel,
     )
   }
-  
+
   center = new VBox {
     padding = Insets(20)
     alignment = Pos.Center
     style = s"-fx-background-color: ${PieceSprites.SquareColors.Border};"
     children = boardGrid
   }
-  
+
   bottom = new VBox {
     padding = Insets(10)
     spacing = 8
@@ -86,8 +85,7 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
               disable = !engine.canUndo
             }
             undoButton
-          },
-          {
+          }, {
             redoButton = new Button("Redo") {
               font = Font.font(comicSansFontFamily, 12)
               onAction = _ => if engine.canRedo then engine.redo()
@@ -100,7 +98,7 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
             font = Font.font(comicSansFontFamily, 12)
             onAction = _ => engine.reset()
             style = "-fx-background-radius: 8; -fx-background-color: #E1EAA9;"
-          }
+          },
         )
       },
       new HBox {
@@ -126,7 +124,7 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
             font = Font.font(comicSansFontFamily, 12)
             onAction = _ => doPgnImport()
             style = "-fx-background-radius: 8; -fx-background-color: #B9DAC4;"
-          }
+          },
         )
       },
       new HBox {
@@ -142,17 +140,17 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
             font = Font.font(comicSansFontFamily, 12)
             onAction = _ => doJsonImport()
             style = "-fx-background-radius: 8; -fx-background-color: #C4B9DA;"
-          }
+          },
         )
-      }
+      },
     )
   }
-  
+
   private def initializeBoard(): Unit =
     boardGrid.padding = Insets(5)
     boardGrid.hgap = 0
     boardGrid.vgap = 0
-    
+
     // Create 8x8 board with rank/file labels
     for
       rank <- 0 until 8
@@ -161,13 +159,13 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
       val square = createSquare(rank, file)
       squareViews((rank, file)) = square
       boardGrid.add(square, file, 7 - rank) // Flip rank for proper display
-    
+
     updateBoard(currentBoard, currentTurn)
-  
+
   private def createSquare(rank: Int, file: Int): StackPane =
-    val isWhite = (rank + file) % 2 == 0
+    val isWhite   = (rank + file) % 2 == 0
     val baseColor = if isWhite then PieceSprites.SquareColors.White else PieceSprites.SquareColors.Black
-    
+
     val bgRect = new Rectangle {
       width = squareSize
       height = squareSize
@@ -175,21 +173,20 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
       arcWidth = 8
       arcHeight = 8
     }
-    
+
     val square = new StackPane {
       children = Seq(bgRect)
       onMouseClicked = _ => handleSquareClick(rank, file)
       style = "-fx-cursor: hand;"
     }
-    
+
     square
-  
+
   private def handleSquareClick(rank: Int, file: Int): Unit =
-    if engine.isPendingPromotion then
-      return // Don't allow moves during promotion
-    
+    if engine.isPendingPromotion then return // Don't allow moves during promotion
+
     val clickedSquare = Square(File.values(file), Rank.values(rank))
-    
+
     selectedSquare match
       case None =>
         // First click - select piece if it belongs to current player
@@ -198,13 +195,14 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
             selectedSquare = Some(clickedSquare)
             highlightSquare(rank, file, PieceSprites.SquareColors.Selected)
 
-            val legalDests = engine.ruleSet.legalMoves(engine.context)(clickedSquare)
-               .collect { case move if move.from == clickedSquare => move.to }
+            val legalDests = engine.ruleSet
+              .legalMoves(engine.context)(clickedSquare)
+              .collect { case move if move.from == clickedSquare => move.to }
             legalDests.foreach { sq =>
-               highlightSquare(sq.rank.ordinal, sq.file.ordinal, PieceSprites.SquareColors.ValidMove)
+              highlightSquare(sq.rank.ordinal, sq.file.ordinal, PieceSprites.SquareColors.ValidMove)
             }
         }
-      
+
       case Some(fromSquare) =>
         // Second click - attempt move
         if clickedSquare == fromSquare then
@@ -216,21 +214,21 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
           val moveStr = s"${fromSquare}$clickedSquare"
           engine.processUserInput(moveStr)
           selectedSquare = None
-  
+
   def updateBoard(board: Board, turn: Color): Unit =
     currentBoard = board
     currentTurn = turn
     selectedSquare = None
-    
+
     // Update all squares
     for
       rank <- 0 until 8
       file <- 0 until 8
     do
       squareViews.get((rank, file)).foreach { stackPane =>
-        val isWhite = (rank + file) % 2 == 0
+        val isWhite   = (rank + file) % 2 == 0
         val baseColor = if isWhite then PieceSprites.SquareColors.White else PieceSprites.SquareColors.Black
-        
+
         val bgRect = new Rectangle {
           width = squareSize
           height = squareSize
@@ -238,16 +236,16 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
           arcWidth = 8
           arcHeight = 8
         }
-        
-        val square = Square(File.values(file), Rank.values(rank))
+
+        val square      = Square(File.values(file), Rank.values(rank))
         val pieceOption = board.pieceAt(square)
-        
+
         val children = pieceOption match
           case Some(piece) =>
             Seq(bgRect, PieceSprites.loadPieceImage(piece, squareSize * 0.8))
           case None =>
             Seq(bgRect)
-        
+
         stackPane.children = children
       }
 
@@ -266,20 +264,20 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
         arcWidth = 8
         arcHeight = 8
       }
-      
-      val square = Square(File.values(file), Rank.values(rank))
+
+      val square      = Square(File.values(file), Rank.values(rank))
       val pieceOption = currentBoard.pieceAt(square)
-      
+
       stackPane.children = pieceOption match
         case Some(piece) =>
           Seq(bgRect, PieceSprites.loadPieceImage(piece, squareSize * 0.8))
         case None =>
           Seq(bgRect)
     }
-  
+
   def showMessage(msg: String): Unit =
     messageLabel.text = msg
-  
+
   def showPromotionDialog(from: Square, to: Square): Unit =
     val choices = Seq("Queen", "Rook", "Bishop", "Knight")
     val dialog = new ChoiceDialog(defaultChoice = "Queen", choices = choices) {
@@ -288,14 +286,14 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
       headerText = "Choose promotion piece"
       contentText = "Promote to:"
     }
-    
+
     val result = dialog.showAndWait()
     result match
-      case Some("Queen") => engine.completePromotion(PromotionPiece.Queen)
-      case Some("Rook") => engine.completePromotion(PromotionPiece.Rook)
+      case Some("Queen")  => engine.completePromotion(PromotionPiece.Queen)
+      case Some("Rook")   => engine.completePromotion(PromotionPiece.Rook)
       case Some("Bishop") => engine.completePromotion(PromotionPiece.Bishop)
       case Some("Knight") => engine.completePromotion(PromotionPiece.Knight)
-      case _ => engine.completePromotion(PromotionPiece.Queen) // Default
+      case _              => engine.completePromotion(PromotionPiece.Queen) // Default
 
   private def doFenExport(): Unit =
     doExport(FenExporter, "FEN")
@@ -316,16 +314,16 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
       extensionFilters.add(new ExtensionFilter("JSON files (*.json)", "*.json"))
       extensionFilters.add(new ExtensionFilter("All files", "*.*"))
     }
-    
+
     val selectedFile = fileChooser.showSaveDialog(stage)
     if selectedFile != null then
       val result = FileSystemGameService.saveGameToFile(
         engine.context,
         selectedFile.toPath,
-        JsonExporter
+        JsonExporter,
       )
       result match
-        case Right(_) => showMessage(s"✓ Game saved to: ${selectedFile.getName}")
+        case Right(_)  => showMessage(s"✓ Game saved to: ${selectedFile.getName}")
         case Left(err) => showMessage(s"⚠️ Error saving file: $err")
 
   private def doJsonImport(): Unit =
@@ -334,12 +332,12 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
       extensionFilters.add(new ExtensionFilter("JSON files (*.json)", "*.json"))
       extensionFilters.add(new ExtensionFilter("All files", "*.*"))
     }
-    
+
     val selectedFile = fileChooser.showOpenDialog(stage)
     if selectedFile != null then
       val result = FileSystemGameService.loadGameFromFile(
         selectedFile.toPath,
-        JsonParser
+        JsonParser,
       )
       result match
         case Right(gameContext) =>
@@ -353,7 +351,7 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
     showCopyDialog(s"$formatName Export", exported)
   }
 
-  private def doImport(importer: GameContextImport, formatName: String): Unit = {
+  private def doImport(importer: GameContextImport, formatName: String): Unit =
     showInputDialog(s"$formatName Import", rows = 5).foreach { input =>
       importer.importGameContext(input) match
         case Right(gameContext) =>
@@ -362,7 +360,6 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
         case Left(err) =>
           showMessage(s"⚠️  $formatName Error: $err")
     }
-  }
 
   private def showCopyDialog(title: String, content: String): Unit =
     val area = new javafx.scene.control.TextArea(content)
@@ -386,7 +383,7 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
     dialog.getDialogPane.setContent(area)
     dialog.getDialogPane.getButtonTypes.addAll(
       javafx.scene.control.ButtonType.OK,
-      javafx.scene.control.ButtonType.CANCEL
+      javafx.scene.control.ButtonType.CANCEL,
     )
     dialog.setResultConverter { bt =>
       if bt == javafx.scene.control.ButtonType.OK then area.getText else null
@@ -394,4 +391,3 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
     dialog.initOwner(stage.delegate)
     val result = dialog.showAndWait()
     if result.isPresent && result.get != null && result.get.nonEmpty then Some(result.get) else None
-

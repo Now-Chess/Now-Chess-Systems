@@ -40,7 +40,7 @@ class JsonModelExtraTestSuite extends AnyFunSuite with Matchers:
       Some("White"),
       Some(JsonCastlingRights()),
       Some("e3"),
-      Some(5)
+      Some(5),
     )
     assert(gs.board.contains(Nil))
     assert(gs.halfMoveClock.contains(5))
@@ -88,7 +88,7 @@ class JsonModelExtraTestSuite extends AnyFunSuite with Matchers:
       Some(""),
       Some(Nil),
       Some(JsonCapturedPieces()),
-      Some("2026-04-08T00:00:00Z")
+      Some("2026-04-08T00:00:00Z"),
     )
     assert(record.metadata.nonEmpty)
     assert(record.timestamp.nonEmpty)
