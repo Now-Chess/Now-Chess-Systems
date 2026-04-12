@@ -16,7 +16,11 @@ import de.nowchess.chess.command.{MoveCommand, MoveResult}
 import de.nowchess.chess.engine.GameEngine
 import de.nowchess.io.fen.{FenExporter, FenParser}
 import de.nowchess.io.pgn.{PgnExporter, PgnParser}
-import de.nowchess.io.{GameContextExport, GameContextImport}
+import de.nowchess.io.json.{JsonExporter, JsonParser}
+import de.nowchess.io.{GameContextExport, GameContextImport, GameFileService, FileSystemGameService}
+import java.nio.file.Paths
+import scalafx.stage.FileChooser
+import scalafx.stage.FileChooser.ExtensionFilter
 
 /** ScalaFX chess board view that displays the game state.
  *  Uses chess sprites and color palette.
@@ -122,6 +126,22 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
             font = Font.font(comicSansFontFamily, 12)
             onAction = _ => doPgnImport()
             style = "-fx-background-radius: 8; -fx-background-color: #B9DAC4;"
+          }
+        )
+      },
+      new HBox {
+        spacing = 10
+        alignment = Pos.Center
+        children = Seq(
+          new Button("JSON Export") {
+            font = Font.font(comicSansFontFamily, 12)
+            onAction = _ => doJsonExport()
+            style = "-fx-background-radius: 8; -fx-background-color: #B9C4DA;"
+          },
+          new Button("JSON Import") {
+            font = Font.font(comicSansFontFamily, 12)
+            onAction = _ => doJsonImport()
+            style = "-fx-background-radius: 8; -fx-background-color: #C4B9DA;"
           }
         )
       }
@@ -288,6 +308,45 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
 
   private def doPgnImport(): Unit =
     doImport(PgnParser, "PGN")
+
+  private def doJsonExport(): Unit =
+    val fileChooser = new FileChooser {
+      title = "Export Game as JSON"
+      initialFileName = "chess_game.json"
+      extensionFilters.add(new ExtensionFilter("JSON files (*.json)", "*.json"))
+      extensionFilters.add(new ExtensionFilter("All files", "*.*"))
+    }
+    
+    val selectedFile = fileChooser.showSaveDialog(stage)
+    if selectedFile != null then
+      val result = FileSystemGameService.saveGameToFile(
+        engine.context,
+        selectedFile.toPath,
+        JsonExporter
+      )
+      result match
+        case Right(_) => showMessage(s"✓ Game saved to: ${selectedFile.getName}")
+        case Left(err) => showMessage(s"⚠️ Error saving file: $err")
+
+  private def doJsonImport(): Unit =
+    val fileChooser = new FileChooser {
+      title = "Import Game from JSON"
+      extensionFilters.add(new ExtensionFilter("JSON files (*.json)", "*.json"))
+      extensionFilters.add(new ExtensionFilter("All files", "*.*"))
+    }
+    
+    val selectedFile = fileChooser.showOpenDialog(stage)
+    if selectedFile != null then
+      val result = FileSystemGameService.loadGameFromFile(
+        selectedFile.toPath,
+        JsonParser
+      )
+      result match
+        case Right(gameContext) =>
+          engine.loadPosition(gameContext)
+          showMessage(s"✓ Game loaded from: ${selectedFile.getName}")
+        case Left(err) =>
+          showMessage(s"⚠️ Error: $err")
 
   private def doExport(exporter: GameContextExport, formatName: String): Unit = {
     val exported = exporter.exportGameContext(engine.context)

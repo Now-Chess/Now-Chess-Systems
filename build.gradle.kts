@@ -34,7 +34,9 @@ val versions = mapOf(
     "JAVAFX"                to "21.0.1",
     "JUNIT_BOM"             to "5.13.4",
     "SCALA_PARSER_COMBINATORS" to "2.4.0",
-    "FASTPARSE" to "3.0.2"
+    "FASTPARSE"             to "3.0.2",
+    "JACKSON"               to "2.17.2",
+    "JACKSON_SCALA"         to "2.17.2"
 )
 extra["VERSIONS"] = versions
 
