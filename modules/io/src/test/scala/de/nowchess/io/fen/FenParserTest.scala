@@ -64,3 +64,10 @@ class FenParserTest extends AnyFunSuite with Matchers:
     FenParser.parseBoard("8p/8/8/8/8/8/8/8") shouldBe None
     FenParser.parseBoard("7/8/8/8/8/8/8/8") shouldBe None
     FenParser.parseBoard("8/8/8/8/8/8/8/7X") shouldBe None
+
+  test("parseBoard rejects rank strings with invalid character followed by more characters"):
+    FenParser.parseBoard("3X3p/8/8/8/8/8/8/8") shouldBe None
+
+  test("parseFen rejects invalid move counts"):
+    FenParser.parseFen("8/8/8/8/8/8/8/8 w - - -1 1").isLeft shouldBe true
+    FenParser.parseFen("8/8/8/8/8/8/8/8 w - - 0 0").isLeft shouldBe true

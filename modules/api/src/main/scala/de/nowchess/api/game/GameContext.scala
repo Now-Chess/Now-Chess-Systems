@@ -12,6 +12,7 @@ case class GameContext(
     enPassantSquare: Option[Square],
     halfMoveClock: Int,
     moves: List[Move],
+    result: Option[GameResult] = None,
 ):
   /** Create new context with updated board. */
   def withBoard(newBoard: Board): GameContext = copy(board = newBoard)
@@ -30,6 +31,9 @@ case class GameContext(
 
   /** Create new context with move appended to history. */
   def withMove(move: Move): GameContext = copy(moves = moves :+ move)
+
+  /** Create new context with updated result. */
+  def withResult(newResult: Option[GameResult]): GameContext = copy(result = newResult)
 
 object GameContext:
   /** Initial position: white to move, all castling rights, no en passant. */

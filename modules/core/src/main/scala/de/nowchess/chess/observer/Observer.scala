@@ -1,7 +1,7 @@
 package de.nowchess.chess.observer
 
 import de.nowchess.api.board.{Color, Square}
-import de.nowchess.api.game.GameContext
+import de.nowchess.api.game.{DrawReason, GameContext}
 
 /** Base trait for all game state events. Events are immutable snapshots of game state changes.
   */
@@ -27,9 +27,10 @@ case class CheckmateEvent(
     winner: Color,
 ) extends GameEvent
 
-/** Fired when the game reaches stalemate. */
-case class StalemateEvent(
+/** Fired when the game ends in a draw. */
+case class DrawEvent(
     context: GameContext,
+    reason: DrawReason,
 ) extends GameEvent
 
 /** Fired when a move is invalid. */
@@ -52,11 +53,6 @@ case class BoardResetEvent(
 
 /** Fired after any move where the half-move clock reaches 100 — the 50-move rule is now claimable. */
 case class FiftyMoveRuleAvailableEvent(
-    context: GameContext,
-) extends GameEvent
-
-/** Fired when a player successfully claims a draw under the 50-move rule. */
-case class DrawClaimedEvent(
     context: GameContext,
 ) extends GameEvent
 

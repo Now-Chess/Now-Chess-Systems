@@ -14,12 +14,14 @@ class CommandInvokerBranchTest extends AnyFunSuite with Matchers:
     override def undo(): Boolean     = false
     override def description: String = "Failing command"
 
-  private case class ConditionalFailCommand(
-      var shouldFailOnUndo: Boolean = false,
-      var shouldFailOnExecute: Boolean = false,
+  private class ConditionalFailCommand(
+      initialShouldFailOnUndo: Boolean = false,
+      initialShouldFailOnExecute: Boolean = false,
   ) extends Command:
-    override def execute(): Boolean  = !shouldFailOnExecute
-    override def undo(): Boolean     = !shouldFailOnUndo
+    val shouldFailOnUndo    = new java.util.concurrent.atomic.AtomicBoolean(initialShouldFailOnUndo)
+    val shouldFailOnExecute = new java.util.concurrent.atomic.AtomicBoolean(initialShouldFailOnExecute)
+    override def execute(): Boolean  = !shouldFailOnExecute.get()
+    override def undo(): Boolean     = !shouldFailOnUndo.get()
     override def description: String = "Conditional fail"
 
   private def createMoveCommand(from: Square, to: Square, executeSucceeds: Boolean = true): MoveCommand =
@@ -66,7 +68,7 @@ class CommandInvokerBranchTest extends AnyFunSuite with Matchers:
 
     {
       val invoker        = new CommandInvoker()
-      val failingUndoCmd = ConditionalFailCommand(shouldFailOnUndo = true)
+      val failingUndoCmd = ConditionalFailCommand(initialShouldFailOnUndo = true)
       invoker.execute(failingUndoCmd) shouldBe true
       invoker.canUndo shouldBe true
       invoker.undo() shouldBe false
@@ -102,7 +104,7 @@ class CommandInvokerBranchTest extends AnyFunSuite with Matchers:
       invoker.execute(redoFailCmd)
       invoker.undo()
       invoker.canRedo shouldBe true
-      redoFailCmd.shouldFailOnExecute = true
+      redoFailCmd.shouldFailOnExecute.set(true)
       invoker.redo() shouldBe false
       invoker.getCurrentIndex shouldBe 0
     }

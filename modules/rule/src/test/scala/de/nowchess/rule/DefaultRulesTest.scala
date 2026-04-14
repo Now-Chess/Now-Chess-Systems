@@ -32,7 +32,7 @@ class DefaultRulesTest extends AnyFunSuite with Matchers:
     val fen      = "8/8/8/3p4/4P3/8/8/8 w - - 0 1"
     val context  = FenParser.parseFen(fen).fold(_ => fail(), identity)
     val moves    = rules.allLegalMoves(context)
-    val captures = moves.filter(m => m.from == Square(File.E, Rank.R4) && m.moveType.isInstanceOf[MoveType.Normal])
+    val captures = moves.filter(m => m.from == Square(File.E, Rank.R4) && (m.moveType match { case _: MoveType.Normal => true; case _ => false }))
     captures.exists(m => m.to == Square(File.D, Rank.R5)) shouldBe true
 
   test("pawn cannot move backward"):

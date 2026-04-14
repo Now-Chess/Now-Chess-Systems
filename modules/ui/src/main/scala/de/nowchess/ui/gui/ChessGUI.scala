@@ -31,8 +31,7 @@ class ChessGUIApp extends JFXApplication:
       root = boardView
       // Load CSS if available
       try {
-        val cssUrl = getClass.getResource("/styles.css")
-        if cssUrl != null then stylesheets.add(cssUrl.toExternalForm)
+        Option(getClass.getResource("/styles.css")).foreach(url => stylesheets.add(url.toExternalForm))
       } catch {
         case _: Exception => // CSS is optional
       }
@@ -46,12 +45,12 @@ class ChessGUIApp extends JFXApplication:
 
 /** Launcher object that holds the engine reference and launches GUI in separate thread. */
 object ChessGUILauncher:
-  @volatile private var engine: GameEngine = scala.compiletime.uninitialized
+  private val engineRef = new java.util.concurrent.atomic.AtomicReference[GameEngine]()
 
-  def getEngine: GameEngine = engine
+  def getEngine: GameEngine = engineRef.get()
 
   def launch(eng: GameEngine): Unit =
-    engine = eng
+    engineRef.set(eng)
     val guiThread = new Thread(() => JFXApplication.launch(classOf[ChessGUIApp]))
     guiThread.setDaemon(false)
     guiThread.setName("ScalaFX-GUI-Thread")

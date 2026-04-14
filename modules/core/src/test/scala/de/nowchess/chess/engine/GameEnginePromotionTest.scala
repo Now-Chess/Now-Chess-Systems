@@ -29,7 +29,7 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
 
     engine.processUserInput("e7e8")
 
-    events.exists(_.isInstanceOf[PromotionRequiredEvent]) should be(true)
+    events.exists { case _: PromotionRequiredEvent => true; case _ => false } should be(true)
     events.collect { case e: PromotionRequiredEvent => e }.head.from should be(sq(File.E, Rank.R7))
   }
 
@@ -60,7 +60,7 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
     engine.board.pieceAt(sq(File.E, Rank.R8)) should be(Some(Piece(Color.White, PieceType.Queen)))
     engine.board.pieceAt(sq(File.E, Rank.R7)) should be(None)
     engine.context.moves.last.moveType shouldBe MoveType.Promotion(PromotionPiece.Queen)
-    events.exists(_.isInstanceOf[MoveExecutedEvent]) should be(true)
+    events.exists { case _: MoveExecutedEvent => true; case _ => false } should be(true)
   }
 
   test("completePromotion with rook underpromotion") {
@@ -80,7 +80,7 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
 
     engine.completePromotion(PromotionPiece.Queen)
 
-    events.exists(_.isInstanceOf[InvalidMoveEvent]) should be(true)
+    events.exists { case _: InvalidMoveEvent => true; case _ => false } should be(true)
     engine.isPendingPromotion should be(false)
   }
 
@@ -92,7 +92,7 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
     engine.processUserInput("e7e8")
     engine.completePromotion(PromotionPiece.Queen)
 
-    events.exists(_.isInstanceOf[CheckDetectedEvent]) should be(true)
+    events.exists { case _: CheckDetectedEvent => true; case _ => false } should be(true)
   }
 
   test("completePromotion results in Moved when promotion doesn't give check") {
@@ -105,8 +105,8 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
 
     engine.isPendingPromotion should be(false)
     engine.board.pieceAt(sq(File.E, Rank.R8)) should be(Some(Piece(Color.White, PieceType.Queen)))
-    events.filter(_.isInstanceOf[MoveExecutedEvent]) should not be empty
-    events.exists(_.isInstanceOf[CheckDetectedEvent]) should be(false)
+    events.collect { case e: MoveExecutedEvent => e } should not be empty
+    events.exists { case _: CheckDetectedEvent => true; case _ => false } should be(false)
   }
 
   test("completePromotion results in Checkmate when promotion delivers checkmate") {
@@ -118,7 +118,7 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
     engine.completePromotion(PromotionPiece.Queen)
 
     engine.isPendingPromotion should be(false)
-    events.exists(_.isInstanceOf[CheckmateEvent]) should be(true)
+    events.exists { case _: CheckmateEvent => true; case _ => false } should be(true)
   }
 
   test("completePromotion results in Stalemate when promotion creates stalemate") {
@@ -130,7 +130,7 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
     engine.completePromotion(PromotionPiece.Knight)
 
     engine.isPendingPromotion should be(false)
-    events.exists(_.isInstanceOf[StalemateEvent]) should be(true)
+    events.exists { case _: DrawEvent => true; case _ => false } should be(true)
   }
 
   test("completePromotion with black pawn promotion results in Moved") {
@@ -143,8 +143,8 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
 
     engine.isPendingPromotion should be(false)
     engine.board.pieceAt(sq(File.E, Rank.R1)) should be(Some(Piece(Color.Black, PieceType.Queen)))
-    events.filter(_.isInstanceOf[MoveExecutedEvent]) should not be empty
-    events.exists(_.isInstanceOf[CheckDetectedEvent]) should be(false)
+    events.collect { case e: MoveExecutedEvent => e } should not be empty
+    events.exists { case _: CheckDetectedEvent => true; case _ => false } should be(false)
   }
 
   test("completePromotion fires InvalidMoveEvent when legalMoves returns only Normal moves to back rank") {
@@ -191,7 +191,7 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
     engine.completePromotion(PromotionPiece.Queen)
 
     engine.isPendingPromotion should be(false)
-    events.exists(_.isInstanceOf[InvalidMoveEvent]) should be(true)
+    events.exists { case _: InvalidMoveEvent => true; case _ => false } should be(true)
     val invalidEvt = events.collect { case e: InvalidMoveEvent => e }.last
     invalidEvt.reason should include("Error completing promotion")
   }

@@ -6,26 +6,24 @@ import de.nowchess.api.board.{Color, Piece, PieceType}
 /** Utility object for loading chess piece sprites. */
 object PieceSprites:
 
-  private val spriteCache = scala.collection.mutable.Map[String, Image]()
+  private val spriteCache = scala.collection.mutable.Map[String, Option[Image]]()
 
   /** Load a piece sprite image from resources. Sprites are cached for performance.
     */
-  def loadPieceImage(piece: Piece, size: Double = 60.0): ImageView =
-    val key   = s"${piece.color.label.toLowerCase}_${piece.pieceType.label.toLowerCase}"
-    val image = spriteCache.getOrElseUpdate(key, loadImage(key))
-
-    new ImageView(image) {
-      fitWidth = size
-      fitHeight = size
-      preserveRatio = true
-      smooth = true
+  def loadPieceImage(piece: Piece, size: Double = 60.0): Option[ImageView] =
+    val key = s"${piece.color.label.toLowerCase}_${piece.pieceType.label.toLowerCase}"
+    spriteCache.getOrElseUpdate(key, loadImage(key)).map { image =>
+      new ImageView(image) {
+        fitWidth = size
+        fitHeight = size
+        preserveRatio = true
+        smooth = true
+      }
     }
 
-  private def loadImage(key: String): Image =
-    val path   = s"/sprites/pieces/$key.png"
-    val stream = getClass.getResourceAsStream(path)
-    if stream == null then throw new RuntimeException(s"Could not load sprite: $path")
-    new Image(stream)
+  private def loadImage(key: String): Option[Image] =
+    val path = s"/sprites/pieces/$key.png"
+    Option(getClass.getResourceAsStream(path)).map(new Image(_))
 
   /** Get square colors for the board using theme. */
   object SquareColors:

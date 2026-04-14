@@ -8,7 +8,6 @@ class CommandTest extends AnyFunSuite with Matchers:
 
   test("QuitCommand properties and behavior"):
     val cmd = QuitCommand()
-    cmd shouldNot be(null)
     cmd.execute() shouldBe true
     cmd.undo() shouldBe false
     cmd.description shouldBe "Quit game"

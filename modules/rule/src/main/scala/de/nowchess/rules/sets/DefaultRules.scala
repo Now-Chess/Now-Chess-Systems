@@ -375,19 +375,25 @@ object DefaultRules extends RuleSet:
     val blackKingsideRook  = Square(File.H, Rank.R8)
     val blackQueensideRook = Square(File.A, Rank.R8)
 
-    var r = rights
-    if isKingMove then r = r.revokeColor(color)
-    else if isRookMove then
-      if move.from == whiteKingsideRook then r = r.revokeKingSide(Color.White)
-      if move.from == whiteQueensideRook then r = r.revokeQueenSide(Color.White)
-      if move.from == blackKingsideRook then r = r.revokeKingSide(Color.Black)
-      if move.from == blackQueensideRook then r = r.revokeQueenSide(Color.Black)
+    val afterKingMove = if isKingMove then rights.revokeColor(color) else rights
+
+    val afterRookMove =
+      if !isRookMove then afterKingMove
+      else
+        move.from match
+          case `whiteKingsideRook`  => afterKingMove.revokeKingSide(Color.White)
+          case `whiteQueensideRook` => afterKingMove.revokeQueenSide(Color.White)
+          case `blackKingsideRook`  => afterKingMove.revokeKingSide(Color.Black)
+          case `blackQueensideRook` => afterKingMove.revokeQueenSide(Color.Black)
+          case _                    => afterKingMove
+
     // Also revoke if a rook is captured
-    if move.to == whiteKingsideRook then r = r.revokeKingSide(Color.White)
-    if move.to == whiteQueensideRook then r = r.revokeQueenSide(Color.White)
-    if move.to == blackKingsideRook then r = r.revokeKingSide(Color.Black)
-    if move.to == blackQueensideRook then r = r.revokeQueenSide(Color.Black)
-    r
+    move.to match
+      case `whiteKingsideRook`  => afterRookMove.revokeKingSide(Color.White)
+      case `whiteQueensideRook` => afterRookMove.revokeQueenSide(Color.White)
+      case `blackKingsideRook`  => afterRookMove.revokeKingSide(Color.Black)
+      case `blackQueensideRook` => afterRookMove.revokeQueenSide(Color.Black)
+      case _                    => afterRookMove
 
   private def computeEnPassantSquare(board: Board, move: Move): Option[Square] =
     val piece = board.pieceAt(move.from)
@@ -401,13 +407,14 @@ object DefaultRules extends RuleSet:
 
   // ── Insufficient material ──────────────────────────────────────────
 
+  private def squareColor(sq: Square): Int = (sq.file.ordinal + sq.rank.ordinal) % 2
+
   private def insufficientMaterial(board: Board): Boolean =
-    val pieces = board.pieces.values.toList.filter(_.pieceType != PieceType.King)
-    pieces match
-      case Nil                                                                           => true
-      case List(p) if p.pieceType == PieceType.Bishop || p.pieceType == PieceType.Knight => true
-      case List(p1, p2)
-          if p1.pieceType == PieceType.Bishop && p2.pieceType == PieceType.Bishop
-            && p1.color != p2.color =>
-        true
+    val nonKings = board.pieces.toList.filter { case (_, p) => p.pieceType != PieceType.King }
+    nonKings match
+      case Nil                                                                                => true
+      case List((_, p)) if p.pieceType == PieceType.Bishop || p.pieceType == PieceType.Knight => true
+      case bishops if bishops.forall { case (_, p) => p.pieceType == PieceType.Bishop }       =>
+        // All non-king pieces are bishops: draw only if they all share the same square color
+        bishops.map { case (sq, _) => squareColor(sq) }.distinct.sizeIs == 1
       case _ => false

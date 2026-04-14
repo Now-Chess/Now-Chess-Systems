@@ -43,7 +43,7 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
 
     // White castles queenside: e1c1
     engine.processUserInput("e1c1")
-    events.exists(_.isInstanceOf[MoveExecutedEvent]) should be(true)
+    events.exists { case _: MoveExecutedEvent => true; case _ => false } should be(true)
 
     events.clear()
     engine.undo()
@@ -68,7 +68,7 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
 
     // White pawn on e5 captures en passant to d6
     engine.processUserInput("e5d6")
-    events.exists(_.isInstanceOf[MoveExecutedEvent]) should be(true)
+    events.exists { case _: MoveExecutedEvent => true; case _ => false } should be(true)
 
     // Verify the captured pawn was found (computeCaptured EnPassant branch)
     val moveEvt = events.collect { case e: MoveExecutedEvent => e }.head
@@ -84,7 +84,8 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
   // ── Bishop underpromotion notation (line 230) ──────────────────────
 
   test("undo after bishop underpromotion emits MoveUndoneEvent with =B notation"):
-    val board = FenParser.parseBoard("8/4P3/8/8/8/8/k7/7K").get
+    // Extra white pawn on h2 ensures K+B+P vs K — sufficient material, so draw is not triggered
+    val board = FenParser.parseBoard("8/4P3/8/8/8/8/k6P/7K").get
     val ctx = GameContext.initial
       .withBoard(board)
       .withTurn(Color.White)
@@ -105,8 +106,8 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
   // ── King normal move notation (line 246) ───────────────────────────
 
   test("undo after king move emits MoveUndoneEvent with K notation"):
-    // White king on e1, no castling rights, black king far away
-    val board = FenParser.parseBoard("k7/8/8/8/8/8/8/4K3").get
+    // White king on e1, white rook on h1 — K+R vs K ensures sufficient material after the king move
+    val board = FenParser.parseBoard("k7/8/8/8/8/8/8/4K2R").get
     val ctx = GameContext.initial
       .withBoard(board)
       .withTurn(Color.White)
@@ -117,7 +118,7 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
 
     // King moves e1 -> f1
     engine.processUserInput("e1f1")
-    events.exists(_.isInstanceOf[MoveExecutedEvent]) should be(true)
+    events.exists { case _: MoveExecutedEvent => true; case _ => false } should be(true)
 
     events.clear()
     engine.undo()

@@ -1,6 +1,6 @@
 package de.nowchess.ui.gui
 
-import scala.compiletime.uninitialized
+import java.util.concurrent.atomic.AtomicReference
 import scalafx.Includes.*
 import scalafx.application.Platform
 import scalafx.geometry.{Insets, Pos}
@@ -36,13 +36,23 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
     padding = Insets(10)
   }
 
-  private var currentBoard: Board            = engine.board
-  private var currentTurn: Color             = engine.turn
-  private var selectedSquare: Option[Square] = None
-  private val squareViews                    = scala.collection.mutable.Map[(Int, Int), StackPane]()
+  private val currentBoard   = new AtomicReference[Board](engine.board)
+  private val currentTurn    = new AtomicReference[Color](engine.turn)
+  private val selectedSquare = new AtomicReference[Option[Square]](None)
+  private val squareViews    = scala.collection.mutable.Map[(Int, Int), StackPane]()
 
-  private var undoButton: Button = uninitialized
-  private var redoButton: Button = uninitialized
+  private val undoButton: Button = new Button("Undo") {
+    font = Font.font(comicSansFontFamily, 12)
+    onAction = _ => if engine.canUndo then engine.undo()
+    style = "-fx-background-radius: 8; -fx-background-color: #B9DAD1;"
+    disable = !engine.canUndo
+  }
+  private val redoButton: Button = new Button("Redo") {
+    font = Font.font(comicSansFontFamily, 12)
+    onAction = _ => if engine.canRedo then engine.redo()
+    style = "-fx-background-radius: 8; -fx-background-color: #B9C2DA;"
+    disable = !engine.canRedo
+  }
 
   // Initialize UI
   initializeBoard()
@@ -77,23 +87,8 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
         spacing = 10
         alignment = Pos.Center
         children = Seq(
-          {
-            undoButton = new Button("Undo") {
-              font = Font.font(comicSansFontFamily, 12)
-              onAction = _ => if engine.canUndo then engine.undo()
-              style = "-fx-background-radius: 8; -fx-background-color: #B9DAD1;"
-              disable = !engine.canUndo
-            }
-            undoButton
-          }, {
-            redoButton = new Button("Redo") {
-              font = Font.font(comicSansFontFamily, 12)
-              onAction = _ => if engine.canRedo then engine.redo()
-              style = "-fx-background-radius: 8; -fx-background-color: #B9C2DA;"
-              disable = !engine.canRedo
-            }
-            redoButton
-          },
+          undoButton,
+          redoButton,
           new Button("Reset") {
             font = Font.font(comicSansFontFamily, 12)
             onAction = _ => engine.reset()
@@ -160,7 +155,7 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
       squareViews((rank, file)) = square
       boardGrid.add(square, file, 7 - rank) // Flip rank for proper display
 
-    updateBoard(currentBoard, currentTurn)
+    updateBoard(currentBoard.get(), currentTurn.get())
 
   private def createSquare(rank: Int, file: Int): StackPane =
     val isWhite   = (rank + file) % 2 == 0
@@ -183,42 +178,41 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
     square
 
   private def handleSquareClick(rank: Int, file: Int): Unit =
-    if engine.isPendingPromotion then return // Don't allow moves during promotion
+    if !engine.isPendingPromotion then
+      val clickedSquare = Square(File.values(file), Rank.values(rank))
 
-    val clickedSquare = Square(File.values(file), Rank.values(rank))
+      selectedSquare.get() match
+        case None =>
+          // First click - select piece if it belongs to current player
+          currentBoard.get().pieceAt(clickedSquare).foreach { piece =>
+            if piece.color == currentTurn.get() then
+              selectedSquare.set(Some(clickedSquare))
+              highlightSquare(rank, file, PieceSprites.SquareColors.Selected)
 
-    selectedSquare match
-      case None =>
-        // First click - select piece if it belongs to current player
-        currentBoard.pieceAt(clickedSquare).foreach { piece =>
-          if piece.color == currentTurn then
-            selectedSquare = Some(clickedSquare)
-            highlightSquare(rank, file, PieceSprites.SquareColors.Selected)
+              val legalDests = engine.ruleSet
+                .legalMoves(engine.context)(clickedSquare)
+                .collect { case move if move.from == clickedSquare => move.to }
+              legalDests.foreach { sq =>
+                highlightSquare(sq.rank.ordinal, sq.file.ordinal, PieceSprites.SquareColors.ValidMove)
+              }
+          }
 
-            val legalDests = engine.ruleSet
-              .legalMoves(engine.context)(clickedSquare)
-              .collect { case move if move.from == clickedSquare => move.to }
-            legalDests.foreach { sq =>
-              highlightSquare(sq.rank.ordinal, sq.file.ordinal, PieceSprites.SquareColors.ValidMove)
-            }
-        }
-
-      case Some(fromSquare) =>
-        // Second click - attempt move
-        if clickedSquare == fromSquare then
-          // Deselect
-          selectedSquare = None
-          updateBoard(currentBoard, currentTurn)
-        else
-          // Try to move
-          val moveStr = s"${fromSquare}$clickedSquare"
-          engine.processUserInput(moveStr)
-          selectedSquare = None
+        case Some(fromSquare) =>
+          // Second click - attempt move
+          if clickedSquare == fromSquare then
+            // Deselect
+            selectedSquare.set(None)
+            updateBoard(currentBoard.get(), currentTurn.get())
+          else
+            // Try to move
+            val moveStr = s"${fromSquare}$clickedSquare"
+            engine.processUserInput(moveStr)
+            selectedSquare.set(None)
 
   def updateBoard(board: Board, turn: Color): Unit =
-    currentBoard = board
-    currentTurn = turn
-    selectedSquare = None
+    currentBoard.set(board)
+    currentTurn.set(turn)
+    selectedSquare.set(None)
 
     // Update all squares
     for
@@ -240,9 +234,9 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
         val square      = Square(File.values(file), Rank.values(rank))
         val pieceOption = board.pieceAt(square)
 
-        val children = pieceOption match
+        val children: Seq[scalafx.scene.Node] = pieceOption match
           case Some(piece) =>
-            Seq(bgRect, PieceSprites.loadPieceImage(piece, squareSize * 0.8))
+            Seq(bgRect) ++ PieceSprites.loadPieceImage(piece, squareSize * 0.8).toSeq
           case None =>
             Seq(bgRect)
 
@@ -252,8 +246,8 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
     updateUndoRedoButtons()
 
   def updateUndoRedoButtons(): Unit =
-    if undoButton != null then undoButton.disable = !engine.canUndo
-    if redoButton != null then redoButton.disable = !engine.canRedo
+    undoButton.disable = !engine.canUndo
+    redoButton.disable = !engine.canRedo
 
   private def highlightSquare(rank: Int, file: Int, color: String): Unit =
     squareViews.get((rank, file)).foreach { stackPane =>
@@ -266,13 +260,13 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
       }
 
       val square      = Square(File.values(file), Rank.values(rank))
-      val pieceOption = currentBoard.pieceAt(square)
+      val pieceOption = currentBoard.get().pieceAt(square)
 
-      stackPane.children = pieceOption match
+      stackPane.children = (pieceOption match
         case Some(piece) =>
-          Seq(bgRect, PieceSprites.loadPieceImage(piece, squareSize * 0.8))
+          Seq(bgRect) ++ PieceSprites.loadPieceImage(piece, squareSize * 0.8).toSeq
         case None =>
-          Seq(bgRect)
+          Seq(bgRect)): Seq[scalafx.scene.Node]
     }
 
   def showMessage(msg: String): Unit =
@@ -315,8 +309,7 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
       extensionFilters.add(new ExtensionFilter("All files", "*.*"))
     }
 
-    val selectedFile = fileChooser.showSaveDialog(stage)
-    if selectedFile != null then
+    Option(fileChooser.showSaveDialog(stage)).foreach { selectedFile =>
       val result = FileSystemGameService.saveGameToFile(
         engine.context,
         selectedFile.toPath,
@@ -325,6 +318,7 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
       result match
         case Right(_)  => showMessage(s"✓ Game saved to: ${selectedFile.getName}")
         case Left(err) => showMessage(s"⚠️ Error saving file: $err")
+    }
 
   private def doJsonImport(): Unit =
     val fileChooser = new FileChooser {
@@ -333,8 +327,7 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
       extensionFilters.add(new ExtensionFilter("All files", "*.*"))
     }
 
-    val selectedFile = fileChooser.showOpenDialog(stage)
-    if selectedFile != null then
+    Option(fileChooser.showOpenDialog(stage)).foreach { selectedFile =>
       val result = FileSystemGameService.loadGameFromFile(
         selectedFile.toPath,
         JsonParser,
@@ -345,6 +338,7 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
           showMessage(s"✓ Game loaded from: ${selectedFile.getName}")
         case Left(err) =>
           showMessage(s"⚠️ Error: $err")
+    }
 
   private def doExport(exporter: GameContextExport, formatName: String): Unit = {
     val exported = exporter.exportGameContext(engine.context)
@@ -368,7 +362,7 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
     area.setPrefRowCount(4)
     val alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION)
     alert.setTitle(title)
-    alert.setHeaderText(null)
+    alert.setHeaderText("")
     alert.getDialogPane.setContent(area)
     alert.getDialogPane.setPrefWidth(500)
     alert.initOwner(stage.delegate)
@@ -386,8 +380,8 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
       javafx.scene.control.ButtonType.CANCEL,
     )
     dialog.setResultConverter { bt =>
-      if bt == javafx.scene.control.ButtonType.OK then area.getText else null
+      if bt == javafx.scene.control.ButtonType.OK then area.getText else ""
     }
     dialog.initOwner(stage.delegate)
     val result = dialog.showAndWait()
-    if result.isPresent && result.get != null && result.get.nonEmpty then Some(result.get) else None
+    if result.isPresent && result.get.nonEmpty then Some(result.get) else None

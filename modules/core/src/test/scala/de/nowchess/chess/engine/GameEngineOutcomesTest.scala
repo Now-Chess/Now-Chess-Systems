@@ -1,6 +1,7 @@
 package de.nowchess.chess.engine
 
 import de.nowchess.api.board.Color
+import de.nowchess.api.game.{DrawReason, GameResult}
 import de.nowchess.chess.observer.*
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
@@ -22,6 +23,7 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
     engine.processUserInput("d8h4")
 
     observer.hasEvent[CheckmateEvent] shouldBe true
+    engine.context.result shouldBe Some(GameResult.Win(Color.Black))
 
   test("checkmate with white winner"):
     val engine   = EngineTestHelpers.makeEngine()
@@ -41,10 +43,11 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
     val evt = observer.getEvent[CheckmateEvent]
     evt.isDefined shouldBe true
     evt.get.winner shouldBe Color.White
+    engine.context.result shouldBe Some(GameResult.Win(Color.White))
 
   // ── Stalemate ───────────────────────────────────────────────────
 
-  test("stalemate ends game with StalemateEvent"):
+  test("stalemate ends game with DrawEvent(Stalemate)"):
     val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
@@ -74,9 +77,12 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
 
     engine.processUserInput("c8e6")
 
-    observer.hasEvent[StalemateEvent] shouldBe true
+    val evt = observer.getEvent[DrawEvent]
+    evt.isDefined shouldBe true
+    evt.get.reason shouldBe DrawReason.Stalemate
+    engine.context.result shouldBe Some(GameResult.Draw(DrawReason.Stalemate))
 
-  test("stalemate when king has no moves and no pieces"):
+  test("stalemate board is not reset after draw"):
     val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
@@ -105,8 +111,8 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
 
     moves.foreach(engine.processUserInput)
 
-    observer.hasEvent[StalemateEvent] shouldBe true
-    engine.turn shouldBe Color.White
+    observer.hasEvent[DrawEvent] shouldBe true
+    engine.turn shouldBe Color.Black
 
   // ── Check detection ────────────────────────────────────────────
 
@@ -130,7 +136,8 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
-    EngineTestHelpers.loadFen(engine, "8/4k3/8/8/3N4/8/8/4K3 w - - 0 1")
+    // White has K+N+Q so the position is not insufficient material after Nd4f5
+    EngineTestHelpers.loadFen(engine, "8/4k3/8/8/3N4/8/8/3QK3 w - - 0 1")
     observer.clear()
 
     engine.processUserInput("d4f5")
@@ -182,7 +189,10 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
 
     engine.processUserInput("draw")
 
-    observer.hasEvent[DrawClaimedEvent] shouldBe true
+    val evt = observer.getEvent[DrawEvent]
+    evt.isDefined shouldBe true
+    evt.get.reason shouldBe DrawReason.FiftyMoveRule
+    engine.context.result shouldBe Some(GameResult.Draw(DrawReason.FiftyMoveRule))
 
   test("draw cannot be claimed when not available"):
     val engine   = EngineTestHelpers.makeEngine()
@@ -192,3 +202,22 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
     engine.processUserInput("draw")
 
     observer.hasEvent[InvalidMoveEvent] shouldBe true
+
+  // ── Insufficient material ──────────────────────────────────────────
+
+  test("insufficient material fires DrawEvent(InsufficientMaterial) after capture"):
+    val engine   = EngineTestHelpers.makeEngine()
+    val observer = new EngineTestHelpers.MockObserver()
+    engine.subscribe(observer)
+
+    // White Bishop d4 captures Black Rook g7, leaving K+B vs K (insufficient material).
+    // Black king on g8 can still move (f7/h7 not controlled), so it is not stalemate.
+    EngineTestHelpers.loadFen(engine, "6k1/6r1/8/8/3B4/8/8/K7 w - - 0 1")
+    observer.clear()
+
+    engine.processUserInput("d4g7")
+
+    val evt = observer.getEvent[DrawEvent]
+    evt.isDefined shouldBe true
+    evt.get.reason shouldBe DrawReason.InsufficientMaterial
+    engine.context.result shouldBe Some(GameResult.Draw(DrawReason.InsufficientMaterial))

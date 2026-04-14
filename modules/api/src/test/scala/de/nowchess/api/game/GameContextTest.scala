@@ -2,6 +2,7 @@ package de.nowchess.api.game
 
 import de.nowchess.api.board.{Board, CastlingRights, Color, File, Rank, Square}
 import de.nowchess.api.move.Move
+import de.nowchess.api.game.{DrawReason, GameResult}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
@@ -16,6 +17,7 @@ class GameContextTest extends AnyFunSuite with Matchers:
     initial.enPassantSquare shouldBe None
     initial.halfMoveClock shouldBe 0
     initial.moves shouldBe List.empty
+    initial.result shouldBe None
 
   test("withBoard updates only board"):
     val square       = Square(File.E, Rank.R4)
@@ -57,3 +59,15 @@ class GameContextTest extends AnyFunSuite with Matchers:
   test("withMove appends move to history"):
     val move = Move(Square(File.E, Rank.R2), Square(File.E, Rank.R4))
     GameContext.initial.withMove(move).moves shouldBe List(move)
+
+  test("withResult sets Win result"):
+    val win = Some(GameResult.Win(Color.White))
+    GameContext.initial.withResult(win).result shouldBe win
+
+  test("withResult sets Draw result"):
+    val draw = Some(GameResult.Draw(DrawReason.Stalemate))
+    GameContext.initial.withResult(draw).result shouldBe draw
+
+  test("withResult clears result"):
+    val ctx = GameContext.initial.withResult(Some(GameResult.Win(Color.Black)))
+    ctx.withResult(None).result shouldBe None

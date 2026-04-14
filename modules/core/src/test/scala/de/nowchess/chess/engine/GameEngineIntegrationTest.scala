@@ -38,7 +38,7 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
     engine.processUserInput("undo")
     engine.processUserInput("redo")
 
-    events.count(_.isInstanceOf[InvalidMoveEvent]) should be >= 3
+    events.count { case _: InvalidMoveEvent => true; case _ => false } should be >= 3
 
   test("processUserInput emits Illegal move for syntactically valid but illegal target"):
     val engine = new GameEngine()
@@ -69,7 +69,7 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
 
     engine.context shouldBe target
     engine.commandHistory shouldBe empty
-    events.lastOption.exists(_.isInstanceOf[de.nowchess.chess.observer.BoardResetEvent]) shouldBe true
+    events.lastOption.exists { case _: de.nowchess.chess.observer.BoardResetEvent => true; case _ => false } shouldBe true
 
   test("redo event includes captured piece description when replaying a capture"):
     val engine = new GameEngine()

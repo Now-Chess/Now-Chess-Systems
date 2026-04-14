@@ -31,7 +31,7 @@ object EngineTestHelpers:
     def hasEvent[T <: GameEvent](implicit ct: scala.reflect.ClassTag[T]): Boolean =
       _events.exists(ct.runtimeClass.isInstance(_))
     def getEvent[T <: GameEvent](implicit ct: scala.reflect.ClassTag[T]): Option[T] =
-      _events.collectFirst { case e if ct.runtimeClass.isInstance(e) => e.asInstanceOf[T] }
+      _events.collectFirst { case e: T => e }
 
     override def onGameEvent(event: GameEvent): Unit =
       _events += event

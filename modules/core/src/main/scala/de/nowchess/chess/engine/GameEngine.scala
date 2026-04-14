@@ -2,7 +2,7 @@ package de.nowchess.chess.engine
 
 import de.nowchess.api.board.{Board, Color, Piece, PieceType, Square}
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
-import de.nowchess.api.game.GameContext
+import de.nowchess.api.game.{DrawReason, GameContext, GameResult}
 import de.nowchess.chess.controller.Parser
 import de.nowchess.chess.observer.*
 import de.nowchess.chess.command.{CommandInvoker, MoveCommand, MoveResult}
@@ -60,8 +60,9 @@ class GameEngine(
 
       case "draw" =>
         if currentContext.halfMoveClock >= 100 then
+          currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.FiftyMoveRule)))
           invoker.clear()
-          notifyObservers(DrawClaimedEvent(currentContext))
+          notifyObservers(DrawEvent(currentContext, DrawReason.FiftyMoveRule))
         else
           notifyObservers(
             InvalidMoveEvent(
@@ -222,13 +223,17 @@ class GameEngine(
 
     if ruleSet.isCheckmate(currentContext) then
       val winner = currentContext.turn.opposite
+      currentContext = currentContext.withResult(Some(GameResult.Win(winner)))
       notifyObservers(CheckmateEvent(currentContext, winner))
       invoker.clear()
-      currentContext = GameContext.initial
     else if ruleSet.isStalemate(currentContext) then
-      notifyObservers(StalemateEvent(currentContext))
+      currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.Stalemate)))
+      notifyObservers(DrawEvent(currentContext, DrawReason.Stalemate))
       invoker.clear()
-      currentContext = GameContext.initial
+    else if ruleSet.isInsufficientMaterial(currentContext) then
+      currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.InsufficientMaterial)))
+      notifyObservers(DrawEvent(currentContext, DrawReason.InsufficientMaterial))
+      invoker.clear()
     else if ruleSet.isCheck(currentContext) then notifyObservers(CheckDetectedEvent(currentContext))
 
     if currentContext.halfMoveClock >= 100 then notifyObservers(FiftyMoveRuleAvailableEvent(currentContext))

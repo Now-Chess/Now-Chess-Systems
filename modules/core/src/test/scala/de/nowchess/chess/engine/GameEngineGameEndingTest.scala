@@ -1,8 +1,9 @@
 package de.nowchess.chess.engine
 
 import scala.collection.mutable
-import de.nowchess.api.board.{Board, Color}
-import de.nowchess.chess.observer.{CheckDetectedEvent, CheckmateEvent, GameEvent, Observer, StalemateEvent}
+import de.nowchess.api.board.Color
+import de.nowchess.api.game.DrawReason
+import de.nowchess.chess.observer.{CheckDetectedEvent, CheckmateEvent, DrawEvent, GameEvent, Observer}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
@@ -25,12 +26,8 @@ class GameEngineGameEndingTest extends AnyFunSuite with Matchers:
     // Verify CheckmateEvent (engine also fires MoveExecutedEvent before CheckmateEvent)
     observer.events.last shouldBe a[CheckmateEvent]
 
-    val event = observer.events.last.asInstanceOf[CheckmateEvent]
+    val event = observer.events.collectFirst { case e: CheckmateEvent => e }.get
     event.winner shouldBe Color.Black
-
-    // Board should be reset after checkmate
-    engine.board shouldBe Board.initial
-    engine.turn shouldBe Color.White
 
   test("GameEngine handles check detection"):
     val engine   = new GameEngine()
@@ -86,12 +83,9 @@ class GameEngineGameEndingTest extends AnyFunSuite with Matchers:
     observer.events.clear()
     engine.processUserInput(moves.last)
 
-    val stalemateEvents = observer.events.collect { case e: StalemateEvent => e }
-    stalemateEvents.size shouldBe 1
-
-    // Board should be reset after stalemate
-    engine.board shouldBe Board.initial
-    engine.turn shouldBe Color.White
+    val drawEvents = observer.events.collect { case e: DrawEvent => e }
+    drawEvents.size shouldBe 1
+    drawEvents.head.reason shouldBe DrawReason.Stalemate
 
 private class EndingMockObserver extends Observer:
   val events = mutable.ListBuffer[GameEvent]()

@@ -5,6 +5,7 @@ import scalafx.scene.control.Alert
 import scalafx.scene.control.Alert.AlertType
 import de.nowchess.chess.observer.{GameEvent, Observer, *}
 import de.nowchess.api.board.Board
+import de.nowchess.api.game.DrawReason
 
 /** GUI Observer that implements the Observer pattern. Receives game events from GameEngine and updates the ScalaFX UI.
   * All UI updates must be done on the JavaFX Application Thread.
@@ -29,9 +30,14 @@ class GUIObserver(private val boardView: ChessBoardView) extends Observer:
           boardView.updateBoard(e.context.board, e.context.turn)
           showAlert(AlertType.Information, "Game Over", s"Checkmate! ${e.winner.label} wins.")
 
-        case e: StalemateEvent =>
+        case e: DrawEvent =>
           boardView.updateBoard(e.context.board, e.context.turn)
-          showAlert(AlertType.Information, "Game Over", "Stalemate! The game is a draw.")
+          val msg = e.reason match
+            case DrawReason.Stalemate            => "Stalemate! The game is a draw."
+            case DrawReason.InsufficientMaterial => "Draw by insufficient material."
+            case DrawReason.FiftyMoveRule        => "Draw claimed under the 50-move rule."
+            case DrawReason.Agreement            => "Draw by agreement."
+          showAlert(AlertType.Information, "Game Over", msg)
 
         case e: InvalidMoveEvent =>
           boardView.showMessage(s"⚠️  ${e.reason}")
@@ -43,12 +49,8 @@ class GUIObserver(private val boardView: ChessBoardView) extends Observer:
         case e: PromotionRequiredEvent =>
           boardView.showPromotionDialog(e.from, e.to)
 
-        case e: DrawClaimedEvent =>
-          boardView.updateBoard(e.context.board, e.context.turn)
-          showAlert(AlertType.Information, "Draw Claimed", "Draw claimed! The game is a draw.")
-
         case e: FiftyMoveRuleAvailableEvent =>
-          boardView.showMessage("50-move rule available! The game is a draw.")
+          boardView.showMessage("50-move rule is now available — type 'draw' to claim.")
 
         case e: MoveUndoneEvent =>
           boardView.updateBoard(e.context.board, e.context.turn)

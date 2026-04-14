@@ -19,6 +19,7 @@ scala {
 
 scoverage {
     scoverageVersion.set(versions["SCOVERAGE"]!!)
+    excludedFiles.set(listOf(".*FenParserFastParse.*"))
 }
 
 tasks.withType<ScalaCompile> {

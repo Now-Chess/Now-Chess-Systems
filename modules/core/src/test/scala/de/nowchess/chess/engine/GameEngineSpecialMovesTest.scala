@@ -175,7 +175,8 @@ class GameEngineSpecialMovesTest extends AnyFunSuite with Matchers:
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
-    EngineTestHelpers.loadFen(engine, "8/4P3/4k3/8/8/8/8/8 w - - 0 1")
+    // White rook on h2 keeps material sufficient (K+B+R vs K) after bishop promotion
+    EngineTestHelpers.loadFen(engine, "8/4P3/4k3/8/8/8/7R/7K w - - 0 1")
     engine.processUserInput("e7e8")
     engine.completePromotion(PromotionPiece.Bishop)
     observer.clear()

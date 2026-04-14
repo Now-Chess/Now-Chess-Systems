@@ -40,6 +40,11 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
     DefaultRules.isInsufficientMaterial(context) shouldBe true
 
+  test("isInsufficientMaterial returns true for king and knight versus king"):
+    val context = contextFromFen("8/8/8/8/8/8/4k3/4KN2 w - - 0 1")
+
+    DefaultRules.isInsufficientMaterial(context) shouldBe true
+
   test("isInsufficientMaterial returns false for king and rook versus king"):
     val context = contextFromFen("8/8/8/8/8/8/4k3/3RK3 w - - 0 1")
 
@@ -206,10 +211,29 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
     afterH1Capture.castlingRights.whiteKingSide shouldBe false
     afterH1Capture.castlingRights.whiteQueenSide shouldBe false
 
-  test("isInsufficientMaterial returns true for opposite color bishops only"):
+  test("isInsufficientMaterial returns true for two same-square-color bishops (one each side)"):
+    // White bishop d1 (dark), black bishop g2 (dark) — same square color → draw
     val context = contextFromFen("8/8/8/8/8/8/4k1b1/3BK3 w - - 0 1")
 
     DefaultRules.isInsufficientMaterial(context) shouldBe true
+
+  test("isInsufficientMaterial returns false for two different-square-color bishops (one each side)"):
+    // White bishop d1 (dark), black bishop d2 (light) — different square colors → not a draw
+    val context = contextFromFen("8/8/8/4k3/8/8/3b4/3BK3 w - - 0 1")
+
+    DefaultRules.isInsufficientMaterial(context) shouldBe false
+
+  test("isInsufficientMaterial returns true for two same-color bishops vs lone king"):
+    // White bishops on c1 (light) and e3 (light), black king only → draw
+    val context = contextFromFen("4k3/8/8/8/8/4B3/8/2B1K3 w - - 0 1")
+
+    DefaultRules.isInsufficientMaterial(context) shouldBe true
+
+  test("isInsufficientMaterial returns false for bishop and knight versus king"):
+    // K+B+N vs K is sufficient material
+    val context = contextFromFen("4k3/8/8/8/8/8/8/3BKN2 w - - 0 1")
+
+    DefaultRules.isInsufficientMaterial(context) shouldBe false
 
   test("candidateMoves for rook includes enemy capture move"):
     val context = contextFromFen("4k3/8/8/8/8/8/4K3/R6r w - - 0 1")
@@ -294,3 +318,14 @@ class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
     queen.board.pieceAt(sq("a8")) shouldBe Some(Piece(Color.White, PieceType.Queen))
     rook.board.pieceAt(sq("a8")) shouldBe Some(Piece(Color.White, PieceType.Rook))
     bishop.board.pieceAt(sq("a8")) shouldBe Some(Piece(Color.White, PieceType.Bishop))
+
+  test("applyMove preserves castling rights when rook moves from non-starting square"):
+    val context = contextFromFen("r3k2r/8/8/8/8/8/4R3/4K3 w KQkq - 0 1")
+    val move    = Move(sq("e2"), sq("e3"))
+
+    val next = DefaultRules.applyMove(context)(move)
+
+    next.castlingRights.whiteKingSide shouldBe true
+    next.castlingRights.whiteQueenSide shouldBe true
+    next.castlingRights.blackKingSide shouldBe true
+    next.castlingRights.blackQueenSide shouldBe true

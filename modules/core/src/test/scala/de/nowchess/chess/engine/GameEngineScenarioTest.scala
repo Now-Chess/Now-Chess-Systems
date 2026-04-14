@@ -122,7 +122,7 @@ class GameEngineScenarioTest extends AnyFunSuite with Matchers:
 
     engine.processUserInput("draw")
 
-    observer.hasEvent[DrawClaimedEvent] shouldBe true
+    observer.hasEvent[DrawEvent] shouldBe true
 
     // Initial position has no draw available
     observer.clear()

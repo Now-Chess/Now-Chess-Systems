@@ -38,6 +38,8 @@ bin/
 
 ### VS Code ###
 .vscode/
+graphify-out/
+.graphify_*.json
 
 ### Mac OS ###
 .DS_Store

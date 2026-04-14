@@ -1,7 +1,9 @@
 package de.nowchess.ui.terminal
 
+import java.util.concurrent.atomic.AtomicBoolean
 import scala.io.StdIn
 import de.nowchess.api.move.PromotionPiece
+import de.nowchess.api.game.DrawReason
 import de.nowchess.chess.engine.GameEngine
 import de.nowchess.chess.observer.*
 import de.nowchess.ui.utils.Renderer
@@ -10,8 +12,8 @@ import de.nowchess.ui.utils.Renderer
   * I/O and user interaction in the terminal.
   */
 class TerminalUI(engine: GameEngine) extends Observer:
-  private var running           = true
-  private var awaitingPromotion = false
+  private val running           = new AtomicBoolean(true)
+  private val awaitingPromotion = new AtomicBoolean(false)
 
   /** Called by GameEngine whenever a game event occurs. */
   override def onGameEvent(event: GameEvent): Unit =
@@ -43,8 +45,13 @@ class TerminalUI(engine: GameEngine) extends Observer:
         println()
         print(Renderer.render(e.context.board))
 
-      case e: StalemateEvent =>
-        println("Stalemate! The game is a draw.")
+      case e: DrawEvent =>
+        val msg = e.reason match
+          case DrawReason.Stalemate            => "Stalemate! The game is a draw."
+          case DrawReason.InsufficientMaterial => "Draw by insufficient material."
+          case DrawReason.FiftyMoveRule        => "Draw claimed under the 50-move rule."
+          case DrawReason.Agreement            => "Draw by agreement."
+        println(msg)
         println()
         print(Renderer.render(e.context.board))
 
@@ -59,13 +66,9 @@ class TerminalUI(engine: GameEngine) extends Observer:
 
       case _: PromotionRequiredEvent =>
         println("Promote to: q=Queen, r=Rook, b=Bishop, n=Knight")
-        synchronized { awaitingPromotion = true }
-      case _: DrawClaimedEvent =>
-        println("Draw claimed! The game is a draw.")
-        println()
-        print(Renderer.render(engine.board))
+        awaitingPromotion.set(true)
       case _: FiftyMoveRuleAvailableEvent =>
-        println("50-move rule available! The game is a draw.")
+        println("50-move rule is now available — type 'draw' to claim.")
 
       case e: PgnLoadedEvent =>
         println("PGN loaded successfully.")
@@ -84,22 +87,22 @@ class TerminalUI(engine: GameEngine) extends Observer:
     printPrompt(engine.turn)
 
     // Game loop
-    while running do
+    while running.get() do
       val input = Option(StdIn.readLine()).getOrElse("quit").trim
       synchronized {
-        if awaitingPromotion then
+        if awaitingPromotion.get() then
           input.toLowerCase match
-            case "q" => awaitingPromotion = false; engine.completePromotion(PromotionPiece.Queen)
-            case "r" => awaitingPromotion = false; engine.completePromotion(PromotionPiece.Rook)
-            case "b" => awaitingPromotion = false; engine.completePromotion(PromotionPiece.Bishop)
-            case "n" => awaitingPromotion = false; engine.completePromotion(PromotionPiece.Knight)
+            case "q" => awaitingPromotion.set(false); engine.completePromotion(PromotionPiece.Queen)
+            case "r" => awaitingPromotion.set(false); engine.completePromotion(PromotionPiece.Rook)
+            case "b" => awaitingPromotion.set(false); engine.completePromotion(PromotionPiece.Bishop)
+            case "n" => awaitingPromotion.set(false); engine.completePromotion(PromotionPiece.Knight)
             case _ =>
               println("Invalid choice. Enter q, r, b, or n.")
               println("Promote to: q=Queen, r=Rook, b=Bishop, n=Knight")
         else
           input.toLowerCase match
             case "quit" | "q" =>
-              running = false
+              running.set(false)
               println("Game over. Goodbye!")
             case "" =>
               printPrompt(engine.turn)
