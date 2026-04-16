@@ -17,8 +17,13 @@ class GameEngine(
     val initialContext: GameContext = GameContext.initial,
     val ruleSet: RuleSet = DefaultRules,
 ) extends Observable:
+  // Ensure that initialBoard is set correctly for threefold repetition detection
+  private val contextWithInitialBoard = if initialContext.moves.isEmpty && initialContext.board != initialContext.initialBoard then
+    initialContext.copy(initialBoard = initialContext.board)
+  else
+    initialContext
   @SuppressWarnings(Array("DisableSyntax.var"))
-  private var currentContext: GameContext = initialContext
+  private var currentContext: GameContext = contextWithInitialBoard
   private val invoker                     = new CommandInvoker()
 
   /** Pending promotion: the Move that triggered it (from/to only, moveType filled in later). */
@@ -63,11 +68,15 @@ class GameEngine(
           currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.FiftyMoveRule)))
           invoker.clear()
           notifyObservers(DrawEvent(currentContext, DrawReason.FiftyMoveRule))
+        else if ruleSet.isThreefoldRepetition(currentContext) then
+          currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.ThreefoldRepetition)))
+          invoker.clear()
+          notifyObservers(DrawEvent(currentContext, DrawReason.ThreefoldRepetition))
         else
           notifyObservers(
             InvalidMoveEvent(
               currentContext,
-              "Draw cannot be claimed: the 50-move rule has not been triggered.",
+              "Draw cannot be claimed: neither the 50-move rule nor threefold repetition has been triggered.",
             ),
           )
 
@@ -154,7 +163,7 @@ class GameEngine(
     invoker.clear()
 
     if ctx.moves.isEmpty then
-      currentContext = ctx
+      currentContext = ctx.copy(initialBoard = ctx.board)
       Right(())
     else replayMoves(ctx.moves, savedContext)
 
@@ -182,7 +191,11 @@ class GameEngine(
 
   /** Load an arbitrary board position, clearing all history and undo/redo state. */
   def loadPosition(newContext: GameContext): Unit = synchronized {
-    currentContext = newContext
+    val contextWithInitialBoard = if newContext.moves.isEmpty then
+      newContext.copy(initialBoard = newContext.board)
+    else
+      newContext
+    currentContext = contextWithInitialBoard
     pendingPromotion = None
     invoker.clear()
     notifyObservers(BoardResetEvent(currentContext))
@@ -237,6 +250,7 @@ class GameEngine(
     else if ruleSet.isCheck(currentContext) then notifyObservers(CheckDetectedEvent(currentContext))
 
     if currentContext.halfMoveClock >= 100 then notifyObservers(FiftyMoveRuleAvailableEvent(currentContext))
+    if ruleSet.isThreefoldRepetition(currentContext) then notifyObservers(ThreefoldRepetitionAvailableEvent(currentContext))
 
   private def translateMoveToNotation(move: Move, boardBefore: Board): String =
     move.moveType match

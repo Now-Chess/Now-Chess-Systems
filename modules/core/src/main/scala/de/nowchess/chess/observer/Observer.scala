@@ -56,6 +56,11 @@ case class FiftyMoveRuleAvailableEvent(
     context: GameContext,
 ) extends GameEvent
 
+/** Fired after any move where the same position occurs for the third time — threefold repetition is now claimable. */
+case class ThreefoldRepetitionAvailableEvent(
+    context: GameContext,
+) extends GameEvent
+
 /** Fired when a move is undone, carrying PGN notation of the reversed move. */
 case class MoveUndoneEvent(
     context: GameContext,

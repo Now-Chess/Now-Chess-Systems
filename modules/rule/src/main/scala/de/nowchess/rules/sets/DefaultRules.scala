@@ -11,6 +11,14 @@ import scala.annotation.tailrec
   */
 object DefaultRules extends RuleSet:
 
+  /** Represents a position for threefold repetition (board state + turn + castling + en passant). */
+  private case class Position(
+      board: Board,
+      turn: Color,
+      castlingRights: CastlingRights,
+      enPassantSquare: Option[Square],
+  )
+
   // ── Direction vectors ──────────────────────────────────────────────
   private val RookDirs: List[(Int, Int)]   = List((1, 0), (-1, 0), (0, 1), (0, -1))
   private val BishopDirs: List[(Int, Int)] = List((1, 1), (1, -1), (-1, 1), (-1, -1))
@@ -61,6 +69,46 @@ object DefaultRules extends RuleSet:
 
   override def isFiftyMoveRule(context: GameContext): Boolean =
     context.halfMoveClock >= 100
+
+  override def isThreefoldRepetition(context: GameContext): Boolean =
+    val currentPosition = Position(
+      board = context.board,
+      turn = context.turn,
+      castlingRights = context.castlingRights,
+      enPassantSquare = context.enPassantSquare,
+    )
+    countPositionOccurrences(context, currentPosition) >= 3
+
+  private def countPositionOccurrences(context: GameContext, targetPosition: Position): Int =
+    try
+      var count     = 0
+      var tempCtx   = GameContext(
+        board = context.initialBoard,
+        turn = Color.White,
+        castlingRights = CastlingRights.Initial,
+        enPassantSquare = None,
+        halfMoveClock = 0,
+        moves = List.empty,
+        initialBoard = context.initialBoard,
+      )
+      var tempPos   = Position(tempCtx.board, tempCtx.turn, tempCtx.castlingRights, tempCtx.enPassantSquare)
+      if tempPos == targetPosition then count += 1
+
+      for move <- context.moves do
+        tempCtx = applyMove(tempCtx)(move)
+        tempPos = Position(
+          board = tempCtx.board,
+          turn = tempCtx.turn,
+          castlingRights = tempCtx.castlingRights,
+          enPassantSquare = tempCtx.enPassantSquare,
+        )
+        if tempPos == targetPosition then count += 1
+
+      count
+    catch
+      case _: Exception =>
+        // If replay fails, conservatively count only the current position (never triggers a draw)
+        1
 
   // ── Sliding pieces (Bishop, Rook, Queen) ───────────────────────────
 

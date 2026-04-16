@@ -32,6 +32,9 @@ trait RuleSet:
   /** True if halfMoveClock >= 100 (50-move rule). */
   def isFiftyMoveRule(context: GameContext): Boolean
 
+  /** True if the same position has occurred 3 times (including current position). */
+  def isThreefoldRepetition(context: GameContext): Boolean
+
   /** Apply a legal move to produce the next game context. Handles all special move types: castling, en passant,
     * promotion. Updates castling rights, en passant square, half-move clock, turn, and move history.
     */

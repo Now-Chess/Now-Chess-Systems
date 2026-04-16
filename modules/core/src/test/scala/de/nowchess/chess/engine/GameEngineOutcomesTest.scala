@@ -221,3 +221,75 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
     evt.isDefined shouldBe true
     evt.get.reason shouldBe DrawReason.InsufficientMaterial
     engine.context.result shouldBe Some(GameResult.Draw(DrawReason.InsufficientMaterial))
+
+  // ── Threefold Repetition ──────────────────────────────────────────
+
+  test("draw command rejected when neither 50-move rule nor threefold repetition available"):
+    val engine   = EngineTestHelpers.makeEngine()
+    val observer = new EngineTestHelpers.MockObserver()
+    engine.subscribe(observer)
+
+    engine.processUserInput("e2e4")
+    observer.clear()
+
+    engine.processUserInput("draw")
+
+    observer.hasEvent[InvalidMoveEvent] shouldBe true
+
+  test("threefold repetition fires ThreefoldRepetitionAvailableEvent after 8-move shuffle"):
+    val engine   = EngineTestHelpers.makeEngine()
+    val observer = new EngineTestHelpers.MockObserver()
+    engine.subscribe(observer)
+
+    // Both knights shuffle home: initial position occurs 3 times on move 8 (Ng8)
+    engine.processUserInput("g1f3")
+    engine.processUserInput("g8f6")
+    engine.processUserInput("f3g1")
+    engine.processUserInput("f6g8")
+    engine.processUserInput("g1f3")
+    engine.processUserInput("g8f6")
+    engine.processUserInput("f3g1")
+    observer.clear()
+
+    engine.processUserInput("f6g8")  // 3rd occurrence of initial position
+
+    observer.hasEvent[ThreefoldRepetitionAvailableEvent] shouldBe true
+    engine.context.result shouldBe None  // claimable, not automatic
+
+  test("draw claim via threefold repetition ends game with DrawEvent"):
+    val engine   = EngineTestHelpers.makeEngine()
+    val observer = new EngineTestHelpers.MockObserver()
+    engine.subscribe(observer)
+
+    engine.processUserInput("g1f3")
+    engine.processUserInput("g8f6")
+    engine.processUserInput("f3g1")
+    engine.processUserInput("f6g8")
+    engine.processUserInput("g1f3")
+    engine.processUserInput("g8f6")
+    engine.processUserInput("f3g1")
+    engine.processUserInput("f6g8")  // threefold now available
+
+    observer.clear()
+    engine.processUserInput("draw")
+
+    val evt = observer.getEvent[DrawEvent]
+    evt.isDefined shouldBe true
+    evt.get.reason shouldBe DrawReason.ThreefoldRepetition
+    engine.context.result shouldBe Some(GameResult.Draw(DrawReason.ThreefoldRepetition))
+
+  test("loadPosition with non-empty moves preserves context as-is"):
+    val engine   = EngineTestHelpers.makeEngine()
+    val observer = new EngineTestHelpers.MockObserver()
+    engine.subscribe(observer)
+
+    // Build a context that already has a move in its history
+    val move = de.nowchess.api.move.Move(
+      de.nowchess.api.board.Square(de.nowchess.api.board.File.E, de.nowchess.api.board.Rank.R2),
+      de.nowchess.api.board.Square(de.nowchess.api.board.File.E, de.nowchess.api.board.Rank.R4),
+    )
+    val ctxWithMove = de.nowchess.api.game.GameContext.initial.withMove(move)
+
+    engine.loadPosition(ctxWithMove)
+
+    observer.hasEvent[BoardResetEvent] shouldBe true

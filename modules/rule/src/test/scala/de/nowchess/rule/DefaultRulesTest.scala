@@ -175,3 +175,48 @@ class DefaultRulesTest extends AnyFunSuite with Matchers:
 
     // White is in check; only moves that block or move the king are legal
     moves.nonEmpty shouldBe true
+
+  // ── Threefold Repetition ─────────────────────────────────────────
+
+  test("threefold repetition returns false for initial position with no moves"):
+    val context = GameContext.initial
+    rules.isThreefoldRepetition(context) shouldBe false
+
+  test("threefold repetition returns false after single move"):
+    val fen     = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    val context = FenParser.parseFen(fen).fold(_ => fail(), identity)
+    val move1   = Move(Square(File.E, Rank.R2), Square(File.E, Rank.R4))
+    val ctx1    = rules.applyMove(context)(move1)
+
+    rules.isThreefoldRepetition(ctx1) shouldBe false
+
+  test("threefold repetition detects repeated position after back-and-forth moves"):
+    // Both knights shuffle back and forth: initial position (White to move) occurs 3 times
+    val fen     = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    val context = FenParser.parseFen(fen).fold(_ => fail(), identity)
+
+    val nf3 = Move(Square(File.G, Rank.R1), Square(File.F, Rank.R3))
+    val nf6 = Move(Square(File.G, Rank.R8), Square(File.F, Rank.R6))
+    val ng1 = Move(Square(File.F, Rank.R3), Square(File.G, Rank.R1))
+    val ng8 = Move(Square(File.F, Rank.R6), Square(File.G, Rank.R8))
+
+    // After 8 moves the starting position (White to move, both knights home) has occurred 3 times
+    val ctx = List(nf3, nf6, ng1, ng8, nf3, nf6, ng1, ng8)
+      .foldLeft(context)(rules.applyMove(_)(_))
+
+    rules.isThreefoldRepetition(ctx) shouldBe true
+
+  test("threefold repetition catch block returns false for inconsistent context"):
+    // A context whose moves cannot be replayed from initialBoard (forces the catch path)
+    val m = Move(Square(File.E, Rank.R5), Square(File.E, Rank.R6))  // e5→e6, no pawn there in initial board
+    val brokenCtx = GameContext(
+      board = Board.initial,
+      turn = Color.White,
+      castlingRights = CastlingRights.Initial,
+      enPassantSquare = None,
+      halfMoveClock = 0,
+      moves = List(m),
+      initialBoard = Board.initial,
+    )
+    // Replay will fail → catch returns 1 → 1 >= 3 is false
+    rules.isThreefoldRepetition(brokenCtx) shouldBe false

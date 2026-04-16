@@ -98,6 +98,7 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
       def isStalemate(context: GameContext): Boolean               = false
       def isInsufficientMaterial(context: GameContext): Boolean    = false
       def isFiftyMoveRule(context: GameContext): Boolean           = false
+      def isThreefoldRepetition(context: GameContext): Boolean     = false
       def applyMove(context: GameContext)(move: Move): GameContext = DefaultRules.applyMove(context)(move)
 
     val engine = new GameEngine(ruleSet = permissiveRules)
@@ -119,6 +120,7 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
       def isStalemate(context: GameContext): Boolean                       = false
       def isInsufficientMaterial(context: GameContext): Boolean            = false
       def isFiftyMoveRule(context: GameContext): Boolean                   = false
+      def isThreefoldRepetition(context: GameContext): Boolean             = false
       def applyMove(context: GameContext)(move: Move): GameContext         = context
 
     val engine = new GameEngine(ruleSet = noLegalMoves)

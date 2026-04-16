@@ -173,6 +173,8 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
         DefaultRules.isInsufficientMaterial(context)
       def isFiftyMoveRule(context: GameContext): Boolean =
         DefaultRules.isFiftyMoveRule(context)
+      def isThreefoldRepetition(context: GameContext): Boolean =
+        DefaultRules.isThreefoldRepetition(context)
       def applyMove(context: GameContext)(move: Move): GameContext =
         DefaultRules.applyMove(context)(move)
 

@@ -50,6 +50,7 @@ class TerminalUI(engine: GameEngine) extends Observer:
           case DrawReason.Stalemate            => "Stalemate! The game is a draw."
           case DrawReason.InsufficientMaterial => "Draw by insufficient material."
           case DrawReason.FiftyMoveRule        => "Draw claimed under the 50-move rule."
+          case DrawReason.ThreefoldRepetition  => "Draw by threefold repetition."
           case DrawReason.Agreement            => "Draw by agreement."
         println(msg)
         println()
@@ -69,6 +70,9 @@ class TerminalUI(engine: GameEngine) extends Observer:
         awaitingPromotion.set(true)
       case _: FiftyMoveRuleAvailableEvent =>
         println("50-move rule is now available — type 'draw' to claim.")
+
+      case _: ThreefoldRepetitionAvailableEvent =>
+        println("Threefold repetition is now available — type 'draw' to claim.")
 
       case e: PgnLoadedEvent =>
         println("PGN loaded successfully.")

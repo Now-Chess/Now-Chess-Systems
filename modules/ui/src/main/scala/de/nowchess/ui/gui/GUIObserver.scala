@@ -36,6 +36,7 @@ class GUIObserver(private val boardView: ChessBoardView) extends Observer:
             case DrawReason.Stalemate            => "Stalemate! The game is a draw."
             case DrawReason.InsufficientMaterial => "Draw by insufficient material."
             case DrawReason.FiftyMoveRule        => "Draw claimed under the 50-move rule."
+            case DrawReason.ThreefoldRepetition  => "Draw by threefold repetition."
             case DrawReason.Agreement            => "Draw by agreement."
           showAlert(AlertType.Information, "Game Over", msg)
 
@@ -51,6 +52,9 @@ class GUIObserver(private val boardView: ChessBoardView) extends Observer:
 
         case e: FiftyMoveRuleAvailableEvent =>
           boardView.showMessage("50-move rule is now available — type 'draw' to claim.")
+
+        case e: ThreefoldRepetitionAvailableEvent =>
+          boardView.showMessage("Threefold repetition is now available — type 'draw' to claim.")
 
         case e: MoveUndoneEvent =>
           boardView.updateBoard(e.context.board, e.context.turn)

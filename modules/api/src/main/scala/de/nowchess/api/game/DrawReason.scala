@@ -5,4 +5,5 @@ enum DrawReason:
   case Stalemate
   case InsufficientMaterial
   case FiftyMoveRule
+  case ThreefoldRepetition
   case Agreement

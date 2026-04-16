@@ -13,6 +13,7 @@ case class GameContext(
     halfMoveClock: Int,
     moves: List[Move],
     result: Option[GameResult] = None,
+    initialBoard: Board = Board.initial,
 ):
   /** Create new context with updated board. */
   def withBoard(newBoard: Board): GameContext = copy(board = newBoard)
