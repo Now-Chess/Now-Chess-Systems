@@ -63,3 +63,8 @@ tasks.test {
 tasks.reportScoverage {
     dependsOn(tasks.test)
 }
+
+tasks.jar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+

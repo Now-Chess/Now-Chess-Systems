@@ -3,7 +3,7 @@ package de.nowchess.chess.engine
 import de.nowchess.api.board.{Board, Color, File, PieceType, Rank, Square}
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
-import de.nowchess.chess.observer.{GameEvent, InvalidMoveEvent, MoveRedoneEvent, Observer}
+import de.nowchess.chess.observer.{GameEvent, InvalidMoveEvent, InvalidMoveReason, MoveRedoneEvent, Observer}
 import de.nowchess.io.GameContextImport
 import de.nowchess.rules.RuleSet
 import de.nowchess.rules.sets.DefaultRules
@@ -50,8 +50,8 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
     engine.processUserInput("e2e5")
 
     events.exists {
-      case InvalidMoveEvent(_, reason) => reason.contains("Illegal move")
-      case _                           => false
+      case InvalidMoveEvent(_, InvalidMoveReason.IllegalMove) => true
+      case _                                                  => false
     } shouldBe true
 
   test("loadGame returns Left when importer fails"):

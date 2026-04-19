@@ -36,7 +36,7 @@ case class DrawEvent(
 /** Fired when a move is invalid. */
 case class InvalidMoveEvent(
     context: GameContext,
-    reason: String,
+    reason: InvalidMoveReason,
 ) extends GameEvent
 
 /** Fired when the board is reset. */
@@ -72,6 +72,24 @@ case class MoveRedoneEvent(
 /** Fired after a PGN string is successfully loaded and all moves are replayed into history. */
 case class PgnLoadedEvent(
     context: GameContext,
+) extends GameEvent
+
+/** Fired when a player resigns. The opponent wins. */
+case class ResignEvent(
+    context: GameContext,
+    resignedColor: Color,
+) extends GameEvent
+
+/** Fired when a player offers a draw. Waiting for opponent to accept or decline. */
+case class DrawOfferEvent(
+    context: GameContext,
+    offeredBy: Color,
+) extends GameEvent
+
+/** Fired when the opponent declines a draw offer. */
+case class DrawOfferDeclinedEvent(
+    context: GameContext,
+    declinedBy: Color,
 ) extends GameEvent
 
 /** Observer trait: implement to receive game state updates. */

@@ -4,7 +4,16 @@ import de.nowchess.api.board.{Board, Color, File, Piece, PieceType, Rank, Square
 import de.nowchess.api.game.{DrawReason, GameContext}
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.io.fen.FenParser
-import de.nowchess.chess.observer.*
+import de.nowchess.chess.observer.{
+  CheckDetectedEvent,
+  CheckmateEvent,
+  DrawEvent,
+  GameEvent,
+  InvalidMoveEvent,
+  InvalidMoveReason,
+  MoveExecutedEvent,
+  Observer,
+}
 import de.nowchess.rules.RuleSet
 import de.nowchess.rules.sets.DefaultRules
 import org.scalatest.funsuite.AnyFunSuite
@@ -30,8 +39,8 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
     engine.processUserInput("e7e8")
 
     events.exists {
-      case InvalidMoveEvent(_, reason) => reason.contains("Promotion piece required")
-      case _                           => false
+      case InvalidMoveEvent(_, InvalidMoveReason.PromotionPieceRequired) => true
+      case _                                                             => false
     } should be(true)
   }
 
@@ -198,5 +207,5 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
       case _                   => false
     } should be(true)
     val invalidEvt = events.collect { case e: InvalidMoveEvent => e }.last
-    invalidEvt.reason should include("Error completing promotion")
+    invalidEvt.reason shouldBe InvalidMoveReason.PromotionPieceInvalid
   }

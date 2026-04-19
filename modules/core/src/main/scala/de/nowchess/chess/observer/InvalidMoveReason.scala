@@ -1,0 +1,21 @@
+package de.nowchess.chess.observer
+
+enum InvalidMoveReason:
+  case GameAlreadyOver
+  case NoSourcePiece
+  case NotYourPiece
+  case IllegalMove
+  case PromotionPieceRequired
+  case PromotionPieceInvalid
+  case InvalidMoveFormat
+  case EmptyInput
+  case DrawCannotBeClaimed
+  case NothingToUndo
+  case NothingToRedo
+  case BotMoveIllegal
+  case BotMoveInvalidSource
+  case DrawOfferPending
+  case NoDrawOfferToAccept
+  case CannotAcceptOwnDrawOffer
+  case NoDrawOfferToDecline
+  case CannotDeclineOwnDrawOffer

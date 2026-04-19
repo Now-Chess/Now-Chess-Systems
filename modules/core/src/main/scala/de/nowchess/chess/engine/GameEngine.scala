@@ -31,7 +31,9 @@ class GameEngine(
     else initialContext
   @SuppressWarnings(Array("DisableSyntax.var"))
   private var currentContext: GameContext = contextWithInitialBoard
-  private val invoker                     = new CommandInvoker()
+  @SuppressWarnings(Array("DisableSyntax.var"))
+  private var pendingDrawOffer: Option[Color] = None
+  private val invoker                         = new CommandInvoker()
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -77,12 +79,12 @@ class GameEngine(
           notifyObservers(
             InvalidMoveEvent(
               currentContext,
-              "Draw cannot be claimed: neither the 50-move rule nor threefold repetition has been triggered.",
+              InvalidMoveReason.DrawCannotBeClaimed,
             ),
           )
 
       case "" =>
-        notifyObservers(InvalidMoveEvent(currentContext, "Please enter a valid move or command."))
+        notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.EmptyInput))
 
       case moveInput =>
         Parser.parseMove(moveInput) match
@@ -90,7 +92,7 @@ class GameEngine(
             notifyObservers(
               InvalidMoveEvent(
                 currentContext,
-                s"Invalid move format '$moveInput'. Use coordinate notation, e.g. e2e4.",
+                InvalidMoveReason.InvalidMoveFormat,
               ),
             )
           case Some((from, to, promotionPiece: Option[PromotionPiece])) =>
@@ -100,26 +102,26 @@ class GameEngine(
   private def handleParsedMove(from: Square, to: Square, promotionPiece: Option[PromotionPiece]): Unit =
     currentContext.board.pieceAt(from) match
       case None =>
-        notifyObservers(InvalidMoveEvent(currentContext, "No piece on that square."))
+        notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.NoSourcePiece))
       case Some(piece) if piece.color != currentContext.turn =>
-        notifyObservers(InvalidMoveEvent(currentContext, "That is not your piece."))
+        notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.NotYourPiece))
       case Some(piece) =>
         val legal = ruleSet.legalMoves(currentContext)(from)
         // Find all legal moves going to `to`
         val candidates = legal.filter(_.to == to)
         candidates match
           case Nil =>
-            notifyObservers(InvalidMoveEvent(currentContext, "Illegal move."))
+            notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.IllegalMove))
           case _ if isPromotionMove(piece, to) =>
             if promotionPiece.isEmpty then
               notifyObservers(
-                InvalidMoveEvent(currentContext, "Promotion piece required: append q, r, b, or n to the move."),
+                InvalidMoveEvent(currentContext, InvalidMoveReason.PromotionPieceRequired),
               )
             else
               candidates.find(_.moveType == MoveType.Promotion(promotionPiece.get)) match
                 case None =>
                   notifyObservers(
-                    InvalidMoveEvent(currentContext, "Error completing promotion: no matching legal move."),
+                    InvalidMoveEvent(currentContext, InvalidMoveReason.PromotionPieceInvalid),
                   )
                 case Some(move) => executeMove(move)
           case move :: _ =>
@@ -137,6 +139,62 @@ class GameEngine(
   /** Redo the last undone move. */
   def redo(): Unit = synchronized(performRedo())
 
+  /** Resign from the game. The opponent wins. */
+  def resign(color: Color): Unit = synchronized {
+    if currentContext.result.isDefined then
+      notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.GameAlreadyOver))
+    else
+      currentContext = currentContext.withResult(Some(GameResult.Win(color.opposite)))
+      pendingDrawOffer = None
+      invoker.clear()
+      notifyObservers(ResignEvent(currentContext, color))
+  }
+
+  /** Offer a draw. */
+  def offerDraw(color: Color): Unit = synchronized {
+    if currentContext.result.isDefined then
+      notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.GameAlreadyOver))
+    else
+      pendingDrawOffer match
+        case Some(_) =>
+          notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.DrawOfferPending))
+        case None =>
+          pendingDrawOffer = Some(color)
+          notifyObservers(DrawOfferEvent(currentContext, color))
+  }
+
+  /** Accept a pending draw offer. */
+  def acceptDraw(color: Color): Unit = synchronized {
+    if currentContext.result.isDefined then
+      notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.GameAlreadyOver))
+    else
+      pendingDrawOffer match
+        case None =>
+          notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.NoDrawOfferToAccept))
+        case Some(offerer) if offerer == color =>
+          notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.CannotAcceptOwnDrawOffer))
+        case Some(_) =>
+          currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.Agreement)))
+          pendingDrawOffer = None
+          invoker.clear()
+          notifyObservers(DrawEvent(currentContext, DrawReason.Agreement))
+  }
+
+  /** Decline a pending draw offer. */
+  def declineDraw(color: Color): Unit = synchronized {
+    if currentContext.result.isDefined then
+      notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.GameAlreadyOver))
+    else
+      pendingDrawOffer match
+        case None =>
+          notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.NoDrawOfferToDecline))
+        case Some(offerer) if offerer == color =>
+          notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.CannotDeclineOwnDrawOffer))
+        case Some(_) =>
+          pendingDrawOffer = None
+          notifyObservers(DrawOfferDeclinedEvent(currentContext, color))
+  }
+
   /** Load a game using the provided importer. If the imported context has moves, they are replayed through the command
     * system. Otherwise, the position is set directly. Notifies observers with PgnLoadedEvent on success.
     */
@@ -145,6 +203,7 @@ class GameEngine(
       case Left(err) => Left(err)
       case Right(ctx) =>
         replayGame(ctx).map { _ =>
+          pendingDrawOffer = None
           notifyObservers(PgnLoadedEvent(currentContext))
         }
   }
@@ -186,6 +245,7 @@ class GameEngine(
       if newContext.moves.isEmpty then newContext.copy(initialBoard = newContext.board)
       else newContext
     currentContext = contextWithInitialBoard
+    pendingDrawOffer = None
     invoker.clear()
     notifyObservers(BoardResetEvent(currentContext))
   }
@@ -193,6 +253,7 @@ class GameEngine(
   /** Reset the board to initial position. */
   def reset(): Unit = synchronized {
     currentContext = GameContext.initial
+    pendingDrawOffer = None
     invoker.clear()
     notifyObservers(BoardResetEvent(currentContext))
   }
@@ -323,9 +384,9 @@ class GameEngine(
           legal.find(m => m.to == to && m.moveType == move.moveType) match
             case Some(legalMove) => executeMove(legalMove)
             case None =>
-              notifyObservers(InvalidMoveEvent(currentContext, s"Bot move ${from}${to} is illegal"))
+              notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.BotMoveIllegal))
         case _ =>
-          notifyObservers(InvalidMoveEvent(currentContext, "Bot move has invalid source square"))
+          notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.BotMoveInvalidSource))
     }
 
   private def handleBotNoMove(): Unit =
@@ -344,7 +405,7 @@ class GameEngine(
           moveCmd.previousContext.foreach(currentContext = _)
           invoker.undo()
           notifyObservers(MoveUndoneEvent(currentContext, moveCmd.notation))
-    else notifyObservers(InvalidMoveEvent(currentContext, "Nothing to undo."))
+    else notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.NothingToUndo))
 
   private def performRedo(): Unit =
     if invoker.canRedo then
@@ -364,4 +425,4 @@ class GameEngine(
                 capturedDesc,
               ),
             )
-    else notifyObservers(InvalidMoveEvent(currentContext, "Nothing to redo."))
+    else notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.NothingToRedo))
