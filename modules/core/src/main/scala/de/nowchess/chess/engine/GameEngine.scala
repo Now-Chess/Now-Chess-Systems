@@ -2,7 +2,8 @@ package de.nowchess.chess.engine
 
 import de.nowchess.api.board.{Board, Color, Piece, PieceType, Square}
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
-import de.nowchess.api.game.{DrawReason, GameContext, GameResult}
+import de.nowchess.api.game.{BotParticipant, DrawReason, GameContext, GameResult, Human, Participant}
+import de.nowchess.api.player.{PlayerId, PlayerInfo}
 import de.nowchess.chess.controller.Parser
 import de.nowchess.chess.observer.*
 import de.nowchess.chess.command.{CommandInvoker, MoveCommand, MoveResult}
@@ -10,29 +11,29 @@ import de.nowchess.io.{GameContextExport, GameContextImport}
 import de.nowchess.rules.RuleSet
 import de.nowchess.rules.sets.DefaultRules
 
+import scala.concurrent.{ExecutionContext, Future}
+
 /** Pure game engine that manages game state and notifies observers of state changes. All rule queries delegate to the
   * injected RuleSet. All user interactions go through Commands; state changes are broadcast via GameEvents.
   */
 class GameEngine(
     val initialContext: GameContext = GameContext.initial,
     val ruleSet: RuleSet = DefaultRules,
+    val participants: Map[Color, Participant] = Map(
+      Color.White -> Human(PlayerInfo(PlayerId("p1"), "Player 1")),
+      Color.Black -> Human(PlayerInfo(PlayerId("p2"), "Player 2")),
+    ),
 ) extends Observable:
   // Ensure that initialBoard is set correctly for threefold repetition detection
-  private val contextWithInitialBoard = if initialContext.moves.isEmpty && initialContext.board != initialContext.initialBoard then
-    initialContext.copy(initialBoard = initialContext.board)
-  else
-    initialContext
+  private val contextWithInitialBoard =
+    if initialContext.moves.isEmpty && initialContext.board != initialContext.initialBoard then
+      initialContext.copy(initialBoard = initialContext.board)
+    else initialContext
   @SuppressWarnings(Array("DisableSyntax.var"))
   private var currentContext: GameContext = contextWithInitialBoard
   private val invoker                     = new CommandInvoker()
 
-  /** Pending promotion: the Move that triggered it (from/to only, moveType filled in later). */
-  private case class PendingPromotion(from: Square, to: Square, contextBefore: GameContext)
-  @SuppressWarnings(Array("DisableSyntax.var"))
-  private var pendingPromotion: Option[PendingPromotion] = None
-
-  /** True if a pawn promotion move is pending and needs a piece choice. */
-  def isPendingPromotion: Boolean = synchronized(pendingPromotion.isDefined)
+  private implicit val ec: ExecutionContext = ExecutionContext.global
 
   // Synchronized accessors for current state
   def board: Board         = synchronized(currentContext.board)
@@ -92,11 +93,11 @@ class GameEngine(
                 s"Invalid move format '$moveInput'. Use coordinate notation, e.g. e2e4.",
               ),
             )
-          case Some((from, to)) =>
-            handleParsedMove(from, to)
+          case Some((from, to, promotionPiece: Option[PromotionPiece])) =>
+            handleParsedMove(from, to, promotionPiece)
   }
 
-  private def handleParsedMove(from: Square, to: Square): Unit =
+  private def handleParsedMove(from: Square, to: Square, promotionPiece: Option[PromotionPiece]): Unit =
     currentContext.board.pieceAt(from) match
       case None =>
         notifyObservers(InvalidMoveEvent(currentContext, "No piece on that square."))
@@ -109,11 +110,18 @@ class GameEngine(
         candidates match
           case Nil =>
             notifyObservers(InvalidMoveEvent(currentContext, "Illegal move."))
-          case moves if isPromotionMove(piece, to) =>
-            // Multiple moves (one per promotion piece) — ask user to choose
-            val contextBefore = currentContext
-            pendingPromotion = Some(PendingPromotion(from, to, contextBefore))
-            notifyObservers(PromotionRequiredEvent(currentContext, from, to))
+          case _ if isPromotionMove(piece, to) =>
+            if promotionPiece.isEmpty then
+              notifyObservers(
+                InvalidMoveEvent(currentContext, "Promotion piece required: append q, r, b, or n to the move."),
+              )
+            else
+              candidates.find(_.moveType == MoveType.Promotion(promotionPiece.get)) match
+                case None =>
+                  notifyObservers(
+                    InvalidMoveEvent(currentContext, "Error completing promotion: no matching legal move."),
+                  )
+                case Some(move) => executeMove(move)
           case move :: _ =>
             executeMove(move)
 
@@ -122,21 +130,6 @@ class GameEngine(
       val promoRank = if piece.color == Color.White then 7 else 0
       to.rank.ordinal == promoRank
     }
-
-  /** Apply a player's promotion piece choice. Must only be called when isPendingPromotion is true.
-    */
-  def completePromotion(piece: PromotionPiece): Unit = synchronized {
-    pendingPromotion match
-      case None =>
-        notifyObservers(InvalidMoveEvent(currentContext, "No promotion pending."))
-      case Some(pending) =>
-        pendingPromotion = None
-        val move = Move(pending.from, pending.to, MoveType.Promotion(piece))
-        // Verify it's actually legal
-        val legal = ruleSet.legalMoves(currentContext)(pending.from)
-        if legal.contains(move) then executeMove(move)
-        else notifyObservers(InvalidMoveEvent(currentContext, "Error completing promotion."))
-  }
 
   /** Undo the last move. */
   def undo(): Unit = synchronized(performUndo())
@@ -159,7 +152,6 @@ class GameEngine(
   private def replayGame(ctx: GameContext): Either[String, Unit] =
     val savedContext = currentContext
     currentContext = GameContext.initial
-    pendingPromotion = None
     invoker.clear()
 
     if ctx.moves.isEmpty then
@@ -175,14 +167,13 @@ class GameEngine(
     result
 
   private def applyReplayMove(move: Move): Either[String, Unit] =
-    handleParsedMove(move.from, move.to)
-    move.moveType match
-      case MoveType.Promotion(pp) if pendingPromotion.isDefined =>
-        completePromotion(pp)
-        Right(())
-      case MoveType.Promotion(_) =>
-        Left(s"Promotion required for move ${move.from}${move.to}")
-      case _ => Right(())
+    val legal = ruleSet.legalMoves(currentContext)(move.from)
+    val candidate = move.moveType match
+      case MoveType.Promotion(pp) => legal.find(m => m.to == move.to && m.moveType == MoveType.Promotion(pp))
+      case _                      => legal.find(_.to == move.to)
+    candidate match
+      case None     => Left("Illegal move.")
+      case Some(lm) => executeMove(lm); Right(())
 
   /** Export the current game context using the provided exporter. */
   def exportGame(exporter: GameContextExport): String = synchronized {
@@ -191,12 +182,10 @@ class GameEngine(
 
   /** Load an arbitrary board position, clearing all history and undo/redo state. */
   def loadPosition(newContext: GameContext): Unit = synchronized {
-    val contextWithInitialBoard = if newContext.moves.isEmpty then
-      newContext.copy(initialBoard = newContext.board)
-    else
-      newContext
+    val contextWithInitialBoard =
+      if newContext.moves.isEmpty then newContext.copy(initialBoard = newContext.board)
+      else newContext
     currentContext = contextWithInitialBoard
-    pendingPromotion = None
     invoker.clear()
     notifyObservers(BoardResetEvent(currentContext))
   }
@@ -207,6 +196,9 @@ class GameEngine(
     invoker.clear()
     notifyObservers(BoardResetEvent(currentContext))
   }
+
+  /** Kick off play when the side to move is a bot (e.g. bot-vs-bot from initial position). */
+  def startGame(): Unit = synchronized(requestBotMoveIfNeeded())
 
   // ──── Private helpers ────
 
@@ -250,7 +242,9 @@ class GameEngine(
     else if ruleSet.isCheck(currentContext) then notifyObservers(CheckDetectedEvent(currentContext))
 
     if currentContext.halfMoveClock >= 100 then notifyObservers(FiftyMoveRuleAvailableEvent(currentContext))
-    if ruleSet.isThreefoldRepetition(currentContext) then notifyObservers(ThreefoldRepetitionAvailableEvent(currentContext))
+    if ruleSet.isThreefoldRepetition(currentContext) then
+      notifyObservers(ThreefoldRepetitionAvailableEvent(currentContext))
+    else requestBotMoveIfNeeded()
 
   private def translateMoveToNotation(move: Move, boardBefore: Board): String =
     move.moveType match
@@ -300,6 +294,47 @@ class GameEngine(
         None
       case _ =>
         context.board.pieceAt(move.to)
+
+  /** Request a move from the opponent bot if it's their turn. Spawns an async task to avoid blocking the engine.
+    */
+  private def requestBotMoveIfNeeded(): Unit =
+    val pendingBotMove = synchronized {
+      participants.get(currentContext.turn) match
+        case Some(BotParticipant(bot)) => Some((bot, currentContext))
+        case _                         => None
+    }
+
+    pendingBotMove.foreach { case (bot, contextAtRequest) =>
+      Future {
+        bot.nextMove(contextAtRequest) match
+          case Some(move) => applyBotMove(move)
+          case None       => handleBotNoMove()
+      }
+    }
+
+  private def applyBotMove(move: Move): Unit =
+    synchronized {
+      val color = currentContext.turn
+      val from  = move.from
+      val to    = move.to
+      currentContext.board.pieceAt(from) match
+        case Some(piece) if piece.color == color =>
+          val legal = ruleSet.legalMoves(currentContext)(from)
+          legal.find(m => m.to == to && m.moveType == move.moveType) match
+            case Some(legalMove) => executeMove(legalMove)
+            case None =>
+              notifyObservers(InvalidMoveEvent(currentContext, s"Bot move ${from}${to} is illegal"))
+        case _ =>
+          notifyObservers(InvalidMoveEvent(currentContext, "Bot move has invalid source square"))
+    }
+
+  private def handleBotNoMove(): Unit =
+    synchronized {
+      if ruleSet.isCheckmate(currentContext) then
+        val winner = currentContext.turn.opposite
+        notifyObservers(CheckmateEvent(currentContext, winner))
+      else if ruleSet.isStalemate(currentContext) then notifyObservers(DrawEvent(currentContext, DrawReason.Stalemate))
+    }
 
   private def performUndo(): Unit =
     if invoker.canUndo then

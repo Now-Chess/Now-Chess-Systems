@@ -47,9 +47,6 @@ class GUIObserver(private val boardView: ChessBoardView) extends Observer:
           boardView.updateBoard(e.context.board, e.context.turn)
           boardView.showMessage("Board has been reset to initial position.")
 
-        case e: PromotionRequiredEvent =>
-          boardView.showPromotionDialog(e.from, e.to)
-
         case e: FiftyMoveRuleAvailableEvent =>
           boardView.showMessage("50-move rule is now available — type 'draw' to claim.")
 

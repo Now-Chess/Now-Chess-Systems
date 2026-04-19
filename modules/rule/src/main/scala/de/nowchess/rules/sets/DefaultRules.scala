@@ -81,8 +81,7 @@ object DefaultRules extends RuleSet:
 
   private def countPositionOccurrences(context: GameContext, targetPosition: Position): Int =
     try
-      var count     = 0
-      var tempCtx   = GameContext(
+      val initialCtx = GameContext(
         board = context.initialBoard,
         turn = Color.White,
         castlingRights = CastlingRights.Initial,
@@ -91,20 +90,24 @@ object DefaultRules extends RuleSet:
         moves = List.empty,
         initialBoard = context.initialBoard,
       )
-      var tempPos   = Position(tempCtx.board, tempCtx.turn, tempCtx.castlingRights, tempCtx.enPassantSquare)
-      if tempPos == targetPosition then count += 1
 
-      for move <- context.moves do
-        tempCtx = applyMove(tempCtx)(move)
-        tempPos = Position(
-          board = tempCtx.board,
-          turn = tempCtx.turn,
-          castlingRights = tempCtx.castlingRights,
-          enPassantSquare = tempCtx.enPassantSquare,
+      def positionOf(ctx: GameContext): Position =
+        Position(
+          board = ctx.board,
+          turn = ctx.turn,
+          castlingRights = ctx.castlingRights,
+          enPassantSquare = ctx.enPassantSquare,
         )
-        if tempPos == targetPosition then count += 1
 
-      count
+      val initialCount = if positionOf(initialCtx) == targetPosition then 1 else 0
+
+      context.moves
+        .foldLeft((initialCtx, initialCount)) { case ((tempCtx, count), move) =>
+          val nextCtx   = applyMove(tempCtx)(move)
+          val nextCount = if positionOf(nextCtx) == targetPosition then count + 1 else count
+          (nextCtx, nextCount)
+        }
+        ._2
     catch
       case _: Exception =>
         // If replay fails, conservatively count only the current position (never triggers a draw)

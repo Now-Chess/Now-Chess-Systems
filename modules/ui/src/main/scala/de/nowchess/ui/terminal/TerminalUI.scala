@@ -2,7 +2,6 @@ package de.nowchess.ui.terminal
 
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.io.StdIn
-import de.nowchess.api.move.PromotionPiece
 import de.nowchess.api.game.DrawReason
 import de.nowchess.chess.engine.GameEngine
 import de.nowchess.chess.observer.*
@@ -12,8 +11,7 @@ import de.nowchess.ui.utils.Renderer
   * I/O and user interaction in the terminal.
   */
 class TerminalUI(engine: GameEngine) extends Observer:
-  private val running           = new AtomicBoolean(true)
-  private val awaitingPromotion = new AtomicBoolean(false)
+  private val running = new AtomicBoolean(true)
 
   /** Called by GameEngine whenever a game event occurs. */
   override def onGameEvent(event: GameEvent): Unit =
@@ -65,9 +63,6 @@ class TerminalUI(engine: GameEngine) extends Observer:
         print(Renderer.render(e.context.board))
         printPrompt(e.context.turn)
 
-      case _: PromotionRequiredEvent =>
-        println("Promote to: q=Queen, r=Rook, b=Bishop, n=Knight")
-        awaitingPromotion.set(true)
       case _: FiftyMoveRuleAvailableEvent =>
         println("50-move rule is now available — type 'draw' to claim.")
 
@@ -90,28 +85,17 @@ class TerminalUI(engine: GameEngine) extends Observer:
     print(Renderer.render(engine.board))
     printPrompt(engine.turn)
 
-    // Game loop
     while running.get() do
       val input = Option(StdIn.readLine()).getOrElse("quit").trim
       synchronized {
-        if awaitingPromotion.get() then
-          input.toLowerCase match
-            case "q" => awaitingPromotion.set(false); engine.completePromotion(PromotionPiece.Queen)
-            case "r" => awaitingPromotion.set(false); engine.completePromotion(PromotionPiece.Rook)
-            case "b" => awaitingPromotion.set(false); engine.completePromotion(PromotionPiece.Bishop)
-            case "n" => awaitingPromotion.set(false); engine.completePromotion(PromotionPiece.Knight)
-            case _ =>
-              println("Invalid choice. Enter q, r, b, or n.")
-              println("Promote to: q=Queen, r=Rook, b=Bishop, n=Knight")
-        else
-          input.toLowerCase match
-            case "quit" | "q" =>
-              running.set(false)
-              println("Game over. Goodbye!")
-            case "" =>
-              printPrompt(engine.turn)
-            case _ =>
-              engine.processUserInput(input)
+        input.toLowerCase match
+          case "quit" | "q" =>
+            running.set(false)
+            println("Game over. Goodbye!")
+          case "" =>
+            printPrompt(engine.turn)
+          case _ =>
+            engine.processUserInput(input)
       }
 
     // Unsubscribe when done

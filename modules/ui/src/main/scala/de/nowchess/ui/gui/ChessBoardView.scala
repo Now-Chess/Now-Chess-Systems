@@ -11,7 +11,7 @@ import scalafx.scene.shape.Rectangle
 import scalafx.scene.text.{Font, Text}
 import scalafx.stage.Stage
 import de.nowchess.api.board.{Board, Color, File, Piece, PieceType, Rank, Square}
-import de.nowchess.api.move.PromotionPiece
+import de.nowchess.api.move.MoveType
 import de.nowchess.chess.command.{MoveCommand, MoveResult}
 import de.nowchess.chess.engine.GameEngine
 import de.nowchess.io.fen.{FenExporter, FenParser}
@@ -178,36 +178,42 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
     square
 
   private def handleSquareClick(rank: Int, file: Int): Unit =
-    if !engine.isPendingPromotion then
-      val clickedSquare = Square(File.values(file), Rank.values(rank))
+    val clickedSquare = Square(File.values(file), Rank.values(rank))
 
-      selectedSquare.get() match
-        case None =>
-          // First click - select piece if it belongs to current player
-          currentBoard.get().pieceAt(clickedSquare).foreach { piece =>
-            if piece.color == currentTurn.get() then
-              selectedSquare.set(Some(clickedSquare))
-              highlightSquare(rank, file, PieceSprites.SquareColors.Selected)
+    selectedSquare.get() match
+      case None =>
+        // First click - select piece if it belongs to current player
+        currentBoard.get().pieceAt(clickedSquare).foreach { piece =>
+          if piece.color == currentTurn.get() then
+            selectedSquare.set(Some(clickedSquare))
+            highlightSquare(rank, file, PieceSprites.SquareColors.Selected)
 
-              val legalDests = engine.ruleSet
-                .legalMoves(engine.context)(clickedSquare)
-                .collect { case move if move.from == clickedSquare => move.to }
-              legalDests.foreach { sq =>
-                highlightSquare(sq.rank.ordinal, sq.file.ordinal, PieceSprites.SquareColors.ValidMove)
-              }
-          }
+            val legalDests = engine.ruleSet
+              .legalMoves(engine.context)(clickedSquare)
+              .collect { case move if move.from == clickedSquare => move.to }
+            legalDests.foreach { sq =>
+              highlightSquare(sq.rank.ordinal, sq.file.ordinal, PieceSprites.SquareColors.ValidMove)
+            }
+        }
 
-        case Some(fromSquare) =>
-          // Second click - attempt move
-          if clickedSquare == fromSquare then
-            // Deselect
-            selectedSquare.set(None)
-            updateBoard(currentBoard.get(), currentTurn.get())
-          else
-            // Try to move
-            val moveStr = s"${fromSquare}$clickedSquare"
-            engine.processUserInput(moveStr)
-            selectedSquare.set(None)
+      case Some(fromSquare) =>
+        // Second click - attempt move
+        if clickedSquare == fromSquare then
+          // Deselect
+          selectedSquare.set(None)
+          updateBoard(currentBoard.get(), currentTurn.get())
+        else
+          val isPromo = engine.ruleSet
+            .legalMoves(engine.context)(fromSquare)
+            .exists(m =>
+              m.to == clickedSquare && (m.moveType match
+                case MoveType.Promotion(_) => true
+                case _                     => false
+              ),
+            )
+          if isPromo then showPromotionDialog(fromSquare, clickedSquare)
+          else engine.processUserInput(s"${fromSquare}$clickedSquare")
+          selectedSquare.set(None)
 
   def updateBoard(board: Board, turn: Color): Unit =
     currentBoard.set(board)
@@ -266,7 +272,8 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
         case Some(piece) =>
           Seq(bgRect) ++ PieceSprites.loadPieceImage(piece, squareSize * 0.8).toSeq
         case None =>
-          Seq(bgRect)): Seq[scalafx.scene.Node]
+          Seq(bgRect)
+      ): Seq[scalafx.scene.Node]
     }
 
   def showMessage(msg: String): Unit =
@@ -280,14 +287,12 @@ class ChessBoardView(val stage: Stage, private val engine: GameEngine) extends B
       headerText = "Choose promotion piece"
       contentText = "Promote to:"
     }
-
-    val result = dialog.showAndWait()
-    result match
-      case Some("Queen")  => engine.completePromotion(PromotionPiece.Queen)
-      case Some("Rook")   => engine.completePromotion(PromotionPiece.Rook)
-      case Some("Bishop") => engine.completePromotion(PromotionPiece.Bishop)
-      case Some("Knight") => engine.completePromotion(PromotionPiece.Knight)
-      case _              => engine.completePromotion(PromotionPiece.Queen) // Default
+    val uciSuffix = dialog.showAndWait() match
+      case Some("Rook")   => "r"
+      case Some("Bishop") => "b"
+      case Some("Knight") => "n"
+      case _              => "q"
+    engine.processUserInput(s"${from}${to}$uciSuffix")
 
   private def doFenExport(): Unit =
     doExport(FenExporter, "FEN")

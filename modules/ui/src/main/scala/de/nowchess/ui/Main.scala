@@ -1,6 +1,9 @@
 package de.nowchess.ui
 
-import de.nowchess.chess.engine.GameEngine
+import de.nowchess.api.game.{BotParticipant, Human}
+import de.nowchess.api.player.{PlayerId, PlayerInfo}
+import de.nowchess.bot.util.PolyglotBook
+import de.nowchess.bot.BotDifficulty
 import de.nowchess.ui.terminal.TerminalUI
 import de.nowchess.ui.gui.ChessGUILauncher
 
@@ -9,8 +12,19 @@ import de.nowchess.ui.gui.ChessGUILauncher
   */
 object Main:
   def main(args: Array[String]): Unit =
+    val book = PolyglotBook("../../modules/bot/codekiddy.bin")
+
     // Create the core game engine (single source of truth)
-    val engine = new GameEngine()
+    val engine = new de.nowchess.chess.engine.GameEngine(
+      participants = Map(
+        de.nowchess.api.board.Color.White -> BotParticipant(
+          de.nowchess.bot.bots.HybridBot(BotDifficulty.Easy, book = Some(book)),
+        ),
+        de.nowchess.api.board.Color.Black -> Human(PlayerInfo(PlayerId("p1"), "Player 1")),
+      ),
+    )
+
+    engine.startGame()
 
     // Launch ScalaFX GUI in separate thread
     ChessGUILauncher.launch(engine)

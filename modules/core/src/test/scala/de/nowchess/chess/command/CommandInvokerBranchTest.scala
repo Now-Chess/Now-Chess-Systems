@@ -18,8 +18,8 @@ class CommandInvokerBranchTest extends AnyFunSuite with Matchers:
       initialShouldFailOnUndo: Boolean = false,
       initialShouldFailOnExecute: Boolean = false,
   ) extends Command:
-    val shouldFailOnUndo    = new java.util.concurrent.atomic.AtomicBoolean(initialShouldFailOnUndo)
-    val shouldFailOnExecute = new java.util.concurrent.atomic.AtomicBoolean(initialShouldFailOnExecute)
+    val shouldFailOnUndo             = new java.util.concurrent.atomic.AtomicBoolean(initialShouldFailOnUndo)
+    val shouldFailOnExecute          = new java.util.concurrent.atomic.AtomicBoolean(initialShouldFailOnExecute)
     override def execute(): Boolean  = !shouldFailOnExecute.get()
     override def undo(): Boolean     = !shouldFailOnUndo.get()
     override def description: String = "Conditional fail"

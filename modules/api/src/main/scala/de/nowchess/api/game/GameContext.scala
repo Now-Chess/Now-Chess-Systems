@@ -1,6 +1,6 @@
 package de.nowchess.api.game
 
-import de.nowchess.api.board.{Board, CastlingRights, Color, Square}
+import de.nowchess.api.board.{Board, CastlingRights, Color, PieceType, Square}
 import de.nowchess.api.move.Move
 
 /** Immutable bundle of complete game state. All state changes produce new GameContext instances.
@@ -15,6 +15,13 @@ case class GameContext(
     result: Option[GameResult] = None,
     initialBoard: Board = Board.initial,
 ):
+  private lazy val whiteKingSquare: Option[Square] =
+    board.pieces.find((_, p) => p.color == Color.White && p.pieceType == PieceType.King).map(_._1)
+  private lazy val blackKingSquare: Option[Square] =
+    board.pieces.find((_, p) => p.color == Color.Black && p.pieceType == PieceType.King).map(_._1)
+  def kingSquare(color: Color): Option[Square] =
+    if color == Color.White then whiteKingSquare else blackKingSquare
+
   /** Create new context with updated board. */
   def withBoard(newBoard: Board): GameContext = copy(board = newBoard)
 

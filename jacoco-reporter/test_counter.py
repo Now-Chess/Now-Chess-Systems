@@ -1,5 +1,5 @@
 import glob,re
-mods=['api','core','io','rule','ui']
+mods=['api','core','io','rule','ui', 'bot']
 tot=0
 for m in mods:
  s=0

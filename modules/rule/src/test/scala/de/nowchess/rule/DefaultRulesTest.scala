@@ -29,10 +29,12 @@ class DefaultRulesTest extends AnyFunSuite with Matchers:
 
   test("pawn can capture diagonally"):
     // FEN: white pawn e4, black pawn d5
-    val fen      = "8/8/8/3p4/4P3/8/8/8 w - - 0 1"
-    val context  = FenParser.parseFen(fen).fold(_ => fail(), identity)
-    val moves    = rules.allLegalMoves(context)
-    val captures = moves.filter(m => m.from == Square(File.E, Rank.R4) && (m.moveType match { case _: MoveType.Normal => true; case _ => false }))
+    val fen     = "8/8/8/3p4/4P3/8/8/8 w - - 0 1"
+    val context = FenParser.parseFen(fen).fold(_ => fail(), identity)
+    val moves   = rules.allLegalMoves(context)
+    val captures = moves.filter(m =>
+      m.from == Square(File.E, Rank.R4) && (m.moveType match { case _: MoveType.Normal => true; case _ => false }),
+    )
     captures.exists(m => m.to == Square(File.D, Rank.R5)) shouldBe true
 
   test("pawn cannot move backward"):
@@ -208,7 +210,7 @@ class DefaultRulesTest extends AnyFunSuite with Matchers:
 
   test("threefold repetition catch block returns false for inconsistent context"):
     // A context whose moves cannot be replayed from initialBoard (forces the catch path)
-    val m = Move(Square(File.E, Rank.R5), Square(File.E, Rank.R6))  // e5→e6, no pawn there in initial board
+    val m = Move(Square(File.E, Rank.R5), Square(File.E, Rank.R6)) // e5→e6, no pawn there in initial board
     val brokenCtx = GameContext(
       board = Board.initial,
       turn = Color.White,

@@ -1,0 +1,13 @@
+{
+  "version": 3,
+  "date": "2026-04-08T09:43:28.000579",
+  "num_positions": 71610,
+  "stockfish_depth": 12,
+  "epochs": 20,
+  "batch_size": 4096,
+  "learning_rate": 0.001,
+  "final_val_loss": 0.006398905136849695,
+  "device": "cpu",
+  "checkpoint": "/home/janis/Workspaces/IntelliJ/NowChess/NowChessSystems/modules/bot/python/weights/nnue_weights_v2.pt",
+  "notes": "Win rate vs classical eval: TBD (requires benchmark games)"
+}

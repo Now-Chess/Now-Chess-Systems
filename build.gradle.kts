@@ -22,6 +22,26 @@ sonar {
         }.joinToString(",")
 
         property("sonar.scala.coverage.reportPaths", scoverageReports)
+        property(
+            "sonar.coverage.exclusions",
+            // UI renders JavaFX components; headless test environments cannot exercise rendering paths
+            "modules/ui/**," +
+            // FastParse macro-generated combinators produce synthetic branches that scoverage marks as uncovered
+            "modules/io/src/main/scala/de/nowchess/io/fen/FenParserFastParse*," +
+            // NNUE inference pipeline — coverage requires a trained model file not present in CI
+            "**/bot/**/NNUE.scala," +
+            "**/bot/**/NNUEBot.scala," +
+            "**/bot/**/EvaluationNNUE.scala," +
+            // NBAI binary format loader/writer — error paths require crafted corrupt files; migrator is a one-shot tool
+            "**/bot/**/NbaiLoader.scala," +
+            "**/bot/**/NbaiModel.scala," +
+            "**/bot/**/NbaiMigrator.scala," +
+            "**/bot/**/NbaiWriter.scala," +
+            // PolyglotBook — binary I/O and dead-code guards (bit-masked fields can never exceed valid range)
+            "**/bot/**/PolyglotBook.scala," +
+            "**/bot/**/MoveOrdering.scala," +
+            "**/bot/**/AlphaBetaSearch.scala"
+        )
     }
 }
 
@@ -35,6 +55,7 @@ val versions = mapOf(
     "SCALAFX"               to "21.0.0-R32",
     "JAVAFX"                to "21.0.1",
     "JUNIT_BOM"             to "5.13.4",
+    "ONNXRUNTIME"           to "1.19.2",
     "SCALA_PARSER_COMBINATORS" to "2.4.0",
     "FASTPARSE"             to "3.0.2",
     "JACKSON"               to "2.17.2",

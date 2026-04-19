@@ -30,9 +30,9 @@ class ChessGUIApp extends JFXApplication:
     stage.scene = new Scene {
       root = boardView
       // Load CSS if available
-      try {
+      try
         Option(getClass.getResource("/styles.css")).foreach(url => stylesheets.add(url.toExternalForm))
-      } catch {
+      catch {
         case _: Exception => // CSS is optional
       }
     }

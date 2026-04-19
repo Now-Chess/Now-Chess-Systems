@@ -71,3 +71,9 @@ class GameContextTest extends AnyFunSuite with Matchers:
   test("withResult clears result"):
     val ctx = GameContext.initial.withResult(Some(GameResult.Win(Color.Black)))
     ctx.withResult(None).result shouldBe None
+
+  test("kingSquare returns white king position"):
+    GameContext.initial.kingSquare(Color.White) shouldBe Some(Square(File.E, Rank.R1))
+
+  test("kingSquare returns black king position"):
+    GameContext.initial.kingSquare(Color.Black) shouldBe Some(Square(File.E, Rank.R8))

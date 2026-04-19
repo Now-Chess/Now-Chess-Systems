@@ -19,6 +19,7 @@ Try to stick to these commands for consistency.
 | `api`  | Model / shared types | (none) |
 | `core` | Primary business logic | api, rule |
 | `rule` | Game rules | api |
+| `bot`  | Bots and AI | api,rule,io |
 | `io`   | Export formats | api, core |
 | `ui`   | Entrypoint & UI | core, io |
 
@@ -47,6 +48,9 @@ Try to stick to these commands for consistency.
 - **Immutable state as primary model:** GameContext (api) holds board, history, player state — immutable, passed through the system. Each move creates a new GameContext, enabling undo/redo without side effects.
 - **Observer pattern for UI decoupling:** GameEngine publishes move/state events; CommandInvoker queues moves; UI listens to events, not polling. GameEngine never imports UI code.
 - **RuleSet trait encapsulates rules:** Move generation, check, castling, en passant all in RuleSet impl. GameEngine calls rules as a black box; rules don't know about the rest of core.
+- **Polyglot hash must follow spec index layout:** piece keys use interleaved mapping `(pieceType * 2 + colorBit)` with black=0/white=1, castling keys are `768..771`, en-passant file keys are `772..779` and are XORed only if side-to-move has a pawn that can capture en passant, side-to-move key is `780` for white.
+- **Alpha-beta uses sequential PV search by default:** parallel split was disabled because fixed-window futures removed pruning effectiveness; correctness and pruning quality take priority over speculative parallelism.
+- **Search hash is updated incrementally per move:** bot search now updates Zobrist keys from parent hash with move deltas instead of recomputing piece scans at every node.
 
 ## Rules
 

@@ -23,11 +23,7 @@ scala {
 
 scoverage {
     scoverageVersion.set(versions["SCOVERAGE"]!!)
-    excludedPackages.set(listOf(
-        "de.nowchess.ui.gui",
-        "de.nowchess.ui.terminal",
-        "de.nowchess.ui.Main",
-    ))
+    excludedPackages.set(listOf("de\\.nowchess\\.ui\\..*"))
 }
 
 application {
@@ -64,6 +60,7 @@ dependencies {
     implementation(project(":modules:rule"))
     implementation(project(":modules:api"))
     implementation(project(":modules:io"))
+    implementation(project(":modules:bot"))
 
     // ScalaFX dependencies
     implementation("org.scalafx:scalafx_3:${versions["SCALAFX"]!!}")

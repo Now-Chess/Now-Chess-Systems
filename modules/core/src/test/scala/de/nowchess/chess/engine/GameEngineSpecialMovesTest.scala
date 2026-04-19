@@ -1,7 +1,6 @@
 package de.nowchess.chess.engine
 
 import de.nowchess.api.board.Color
-import de.nowchess.api.move.PromotionPiece
 import de.nowchess.chess.observer.*
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
@@ -89,7 +88,7 @@ class GameEngineSpecialMovesTest extends AnyFunSuite with Matchers:
 
   // ── Pawn promotion ─────────────────────────────────────────────
 
-  test("pawn reaching back rank requires promotion"):
+  test("pawn reaching back rank without promotion suffix fires InvalidMoveEvent"):
     val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
@@ -99,74 +98,61 @@ class GameEngineSpecialMovesTest extends AnyFunSuite with Matchers:
 
     engine.processUserInput("e7e8")
 
-    observer.hasEvent[PromotionRequiredEvent] shouldBe true
-    engine.isPendingPromotion shouldBe true
+    observer.hasEvent[InvalidMoveEvent] shouldBe true
 
-  test("completePromotion to Queen executes move"):
+  test("e7e8q promotes to Queen"):
     val engine = EngineTestHelpers.makeEngine()
 
     EngineTestHelpers.loadFen(engine, "8/4P3/8/8/8/8/k7/8 w - - 0 1")
-    engine.processUserInput("e7e8")
-    engine.completePromotion(PromotionPiece.Queen)
+    engine.processUserInput("e7e8q")
 
-    engine.isPendingPromotion shouldBe false
     engine.turn shouldBe Color.Black
 
-  test("completePromotion to Rook executes move"):
+  test("e7e8r promotes to Rook"):
     val engine = EngineTestHelpers.makeEngine()
 
     EngineTestHelpers.loadFen(engine, "8/4P3/8/8/8/8/k7/8 w - - 0 1")
-    engine.processUserInput("e7e8")
-    engine.completePromotion(PromotionPiece.Rook)
+    engine.processUserInput("e7e8r")
 
-    engine.isPendingPromotion shouldBe false
     engine.turn shouldBe Color.Black
 
-  test("completePromotion to Bishop executes move"):
+  test("e7e8b promotes to Bishop"):
     val engine = EngineTestHelpers.makeEngine()
 
     EngineTestHelpers.loadFen(engine, "8/4P3/8/8/8/8/k7/8 w - - 0 1")
-    engine.processUserInput("e7e8")
-    engine.completePromotion(PromotionPiece.Bishop)
+    engine.processUserInput("e7e8b")
 
-    engine.isPendingPromotion shouldBe false
     engine.turn shouldBe Color.Black
 
-  test("completePromotion to Knight executes move"):
+  test("e7e8n promotes to Knight"):
     val engine = EngineTestHelpers.makeEngine()
 
     EngineTestHelpers.loadFen(engine, "8/4P3/8/8/8/8/k7/8 w - - 0 1")
-    engine.processUserInput("e7e8")
-    engine.completePromotion(PromotionPiece.Knight)
+    engine.processUserInput("e7e8n")
 
-    engine.isPendingPromotion shouldBe false
     engine.turn shouldBe Color.Black
 
-  test("promotion to Queen with discovered check emits CheckDetectedEvent"):
+  test("promotion with discovered check emits CheckDetectedEvent"):
     val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
-    // FEN: white pawn e7, black king e6, white king e1
     EngineTestHelpers.loadFen(engine, "8/4P3/4k3/8/8/8/8/4K3 w - - 0 1")
     observer.clear()
 
-    engine.processUserInput("e7e8")
-    engine.completePromotion(PromotionPiece.Queen)
+    engine.processUserInput("e7e8q")
 
     observer.hasEvent[CheckDetectedEvent] shouldBe true
 
-  test("promotion to Queen with checkmate emits CheckmateEvent"):
+  test("promotion with checkmate emits CheckmateEvent"):
     val engine   = EngineTestHelpers.makeEngine()
     val observer = new EngineTestHelpers.MockObserver()
     engine.subscribe(observer)
 
-    // FEN: known promotion-mate pattern
     EngineTestHelpers.loadFen(engine, "k7/7P/1K6/8/8/8/8/8 w - - 0 1")
     observer.clear()
 
-    engine.processUserInput("h7h8")
-    engine.completePromotion(PromotionPiece.Queen)
+    engine.processUserInput("h7h8q")
 
     observer.hasEvent[CheckmateEvent] shouldBe true
 
@@ -177,8 +163,7 @@ class GameEngineSpecialMovesTest extends AnyFunSuite with Matchers:
 
     // White rook on h2 keeps material sufficient (K+B+R vs K) after bishop promotion
     EngineTestHelpers.loadFen(engine, "8/4P3/4k3/8/8/8/7R/7K w - - 0 1")
-    engine.processUserInput("e7e8")
-    engine.completePromotion(PromotionPiece.Bishop)
+    engine.processUserInput("e7e8b")
     observer.clear()
 
     engine.undo()
@@ -187,16 +172,12 @@ class GameEngineSpecialMovesTest extends AnyFunSuite with Matchers:
     evt.isDefined shouldBe true
     evt.get.pgnNotation shouldBe "e8=B"
 
-  test("black pawn promotion executes"):
+  test("black pawn e2e1q promotes to queen"):
     val engine = EngineTestHelpers.makeEngine()
 
     EngineTestHelpers.loadFen(engine, "8/8/8/8/8/4k3/4p3/8 b - - 0 1")
-    engine.processUserInput("e2e1")
+    engine.processUserInput("e2e1q")
 
-    engine.isPendingPromotion shouldBe true
-    engine.completePromotion(PromotionPiece.Queen)
-
-    engine.isPendingPromotion shouldBe false
     engine.turn shouldBe Color.White
 
   // ── Promotion capturing ────────────────────────────────────────
@@ -205,6 +186,6 @@ class GameEngineSpecialMovesTest extends AnyFunSuite with Matchers:
     val engine = EngineTestHelpers.makeEngine()
 
     EngineTestHelpers.loadFen(engine, "3n4/4P3/4k3/8/8/8/8/4K3 w - - 0 1")
-    engine.processUserInput("e7d8")
+    engine.processUserInput("e7d8q")
 
-    engine.isPendingPromotion shouldBe true
+    engine.turn shouldBe Color.Black

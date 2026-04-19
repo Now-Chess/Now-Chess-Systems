@@ -122,7 +122,7 @@ class GameFileServiceSuite extends AnyFunSuite with Matchers:
       val context = GameContext.initial
       val faultyExporter = new GameContextExport {
         def exportGameContext(c: GameContext): String =
-          throw new RuntimeException("Export failed") // scalafix:ok DisableSyntax.throw
+          sys.error("Export failed")
       }
 
       val result = FileSystemGameService.saveGameToFile(context, tmpFile, faultyExporter)

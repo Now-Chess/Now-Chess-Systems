@@ -2,7 +2,6 @@ package de.nowchess.chess.engine
 
 import de.nowchess.api.board.{Board, Color, File, Rank, Square}
 import de.nowchess.api.game.GameContext
-import de.nowchess.api.move.PromotionPiece
 import de.nowchess.io.fen.FenParser
 import de.nowchess.chess.observer.*
 import org.scalatest.funsuite.AnyFunSuite
@@ -43,7 +42,10 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
 
     // White castles queenside: e1c1
     engine.processUserInput("e1c1")
-    events.exists { case _: MoveExecutedEvent => true; case _ => false } should be(true)
+    events.exists {
+      case _: MoveExecutedEvent => true
+      case _                    => false
+    } should be(true)
 
     events.clear()
     engine.undo()
@@ -68,7 +70,10 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
 
     // White pawn on e5 captures en passant to d6
     engine.processUserInput("e5d6")
-    events.exists { case _: MoveExecutedEvent => true; case _ => false } should be(true)
+    events.exists {
+      case _: MoveExecutedEvent => true
+      case _                    => false
+    } should be(true)
 
     // Verify the captured pawn was found (computeCaptured EnPassant branch)
     val moveEvt = events.collect { case e: MoveExecutedEvent => e }.head
@@ -84,8 +89,8 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
   // ── Bishop underpromotion notation (line 230) ──────────────────────
 
   test("undo after bishop underpromotion emits MoveUndoneEvent with =B notation"):
-    // Extra white pawn on h2 ensures K+B+P vs K — sufficient material, so draw is not triggered
-    val board = FenParser.parseBoard("8/4P3/8/8/8/8/k6P/7K").get
+    // White rook on h2 keeps material sufficient (K+R+B vs K) after bishop promotion
+    val board = FenParser.parseBoard("8/4P3/8/8/8/8/k6R/7K").get
     val ctx = GameContext.initial
       .withBoard(board)
       .withTurn(Color.White)
@@ -94,8 +99,7 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
     val engine = new GameEngine(ctx)
     val events = captureEvents(engine)
 
-    engine.processUserInput("e7e8")
-    engine.completePromotion(PromotionPiece.Bishop)
+    engine.processUserInput("e7e8b")
 
     events.clear()
     engine.undo()
@@ -106,8 +110,8 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
   // ── King normal move notation (line 246) ───────────────────────────
 
   test("undo after king move emits MoveUndoneEvent with K notation"):
-    // White king on e1, white rook on h1 — K+R vs K ensures sufficient material after the king move
-    val board = FenParser.parseBoard("k7/8/8/8/8/8/8/4K2R").get
+    // Black pawn on h7 prevents K-vs-K insufficient-material draw; white king on e1, no castling rights
+    val board = FenParser.parseBoard("k7/7p/8/8/8/8/8/4K3").get
     val ctx = GameContext.initial
       .withBoard(board)
       .withTurn(Color.White)
@@ -118,7 +122,10 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
 
     // King moves e1 -> f1
     engine.processUserInput("e1f1")
-    events.exists { case _: MoveExecutedEvent => true; case _ => false } should be(true)
+    events.exists {
+      case _: MoveExecutedEvent => true
+      case _                    => false
+    } should be(true)
 
     events.clear()
     engine.undo()

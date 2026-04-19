@@ -251,10 +251,10 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
     engine.processUserInput("f3g1")
     observer.clear()
 
-    engine.processUserInput("f6g8")  // 3rd occurrence of initial position
+    engine.processUserInput("f6g8") // 3rd occurrence of initial position
 
     observer.hasEvent[ThreefoldRepetitionAvailableEvent] shouldBe true
-    engine.context.result shouldBe None  // claimable, not automatic
+    engine.context.result shouldBe None // claimable, not automatic
 
   test("draw claim via threefold repetition ends game with DrawEvent"):
     val engine   = EngineTestHelpers.makeEngine()
@@ -268,7 +268,7 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
     engine.processUserInput("g1f3")
     engine.processUserInput("g8f6")
     engine.processUserInput("f3g1")
-    engine.processUserInput("f6g8")  // threefold now available
+    engine.processUserInput("f6g8") // threefold now available
 
     observer.clear()
     engine.processUserInput("draw")

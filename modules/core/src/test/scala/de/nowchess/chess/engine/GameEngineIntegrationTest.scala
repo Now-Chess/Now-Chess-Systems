@@ -38,7 +38,10 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
     engine.processUserInput("undo")
     engine.processUserInput("redo")
 
-    events.count { case _: InvalidMoveEvent => true; case _ => false } should be >= 3
+    events.count {
+      case _: InvalidMoveEvent => true
+      case _                   => false
+    } should be >= 3
 
   test("processUserInput emits Illegal move for syntactically valid but illegal target"):
     val engine = new GameEngine()
@@ -69,7 +72,10 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
 
     engine.context shouldBe target
     engine.commandHistory shouldBe empty
-    events.lastOption.exists { case _: de.nowchess.chess.observer.BoardResetEvent => true; case _ => false } shouldBe true
+    events.lastOption.exists {
+      case _: de.nowchess.chess.observer.BoardResetEvent => true
+      case _                                             => false
+    } shouldBe true
 
   test("redo event includes captured piece description when replaying a capture"):
     val engine = new GameEngine()
@@ -109,7 +115,7 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
     engine.loadGame(importer, "ignored") shouldBe Right(())
     engine.context.moves.lastOption shouldBe Some(promotionMove)
 
-  test("loadGame replay restores previous context when promotion cannot be completed"):
+  test("loadGame replay restores previous context when move has no legal candidates"):
     val promotionMove = Move(sq("e2"), sq("e8"), MoveType.Promotion(PromotionPiece.Queen))
     val noLegalMoves = new RuleSet:
       def candidateMoves(context: GameContext)(square: Square): List[Move] = List.empty
@@ -134,7 +140,7 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
     val result = engine.loadGame(importer, "ignored")
 
     result.isLeft shouldBe true
-    result.left.toOption.get should include("Promotion required")
+    result.left.toOption.get should include("Illegal move")
     engine.context shouldBe saved
 
   test("loadGame replay executes non-promotion moves through default replay branch"):
@@ -150,7 +156,7 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
     val illegalPromotion = Move(sq("e2"), sq("e1"), MoveType.Promotion(PromotionPiece.Queen))
     val trailingMove     = Move(sq("e2"), sq("e4"))
 
-    engine.replayMoves(List(illegalPromotion, trailingMove), saved) shouldBe Left("Promotion required for move e2e1")
+    engine.replayMoves(List(illegalPromotion, trailingMove), saved) shouldBe Left("Illegal move.")
     engine.context shouldBe saved
 
   test("normalMoveNotation handles missing source piece"):

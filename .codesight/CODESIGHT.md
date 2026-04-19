@@ -2,8 +2,8 @@
 
 > **Stack:** raw-http | none | unknown | scala
 
-> 0 routes | 0 models | 0 components | 35 lib files | 0 env vars | 0 middleware
-> **Token savings:** this file is ~3.700 tokens. Without it, AI exploration would cost ~18.200 tokens. **Saves ~14.500 tokens per conversation.**
+> 0 routes | 0 models | 0 components | 63 lib files | 1 env vars | 1 middleware
+> **Token savings:** this file is ~0 tokens. Without it, AI exploration would cost ~0 tokens. **Saves ~0 tokens per conversation.**
 
 ---
 
@@ -60,6 +60,113 @@
   - class ApiResponse
   - function error
   - function totalPages
+- `modules/bot/python/nnue.py`
+  - function get_weights_dir: ()
+  - function get_data_dir: ()
+  - function list_checkpoints: ()
+  - function migrate_legacy_data: ()
+  - function show_header: ()
+  - function show_checkpoints_table: ()
+  - _...10 more_
+- `modules/bot/python/src/dataset.py`
+  - function get_datasets_dir: () -> Path
+  - function next_dataset_version: () -> int
+  - function list_datasets: () -> List[Tuple[int, Dict]]
+  - function load_dataset_metadata: (version) -> Optional[Dict]
+  - function save_dataset_metadata: (version, metadata) -> None
+  - function create_dataset: (version, labeled_jsonl_path, sources, stockfish_depth) -> Path
+  - _...4 more_
+- `modules/bot/python/src/export.py` — function export_to_nbai: (weights_file, output_file, trained_by, train_loss)
+- `modules/bot/python/src/generate.py` — function play_random_game_and_collect_positions: (output_file, total_positions, samples_per_game, min_move, max_move, num_workers)
+- `modules/bot/python/src/label.py` — function normalize_evaluation: (cp_value, method, scale), function label_positions_with_stockfish: (positions_file, output_file, stockfish_path, batch_size, depth, verbose, normalize, num_workers)
+- `modules/bot/python/src/tactical_positions_extractor.py`
+  - function download_and_extract_puzzle_db: (url, output_dir)
+  - function extract_puzzle_positions: (puzzle_csv, max_puzzles) -> Set[str]
+  - function load_positions_from_file: (file_path) -> Set[str]
+  - function merge_positions: (tactical, other, output_file)
+  - function extract_tactical_only: (puzzle_csv, output_file, max_puzzles) -> int
+  - function interactive_merge_positions: (puzzle_csv, output_file, max_puzzles)
+- `modules/bot/python/src/train.py`
+  - function fen_to_features: (fen)
+  - function find_next_version: (base_name)
+  - function save_metadata: (weights_file, metadata)
+  - function train_nnue: (data_file, output_file, epochs, batch_size, lr, checkpoint, stockfish_depth, use_versioning, early_stopping_patience, weight_decay, subsample_ratio)
+  - function burst_train: (data_file, output_file, duration_minutes, epochs_per_season, early_stopping_patience, batch_size, lr, initial_checkpoint, stockfish_depth, use_versioning, weight_decay, subsample_ratio)
+  - class NNUEDataset
+  - _...1 more_
+- `modules/bot/src/main/scala/de/nowchess/bot/Bot.scala`
+  - class Bot
+  - function name
+  - function nextMove
+- `modules/bot/src/main/scala/de/nowchess/bot/BotController.scala`
+  - class BotController
+  - function getBot
+  - function listBots
+- `modules/bot/src/main/scala/de/nowchess/bot/BotMoveRepetition.scala`
+  - class BotMoveRepetition
+  - function blockedMoves
+  - function repeatedMove
+  - function filterAllowed
+- `modules/bot/src/main/scala/de/nowchess/bot/Config.scala` — class Config
+- `modules/bot/src/main/scala/de/nowchess/bot/ai/Evaluation.scala`
+  - class Evaluation
+  - class CHECKMATE_SCORE
+  - class DRAW_SCORE
+  - function evaluate
+  - function initAccumulator
+  - function copyAccumulator
+  - _...2 more_
+- `modules/bot/src/main/scala/de/nowchess/bot/bots/classic/EvaluationClassic.scala`
+  - class EvaluationClassic
+  - function evaluate
+  - function countRay
+- `modules/bot/src/main/scala/de/nowchess/bot/bots/nnue/EvaluationNNUE.scala` — class EvaluationNNUE, function evaluate
+- `modules/bot/src/main/scala/de/nowchess/bot/bots/nnue/NNUE.scala`
+  - class NNUE
+  - function initAccumulator
+  - function pushAccumulator
+  - function copyAccumulator
+  - function recomputeAccumulator
+  - function validateAccumulator
+  - _...4 more_
+- `modules/bot/src/main/scala/de/nowchess/bot/bots/nnue/NbaiLoader.scala`
+  - class NbaiLoader
+  - function load
+  - function loadDefault
+- `modules/bot/src/main/scala/de/nowchess/bot/bots/nnue/NbaiMigrator.scala` — class NbaiMigrator, function migrateFromBin
+- `modules/bot/src/main/scala/de/nowchess/bot/bots/nnue/NbaiModel.scala`
+  - function toJson
+  - class NbaiMetadata
+  - function fromJson
+  - function str
+  - function num
+- `modules/bot/src/main/scala/de/nowchess/bot/bots/nnue/NbaiWriter.scala` — class NbaiWriter, function write
+- `modules/bot/src/main/scala/de/nowchess/bot/logic/AlphaBetaSearch.scala`
+  - function bestMove
+  - function bestMove
+  - function bestMoveWithTime
+  - function bestMoveWithTime
+  - function loop
+  - function loop
+  - _...2 more_
+- `modules/bot/src/main/scala/de/nowchess/bot/logic/MoveOrdering.scala`
+  - class MoveOrdering
+  - class OrderingContext
+  - function addKillerMove
+  - function getKillerMoves
+  - function addHistory
+  - function getHistory
+  - _...3 more_
+- `modules/bot/src/main/scala/de/nowchess/bot/logic/TranspositionTable.scala`
+  - function probe
+  - function store
+  - function clear
+- `modules/bot/src/main/scala/de/nowchess/bot/util/PolyglotBook.scala` — function probe, function select
+- `modules/bot/src/main/scala/de/nowchess/bot/util/PolyglotHash.scala` — class PolyglotHash, function hash
+- `modules/bot/src/main/scala/de/nowchess/bot/util/ZobristHash.scala`
+  - class ZobristHash
+  - function hash
+  - function nextHash
 - `modules/core/src/main/scala/de/nowchess/chess/command/Command.scala`
   - class Command
   - function execute
@@ -82,7 +189,7 @@
   - function turn
   - function context
   - function canUndo
-  - _...10 more_
+  - _...11 more_
 - `modules/core/src/main/scala/de/nowchess/chess/observer/Observer.scala`
   - function context
   - class Observer
@@ -93,6 +200,13 @@
   - _...1 more_
 - `modules/io/src/main/scala/de/nowchess/io/GameContextExport.scala` — class GameContextExport, function exportGameContext
 - `modules/io/src/main/scala/de/nowchess/io/GameContextImport.scala` — class GameContextImport, function importGameContext
+- `modules/io/src/main/scala/de/nowchess/io/GameFileService.scala`
+  - class GameFileService
+  - function saveGameToFile
+  - function loadGameFromFile
+  - class FileSystemGameService
+  - function saveGameToFile
+  - function loadGameFromFile
 - `modules/io/src/main/scala/de/nowchess/io/fen/FenExporter.scala`
   - class FenExporter
   - function boardToFen
@@ -114,6 +228,8 @@
   - function parseBoard
   - function importGameContext
 - `modules/io/src/main/scala/de/nowchess/io/fen/FenParserSupport.scala` — function buildSquares
+- `modules/io/src/main/scala/de/nowchess/io/json/JsonExporter.scala` — class JsonExporter, function exportGameContext
+- `modules/io/src/main/scala/de/nowchess/io/json/JsonParser.scala` — class JsonParser, function importGameContext
 - `modules/io/src/main/scala/de/nowchess/io/pgn/PgnExporter.scala`
   - class PgnExporter
   - function exportGameContext
@@ -160,43 +276,58 @@
 
 ---
 
+# Config
+
+## Environment Variables
+
+- `STOCKFISH_PATH` **required** — modules/bot/python/nnue.py
+
+---
+
+# Middleware
+
+## custom
+- generate — `modules/bot/python/src/generate.py`
+
+---
+
 # Dependency Graph
 
 ## Most Imported Files (change these carefully)
 
-- `modules/api/src/main/scala/de/nowchess/api/game/GameContext.scala` — imported by **28** files
-- `modules/api/src/main/scala/de/nowchess/api/board/Square.scala` — imported by **21** files
-- `modules/api/src/main/scala/de/nowchess/api/board/Color.scala` — imported by **19** files
-- `modules/api/src/main/scala/de/nowchess/api/move/Move.scala` — imported by **14** files
-- `modules/api/src/main/scala/de/nowchess/api/board/Board.scala` — imported by **13** files
-- `modules/api/src/main/scala/de/nowchess/api/board/Piece.scala` — imported by **10** files
-- `modules/api/src/main/scala/de/nowchess/api/board/PieceType.scala` — imported by **9** files
-- `modules/io/src/main/scala/de/nowchess/io/fen/FenParser.scala` — imported by **9** files
-- `modules/rule/src/main/scala/de/nowchess/rules/sets/DefaultRules.scala` — imported by **8** files
-- `modules/io/src/main/scala/de/nowchess/io/GameContextImport.scala` — imported by **7** files
-- `modules/api/src/main/scala/de/nowchess/api/board/CastlingRights.scala` — imported by **4** files
-- `modules/io/src/main/scala/de/nowchess/io/GameContextExport.scala` — imported by **4** files
-- `modules/rule/src/main/scala/de/nowchess/rules/RuleSet.scala` — imported by **4** files
+- `modules/api/src/main/scala/de/nowchess/api/game/GameContext.scala` — imported by **60** files
+- `modules/api/src/main/scala/de/nowchess/api/move/Move.scala` — imported by **40** files
+- `modules/api/src/main/scala/de/nowchess/api/board/Square.scala` — imported by **39** files
+- `modules/api/src/main/scala/de/nowchess/api/board/Color.scala` — imported by **36** files
+- `modules/api/src/main/scala/de/nowchess/api/board/Board.scala` — imported by **22** files
+- `modules/api/src/main/scala/de/nowchess/api/board/PieceType.scala` — imported by **21** files
+- `modules/api/src/main/scala/de/nowchess/api/board/Piece.scala` — imported by **21** files
+- `modules/rule/src/main/scala/de/nowchess/rules/sets/DefaultRules.scala` — imported by **17** files
+- `modules/rule/src/main/scala/de/nowchess/rules/RuleSet.scala` — imported by **10** files
+- `modules/io/src/main/scala/de/nowchess/io/fen/FenParser.scala` — imported by **10** files
+- `modules/api/src/main/scala/de/nowchess/api/board/CastlingRights.scala` — imported by **8** files
+- `modules/io/src/main/scala/de/nowchess/io/GameContextImport.scala` — imported by **8** files
+- `modules/bot/src/main/scala/de/nowchess/bot/util/PolyglotBook.scala` — imported by **5** files
+- `modules/bot/src/main/scala/de/nowchess/bot/BotDifficulty.scala` — imported by **5** files
+- `modules/io/src/main/scala/de/nowchess/io/GameContextExport.scala` — imported by **5** files
+- `modules/bot/src/main/scala/de/nowchess/bot/bots/ClassicalBot.scala` — imported by **4** files
+- `modules/bot/src/main/scala/de/nowchess/bot/bots/classic/EvaluationClassic.scala` — imported by **4** files
+- `modules/bot/src/main/scala/de/nowchess/bot/logic/AlphaBetaSearch.scala` — imported by **4** files
+- `modules/bot/src/main/scala/de/nowchess/bot/Bot.scala` — imported by **4** files
 - `modules/core/src/main/scala/de/nowchess/chess/observer/Observer.scala` — imported by **4** files
-- `modules/core/src/main/scala/de/nowchess/chess/engine/GameEngine.scala` — imported by **4** files
-- `modules/io/src/main/scala/de/nowchess/io/pgn/PgnParser.scala` — imported by **2** files
-- `modules/io/src/main/scala/de/nowchess/io/pgn/PgnExporter.scala` — imported by **2** files
-- `modules/io/src/main/scala/de/nowchess/io/fen/FenExporter.scala` — imported by **2** files
-- `modules/io/src/main/scala/de/nowchess/io/fen/FenParserSupport.scala` — imported by **2** files
-- `modules/core/src/main/scala/de/nowchess/chess/controller/Parser.scala` — imported by **1** files
 
 ## Import Map (who imports what)
 
-- `modules/api/src/main/scala/de/nowchess/api/game/GameContext.scala` ← `modules/core/src/main/scala/de/nowchess/chess/command/Command.scala`, `modules/core/src/main/scala/de/nowchess/chess/engine/GameEngine.scala`, `modules/core/src/main/scala/de/nowchess/chess/observer/Observer.scala`, `modules/core/src/test/scala/de/nowchess/chess/command/CommandInvokerBranchTest.scala`, `modules/core/src/test/scala/de/nowchess/chess/command/CommandInvokerTest.scala` +23 more
-- `modules/api/src/main/scala/de/nowchess/api/board/Square.scala` ← `modules/api/src/main/scala/de/nowchess/api/game/GameContext.scala`, `modules/api/src/main/scala/de/nowchess/api/move/Move.scala`, `modules/api/src/test/scala/de/nowchess/api/game/GameContextTest.scala`, `modules/api/src/test/scala/de/nowchess/api/move/MoveTest.scala`, `modules/core/src/main/scala/de/nowchess/chess/command/Command.scala` +16 more
-- `modules/api/src/main/scala/de/nowchess/api/board/Color.scala` ← `modules/api/src/main/scala/de/nowchess/api/game/GameContext.scala`, `modules/api/src/test/scala/de/nowchess/api/game/GameContextTest.scala`, `modules/core/src/main/scala/de/nowchess/chess/engine/GameEngine.scala`, `modules/core/src/main/scala/de/nowchess/chess/observer/Observer.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/EngineTestHelpers.scala` +14 more
-- `modules/api/src/main/scala/de/nowchess/api/move/Move.scala` ← `modules/api/src/main/scala/de/nowchess/api/game/GameContext.scala`, `modules/api/src/test/scala/de/nowchess/api/board/BoardTest.scala`, `modules/api/src/test/scala/de/nowchess/api/game/GameContextTest.scala`, `modules/core/src/main/scala/de/nowchess/chess/engine/GameEngine.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEngineIntegrationTest.scala` +9 more
-- `modules/api/src/main/scala/de/nowchess/api/board/Board.scala` ← `modules/api/src/main/scala/de/nowchess/api/game/GameContext.scala`, `modules/api/src/test/scala/de/nowchess/api/game/GameContextTest.scala`, `modules/core/src/main/scala/de/nowchess/chess/engine/GameEngine.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/EngineTestHelpers.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEngineGameEndingTest.scala` +8 more
-- `modules/api/src/main/scala/de/nowchess/api/board/Piece.scala` ← `modules/core/src/main/scala/de/nowchess/chess/command/Command.scala`, `modules/core/src/main/scala/de/nowchess/chess/engine/GameEngine.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEnginePromotionTest.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEngineScenarioTest.scala`, `modules/rule/src/test/scala/de/nowchess/rule/DefaultRulesStateTransitionsTest.scala` +5 more
-- `modules/api/src/main/scala/de/nowchess/api/board/PieceType.scala` ← `modules/core/src/main/scala/de/nowchess/chess/engine/GameEngine.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEngineIntegrationTest.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEnginePromotionTest.scala`, `modules/rule/src/test/scala/de/nowchess/rule/DefaultRulesStateTransitionsTest.scala`, `modules/rule/src/test/scala/de/nowchess/rule/DefaultRulesTest.scala` +4 more
-- `modules/io/src/main/scala/de/nowchess/io/fen/FenParser.scala` ← `modules/core/src/test/scala/de/nowchess/chess/engine/EngineTestHelpers.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEngineLoadGameTest.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEngineNotationTest.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEnginePromotionTest.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEngineScenarioTest.scala` +4 more
-- `modules/rule/src/main/scala/de/nowchess/rules/sets/DefaultRules.scala` ← `modules/core/src/main/scala/de/nowchess/chess/engine/GameEngine.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/EngineTestHelpers.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEngineIntegrationTest.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEnginePromotionTest.scala`, `modules/io/src/main/scala/de/nowchess/io/pgn/PgnExporter.scala` +3 more
-- `modules/io/src/main/scala/de/nowchess/io/GameContextImport.scala` ← `modules/core/src/main/scala/de/nowchess/chess/engine/GameEngine.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEngineIntegrationTest.scala`, `modules/io/src/main/scala/de/nowchess/io/fen/FenParser.scala`, `modules/io/src/main/scala/de/nowchess/io/fen/FenParserCombinators.scala`, `modules/io/src/main/scala/de/nowchess/io/fen/FenParserFastParse.scala` +2 more
+- `modules/api/src/main/scala/de/nowchess/api/game/GameContext.scala` ← `modules/bot/src/main/scala/de/nowchess/bot/Bot.scala`, `modules/bot/src/main/scala/de/nowchess/bot/BotMoveRepetition.scala`, `modules/bot/src/main/scala/de/nowchess/bot/ai/Evaluation.scala`, `modules/bot/src/main/scala/de/nowchess/bot/bots/ClassicalBot.scala`, `modules/bot/src/main/scala/de/nowchess/bot/bots/HybridBot.scala` +55 more
+- `modules/api/src/main/scala/de/nowchess/api/move/Move.scala` ← `modules/api/src/main/scala/de/nowchess/api/game/GameContext.scala`, `modules/api/src/test/scala/de/nowchess/api/board/BoardTest.scala`, `modules/api/src/test/scala/de/nowchess/api/game/GameContextTest.scala`, `modules/bot/src/main/scala/de/nowchess/bot/Bot.scala`, `modules/bot/src/main/scala/de/nowchess/bot/BotMoveRepetition.scala` +35 more
+- `modules/api/src/main/scala/de/nowchess/api/board/Square.scala` ← `modules/api/src/main/scala/de/nowchess/api/game/GameContext.scala`, `modules/api/src/main/scala/de/nowchess/api/move/Move.scala`, `modules/api/src/test/scala/de/nowchess/api/game/GameContextTest.scala`, `modules/api/src/test/scala/de/nowchess/api/move/MoveTest.scala`, `modules/bot/src/main/scala/de/nowchess/bot/bots/classic/EvaluationClassic.scala` +34 more
+- `modules/api/src/main/scala/de/nowchess/api/board/Color.scala` ← `modules/api/src/main/scala/de/nowchess/api/game/GameContext.scala`, `modules/api/src/test/scala/de/nowchess/api/game/GameContextTest.scala`, `modules/bot/src/main/scala/de/nowchess/bot/bots/classic/EvaluationClassic.scala`, `modules/bot/src/main/scala/de/nowchess/bot/bots/nnue/NNUE.scala`, `modules/bot/src/main/scala/de/nowchess/bot/logic/MoveOrdering.scala` +31 more
+- `modules/api/src/main/scala/de/nowchess/api/board/Board.scala` ← `modules/api/src/main/scala/de/nowchess/api/game/GameContext.scala`, `modules/api/src/test/scala/de/nowchess/api/game/GameContextTest.scala`, `modules/bot/src/main/scala/de/nowchess/bot/bots/nnue/NNUE.scala`, `modules/bot/src/main/scala/de/nowchess/bot/logic/MoveOrdering.scala`, `modules/bot/src/test/scala/de/nowchess/bot/AlphaBetaSearchTest.scala` +17 more
+- `modules/api/src/main/scala/de/nowchess/api/board/PieceType.scala` ← `modules/bot/src/main/scala/de/nowchess/bot/bots/classic/EvaluationClassic.scala`, `modules/bot/src/main/scala/de/nowchess/bot/bots/nnue/NNUE.scala`, `modules/bot/src/main/scala/de/nowchess/bot/logic/AlphaBetaSearch.scala`, `modules/bot/src/main/scala/de/nowchess/bot/logic/MoveOrdering.scala`, `modules/bot/src/main/scala/de/nowchess/bot/util/PolyglotHash.scala` +16 more
+- `modules/api/src/main/scala/de/nowchess/api/board/Piece.scala` ← `modules/bot/src/main/scala/de/nowchess/bot/bots/nnue/NNUE.scala`, `modules/bot/src/main/scala/de/nowchess/bot/logic/MoveOrdering.scala`, `modules/bot/src/main/scala/de/nowchess/bot/util/PolyglotHash.scala`, `modules/bot/src/main/scala/de/nowchess/bot/util/ZobristHash.scala`, `modules/bot/src/test/scala/de/nowchess/bot/AlphaBetaSearchTest.scala` +16 more
+- `modules/rule/src/main/scala/de/nowchess/rules/sets/DefaultRules.scala` ← `modules/bot/src/main/scala/de/nowchess/bot/bots/ClassicalBot.scala`, `modules/bot/src/main/scala/de/nowchess/bot/bots/HybridBot.scala`, `modules/bot/src/main/scala/de/nowchess/bot/bots/NNUEBot.scala`, `modules/bot/src/main/scala/de/nowchess/bot/logic/AlphaBetaSearch.scala`, `modules/bot/src/test/scala/de/nowchess/bot/AlphaBetaSearchTest.scala` +12 more
+- `modules/rule/src/main/scala/de/nowchess/rules/RuleSet.scala` ← `modules/bot/src/main/scala/de/nowchess/bot/bots/ClassicalBot.scala`, `modules/bot/src/main/scala/de/nowchess/bot/bots/HybridBot.scala`, `modules/bot/src/main/scala/de/nowchess/bot/bots/NNUEBot.scala`, `modules/bot/src/main/scala/de/nowchess/bot/logic/AlphaBetaSearch.scala`, `modules/bot/src/test/scala/de/nowchess/bot/AlphaBetaSearchTest.scala` +5 more
+- `modules/io/src/main/scala/de/nowchess/io/fen/FenParser.scala` ← `modules/bot/src/test/scala/de/nowchess/bot/PolyglotHashTest.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/EngineTestHelpers.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEngineLoadGameTest.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEngineNotationTest.scala`, `modules/core/src/test/scala/de/nowchess/chess/engine/GameEnginePromotionTest.scala` +5 more
 
 ---
 

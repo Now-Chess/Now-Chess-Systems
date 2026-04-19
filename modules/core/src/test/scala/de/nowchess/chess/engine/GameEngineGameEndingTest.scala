@@ -24,10 +24,11 @@ class GameEngineGameEndingTest extends AnyFunSuite with Matchers:
     engine.processUserInput("d8h4")
 
     // Verify CheckmateEvent (engine also fires MoveExecutedEvent before CheckmateEvent)
-    observer.events.last shouldBe a[CheckmateEvent]
-
-    val event = observer.events.collectFirst { case e: CheckmateEvent => e }.get
-    event.winner shouldBe Color.Black
+    observer.events.last match
+      case event: CheckmateEvent =>
+        event.winner shouldBe Color.Black
+      case other =>
+        fail(s"Expected CheckmateEvent, but got $other")
 
   test("GameEngine handles check detection"):
     val engine   = new GameEngine()
@@ -83,9 +84,8 @@ class GameEngineGameEndingTest extends AnyFunSuite with Matchers:
     observer.events.clear()
     engine.processUserInput(moves.last)
 
-    val drawEvents = observer.events.collect { case e: DrawEvent => e }
-    drawEvents.size shouldBe 1
-    drawEvents.head.reason shouldBe DrawReason.Stalemate
+    val stalemateEvents = observer.events.collect { case DrawEvent(_, DrawReason.Stalemate) => true }
+    stalemateEvents.size shouldBe 1
 
 private class EndingMockObserver extends Observer:
   val events = mutable.ListBuffer[GameEvent]()

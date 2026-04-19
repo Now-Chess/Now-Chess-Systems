@@ -11,6 +11,7 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/modules" />
             <option value="$PROJECT_DIR$/modules/api" />
+            <option value="$PROJECT_DIR$/modules/bot" />
             <option value="$PROJECT_DIR$/modules/core" />
             <option value="$PROJECT_DIR$/modules/io" />
             <option value="$PROJECT_DIR$/modules/rule" />

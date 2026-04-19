@@ -1,0 +1,22 @@
+# Data and weights are local artifacts, not committed
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+tactical_data/
+trainingdata/
+/datasets/

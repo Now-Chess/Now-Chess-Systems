@@ -1,6 +1,6 @@
 package de.nowchess.chess.observer
 
-import de.nowchess.api.board.{Color, Square}
+import de.nowchess.api.board.Color
 import de.nowchess.api.game.{DrawReason, GameContext}
 
 /** Base trait for all game state events. Events are immutable snapshots of game state changes.
@@ -37,13 +37,6 @@ case class DrawEvent(
 case class InvalidMoveEvent(
     context: GameContext,
     reason: String,
-) extends GameEvent
-
-/** Fired when a pawn reaches the back rank and the player must choose a promotion piece. */
-case class PromotionRequiredEvent(
-    context: GameContext,
-    from: Square,
-    to: Square,
 ) extends GameEvent
 
 /** Fired when the board is reset. */

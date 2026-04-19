@@ -5,4 +5,5 @@ include(
     "modules:io",
     "modules:rule",
     "modules:ui",
+    "modules:bot",
 )

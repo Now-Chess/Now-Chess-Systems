@@ -1,0 +1,17 @@
+{
+  "version": 9,
+  "date": "2026-04-13T20:19:08.123315",
+  "num_positions": 2522562,
+  "stockfish_depth": 12,
+  "final_val_loss": 6.994176222619626e-05,
+  "device": "cuda",
+  "notes": "Win rate vs classical eval: TBD (requires benchmark games)",
+  "mode": "burst",
+  "duration_minutes": 30.0,
+  "epochs_per_season": 50,
+  "early_stopping_patience": 10,
+  "seasons_completed": 3,
+  "batch_size": 16384,
+  "learning_rate": 0.001,
+  "initial_checkpoint": "/home/janis/Workspaces/NowChess/NowChessSystems/modules/bot/python/weights/nnue_weights_v8.pt"
+}

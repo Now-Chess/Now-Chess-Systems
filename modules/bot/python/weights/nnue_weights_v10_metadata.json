@@ -1,0 +1,21 @@
+{
+  "version": 10,
+  "date": "2026-04-14T22:18:38.824577",
+  "num_positions": 3022562,
+  "stockfish_depth": 12,
+  "final_val_loss": 6.248612448225196e-05,
+  "architecture": [
+    768,
+    1536,
+    1024,
+    512,
+    256,
+    1
+  ],
+  "device": "cuda",
+  "notes": "Win rate vs classical eval: TBD (requires benchmark games)",
+  "epochs": 100,
+  "batch_size": 16384,
+  "learning_rate": 0.001,
+  "checkpoint": null
+}
