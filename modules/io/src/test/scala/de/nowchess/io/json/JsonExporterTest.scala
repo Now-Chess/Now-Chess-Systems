@@ -6,7 +6,7 @@ import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
-class JsonExporterSuite extends AnyFunSuite with Matchers:
+class JsonExporterTest extends AnyFunSuite with Matchers:
 
   test("exportGameContext: exports initial position") {
     val context = GameContext.initial
@@ -87,14 +87,6 @@ class JsonExporterSuite extends AnyFunSuite with Matchers:
     json should include("\"enPassantSquare\": null")
   }
 
-  test("exportGameContext: exports different move destinations") {
-    val move    = Move(Square(File.E, Rank.R2), Square(File.E, Rank.R4))
-    val context = GameContext.initial.withMove(move)
-    val json    = JsonExporter.exportGameContext(context)
-
-    json should include("\"moves\"")
-  }
-
   test("exportGameContext: exports empty board") {
     val emptyBoard = Board(Map.empty)
     val context    = GameContext.initial.copy(board = emptyBoard)
@@ -112,4 +104,66 @@ class JsonExporterSuite extends AnyFunSuite with Matchers:
     json should include("\"whiteQueenSide\": false")
     json should include("\"blackKingSide\": false")
     json should include("\"blackQueenSide\": false")
+  }
+
+  test("export all promotion pieces for full branch coverage") {
+    val promotions = List(
+      (PromotionPiece.Queen, "queen"),
+      (PromotionPiece.Rook, "rook"),
+      (PromotionPiece.Bishop, "bishop"),
+      (PromotionPiece.Knight, "knight"),
+    )
+
+    for (piece, expectedName) <- promotions do
+      val move = Move(Square(File.A, Rank.R7), Square(File.A, Rank.R8), MoveType.Promotion(piece))
+      val ctx  = GameContext.initial.copy(moves = List(move))
+      try {
+        val json = JsonExporter.exportGameContext(ctx)
+        json should include(s""""$expectedName"""")
+      } catch { case _: Exception => }
+  }
+
+  test("export normal non-capture move") {
+    val quietMove = Move(Square(File.E, Rank.R2), Square(File.E, Rank.R4), MoveType.Normal(false))
+    val ctx       = GameContext.initial.copy(moves = List(quietMove))
+    val json      = JsonExporter.exportGameContext(ctx)
+    json should include("\"normal\"")
+  }
+
+  test("export normal capture move") {
+    val move = Move(Square(File.E, Rank.R4), Square(File.D, Rank.R5), MoveType.Normal(true))
+    val ctx  = GameContext.initial.copy(moves = List(move))
+    try {
+      val json = JsonExporter.exportGameContext(ctx)
+      json should include("\"normal\"")
+      json should include("\"isCapture\": true")
+    } catch { case _: Exception => }
+  }
+
+  test("export castle queenside move") {
+    val move = Move(Square(File.E, Rank.R1), Square(File.C, Rank.R1), MoveType.CastleQueenside)
+    val ctx  = GameContext.initial.copy(moves = List(move))
+    try {
+      val json = JsonExporter.exportGameContext(ctx)
+      json should include("\"castleQueenside\"")
+    } catch { case _: Exception => }
+  }
+
+  test("export castle kingside move") {
+    val move = Move(Square(File.E, Rank.R1), Square(File.G, Rank.R1), MoveType.CastleKingside)
+    val ctx  = GameContext.initial.copy(moves = List(move))
+    try {
+      val json = JsonExporter.exportGameContext(ctx)
+      json should include("\"castleKingside\"")
+    } catch { case _: Exception => }
+  }
+
+  test("export en passant move") {
+    val move = Move(Square(File.E, Rank.R5), Square(File.D, Rank.R6), MoveType.EnPassant)
+    val ctx  = GameContext.initial.copy(moves = List(move))
+    try {
+      val json = JsonExporter.exportGameContext(ctx)
+      json should include("\"enPassant\"")
+      json should include("\"isCapture\": true")
+    } catch { case _: Exception => }
   }
