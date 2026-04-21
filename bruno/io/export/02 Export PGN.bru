@@ -1,0 +1,100 @@
+meta {
+  name: Export PGN
+  type: http
+  seq: 2
+}
+
+http {
+  method: POST
+  url: {{ioBaseUrl}}/io/export/pgn
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "board": {
+      "a1": {"color": "White", "pieceType": "Rook"},
+      "b1": {"color": "White", "pieceType": "Knight"},
+      "c1": {"color": "White", "pieceType": "Bishop"},
+      "d1": {"color": "White", "pieceType": "Queen"},
+      "e1": {"color": "White", "pieceType": "King"},
+      "f1": {"color": "White", "pieceType": "Bishop"},
+      "g1": {"color": "White", "pieceType": "Knight"},
+      "h1": {"color": "White", "pieceType": "Rook"},
+      "a2": {"color": "White", "pieceType": "Pawn"},
+      "b2": {"color": "White", "pieceType": "Pawn"},
+      "c2": {"color": "White", "pieceType": "Pawn"},
+      "d2": {"color": "White", "pieceType": "Pawn"},
+      "e2": {"color": "White", "pieceType": "Pawn"},
+      "f2": {"color": "White", "pieceType": "Pawn"},
+      "g2": {"color": "White", "pieceType": "Pawn"},
+      "h2": {"color": "White", "pieceType": "Pawn"},
+      "a7": {"color": "Black", "pieceType": "Pawn"},
+      "b7": {"color": "Black", "pieceType": "Pawn"},
+      "c7": {"color": "Black", "pieceType": "Pawn"},
+      "d7": {"color": "Black", "pieceType": "Pawn"},
+      "e7": {"color": "Black", "pieceType": "Pawn"},
+      "f7": {"color": "Black", "pieceType": "Pawn"},
+      "g7": {"color": "Black", "pieceType": "Pawn"},
+      "h7": {"color": "Black", "pieceType": "Pawn"},
+      "a8": {"color": "Black", "pieceType": "Rook"},
+      "b8": {"color": "Black", "pieceType": "Knight"},
+      "c8": {"color": "Black", "pieceType": "Bishop"},
+      "d8": {"color": "Black", "pieceType": "Queen"},
+      "e8": {"color": "Black", "pieceType": "King"},
+      "f8": {"color": "Black", "pieceType": "Bishop"},
+      "g8": {"color": "Black", "pieceType": "Knight"},
+      "h8": {"color": "Black", "pieceType": "Rook"}
+    },
+    "turn": "White",
+    "castlingRights": {
+      "whiteKingSide": true,
+      "whiteQueenSide": true,
+      "blackKingSide": true,
+      "blackQueenSide": true
+    },
+    "enPassantSquare": null,
+    "halfMoveClock": 0,
+    "moves": [],
+    "result": null,
+    "initialBoard": {
+      "a1": {"color": "White", "pieceType": "Rook"},
+      "b1": {"color": "White", "pieceType": "Knight"},
+      "c1": {"color": "White", "pieceType": "Bishop"},
+      "d1": {"color": "White", "pieceType": "Queen"},
+      "e1": {"color": "White", "pieceType": "King"},
+      "f1": {"color": "White", "pieceType": "Bishop"},
+      "g1": {"color": "White", "pieceType": "Knight"},
+      "h1": {"color": "White", "pieceType": "Rook"},
+      "a2": {"color": "White", "pieceType": "Pawn"},
+      "b2": {"color": "White", "pieceType": "Pawn"},
+      "c2": {"color": "White", "pieceType": "Pawn"},
+      "d2": {"color": "White", "pieceType": "Pawn"},
+      "e2": {"color": "White", "pieceType": "Pawn"},
+      "f2": {"color": "White", "pieceType": "Pawn"},
+      "g2": {"color": "White", "pieceType": "Pawn"},
+      "h2": {"color": "White", "pieceType": "Pawn"},
+      "a7": {"color": "Black", "pieceType": "Pawn"},
+      "b7": {"color": "Black", "pieceType": "Pawn"},
+      "c7": {"color": "Black", "pieceType": "Pawn"},
+      "d7": {"color": "Black", "pieceType": "Pawn"},
+      "e7": {"color": "Black", "pieceType": "Pawn"},
+      "f7": {"color": "Black", "pieceType": "Pawn"},
+      "g7": {"color": "Black", "pieceType": "Pawn"},
+      "h7": {"color": "Black", "pieceType": "Pawn"},
+      "a8": {"color": "Black", "pieceType": "Rook"},
+      "b8": {"color": "Black", "pieceType": "Knight"},
+      "c8": {"color": "Black", "pieceType": "Bishop"},
+      "d8": {"color": "Black", "pieceType": "Queen"},
+      "e8": {"color": "Black", "pieceType": "King"},
+      "f8": {"color": "Black", "pieceType": "Bishop"},
+      "g8": {"color": "Black", "pieceType": "Knight"},
+      "h8": {"color": "Black", "pieceType": "Rook"}
+    }
+  }
+}

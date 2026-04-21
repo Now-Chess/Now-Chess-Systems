@@ -9,6 +9,7 @@ Scala 3.5.1 · Gradle 9
 ./compile    # Compile all modules — always run
 ./test       # Run all tests
 ./coverage   # Check coverage
+./lint       # Run linters
 ```
 Try to stick to these commands for consistency.
 

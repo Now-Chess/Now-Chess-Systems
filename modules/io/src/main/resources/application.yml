@@ -1,0 +1,13 @@
+quarkus:
+  http:
+    port: 8081
+  application:
+    name: nowchess-io
+  smallrye-openapi:
+    info-title: NowChess IO Service
+    info-version: 1.0.0
+    info-description: Chess notation import and export — FEN and PGN
+    path: /openapi
+  swagger-ui:
+    always-include: true
+    path: /swagger-ui

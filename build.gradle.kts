@@ -36,7 +36,11 @@ val coverageExclusions = listOf(
     "**/core/src/main/scala/de/nowchess/chess/registry/GameEntry.scala",
     "**/core/src/main/scala/de/nowchess/chess/registry/GameRegistryImpl.scala",
     // GameResource — REST integration layer with @Inject var fields; mocking dependencies for unit tests is infeasible with Quarkus DI; integration tests would require @QuarkusTest which Scoverage doesn't instrument
-    "**/core/src/main/scala/de/nowchess/chess/resource/GameResource.scala"
+    "**/core/src/main/scala/de/nowchess/chess/resource/GameResource.scala",
+    // IoResource — same rationale as GameResource; @QuarkusTest not instrumented by Scoverage
+    "**/io/src/main/scala/de/nowchess/io/service/resource/IoResource.scala",
+    // JacksonConfig — Quarkus lifecycle hook, no testable logic beyond ObjectMapper registration
+    "**/io/src/main/scala/de/nowchess/io/service/config/JacksonConfig.scala",
 )
 
 // Converts a Sonar-style glob to a scoverage regex (matched against full source path).
@@ -72,7 +76,7 @@ sonar {
 val versions = mapOf(
     "QUARKUS_SCALA3"        to "1.0.0",
     "SCALA3"                to "3.5.1",
-    "SCALA_LIBRARY"         to "2.13.18",
+    "SCALA_LIBRARY"         to "2.13.16",
     "SCALATEST"             to "3.2.19",
     "SCALATEST_JUNIT"       to "0.1.11",
     "SCOVERAGE"             to "2.1.1",

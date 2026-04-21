@@ -1,4 +1,4 @@
-package de.nowchess.chess.config
+package de.nowchess.io.service.config
 
 import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.databind.ObjectMapper

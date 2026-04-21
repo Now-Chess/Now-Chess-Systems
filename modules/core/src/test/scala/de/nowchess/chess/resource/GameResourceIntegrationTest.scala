@@ -1,11 +1,19 @@
 package de.nowchess.chess.resource
 
 import de.nowchess.api.dto.*
+import de.nowchess.api.game.GameContext
+import de.nowchess.chess.client.IoServiceClient
 import de.nowchess.chess.exception.BadRequestException
+import de.nowchess.io.fen.FenExporter
+import de.nowchess.io.pgn.PgnParser
+import io.quarkus.test.InjectMock
 import io.quarkus.test.junit.QuarkusTest
 import jakarta.inject.Inject
-import org.junit.jupiter.api.{DisplayName, Test}
+import org.eclipse.microprofile.rest.client.inject.RestClient
+import org.junit.jupiter.api.{BeforeEach, DisplayName, Test}
 import org.junit.jupiter.api.Assertions.*
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.when
 
 import scala.compiletime.uninitialized
 
@@ -16,6 +24,19 @@ class GameResourceIntegrationTest:
 
   @Inject
   var resource: GameResource = uninitialized
+
+  @InjectMock
+  @RestClient
+  var ioClient: IoServiceClient = uninitialized
+
+  @BeforeEach
+  def setupMocks(): Unit =
+    when(ioClient.importFen(any())).thenReturn(GameContext.initial)
+    when(ioClient.importPgn(any())).thenReturn(
+      PgnParser.importGameContext("1. e4 c5").toOption.get,
+    )
+    when(ioClient.exportFen(any())).thenReturn(FenExporter.exportGameContext(GameContext.initial))
+    when(ioClient.exportPgn(any())).thenReturn("1. e4 c5")
 
   @Test
   @DisplayName("createGame returns 201")

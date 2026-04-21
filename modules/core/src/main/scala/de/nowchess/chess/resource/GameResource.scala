@@ -6,18 +6,21 @@ import de.nowchess.api.dto.*
 import de.nowchess.api.game.{DrawReason, GameContext, GameResult}
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.api.player.{PlayerId, PlayerInfo}
+import de.nowchess.chess.client.IoServiceClient
 import de.nowchess.chess.controller.Parser
 import de.nowchess.chess.engine.GameEngine
 import de.nowchess.chess.exception.{BadRequestException, GameNotFoundException}
 import de.nowchess.chess.observer.*
 import de.nowchess.chess.registry.{GameEntry, GameRegistry}
-import de.nowchess.io.fen.{FenExporter, FenParser}
-import de.nowchess.io.pgn.{PgnExporter, PgnParser}
+import de.nowchess.io.fen.FenExporter
+import de.nowchess.io.pgn.PgnExporter
+import de.nowchess.io.service.dto.{ImportFenRequest, ImportPgnRequest}
 import io.smallrye.mutiny.Multi
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.{MediaType, Response}
+import org.eclipse.microprofile.rest.client.inject.RestClient
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.compiletime.uninitialized
@@ -32,6 +35,10 @@ class GameResource:
 
   @Inject
   var objectMapper: ObjectMapper = uninitialized
+
+  @Inject
+  @RestClient
+  var ioClient: IoServiceClient = uninitialized
   // scalafix:on DisableSyntax.var
 
   private val DefaultWhite = PlayerInfo(PlayerId("p1"), "Player 1")
@@ -142,7 +149,6 @@ class GameResource:
     val black = playerInfoFrom(req.black, DefaultBlack)
     val entry = newEntry(GameContext.initial, white, black)
     registry.store(entry)
-    println(s"Created game ${entry.gameId}")
     created(toGameFullDto(entry))
 
   @GET
@@ -264,9 +270,7 @@ class GameResource:
   @Consumes(Array(MediaType.APPLICATION_JSON))
   @Produces(Array(MediaType.APPLICATION_JSON))
   def importFen(body: ImportFenRequestDto): Response =
-    val ctx = FenParser.parseFen(body.fen) match
-      case Left(err)  => throw BadRequestException("INVALID_FEN", err, Some("fen"))
-      case Right(ctx) => ctx
+    val ctx   = ioClient.importFen(ImportFenRequest(body.fen))
     val white = playerInfoFrom(body.white, DefaultWhite)
     val black = playerInfoFrom(body.black, DefaultBlack)
     val entry = newEntry(ctx, white, black)
@@ -278,11 +282,8 @@ class GameResource:
   @Consumes(Array(MediaType.APPLICATION_JSON))
   @Produces(Array(MediaType.APPLICATION_JSON))
   def importPgn(body: ImportPgnRequestDto): Response =
-    val engine = GameEngine()
-    engine.loadGame(PgnParser, body.pgn) match
-      case Left(err) => throw BadRequestException("INVALID_PGN", err, Some("pgn"))
-      case Right(_)  => ()
-    val entry = GameEntry(registry.generateId(), engine, DefaultWhite, DefaultBlack)
+    val ctx   = ioClient.importPgn(ImportPgnRequest(body.pgn))
+    val entry = newEntry(ctx, DefaultWhite, DefaultBlack)
     registry.store(entry)
     created(toGameFullDto(entry))
 
@@ -291,21 +292,12 @@ class GameResource:
   @Produces(Array(MediaType.TEXT_PLAIN))
   def exportFen(@PathParam("gameId") gameId: String): Response =
     val entry = registry.get(gameId).getOrElse(throw GameNotFoundException(gameId))
-    ok(FenExporter.exportGameContext(entry.engine.context))
+    ok(ioClient.exportFen(entry.engine.context))
 
   @GET
   @Path("/{gameId}/export/pgn")
   @Produces(Array("application/x-chess-pgn"))
   def exportPgn(@PathParam("gameId") gameId: String): Response =
     val entry = registry.get(gameId).getOrElse(throw GameNotFoundException(gameId))
-    val pgn = PgnExporter.exportGame(
-      Map(
-        "Event"  -> "NowChess game",
-        "White"  -> entry.white.displayName,
-        "Black"  -> entry.black.displayName,
-        "Result" -> "*",
-      ),
-      entry.engine.context.moves,
-    )
-    ok(pgn)
+    ok(ioClient.exportPgn(entry.engine.context))
   // scalafix:on DisableSyntax.throw

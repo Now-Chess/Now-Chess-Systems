@@ -74,6 +74,7 @@ dependencies {
     testImplementation("org.scalatest:scalatest_3:${versions["SCALATEST"]!!}")
     testImplementation("co.helmethair:scalatest-junit-runner:${versions["SCALATEST_JUNIT"]!!}")
     testImplementation("io.quarkus:quarkus-junit5")
+    testImplementation("io.quarkus:quarkus-junit5-mockito")
     testImplementation("io.rest-assured:rest-assured")
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

@@ -1,27 +1,19 @@
-package de.nowchess.chess.config
+package de.nowchess.io.service.config
 
 import de.nowchess.api.board.{CastlingRights, Color, File, Piece, PieceType, Rank, Square}
-import de.nowchess.api.dto.*
 import de.nowchess.api.game.{DrawReason, GameContext, GameResult}
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
+import de.nowchess.io.service.dto.{ImportFenRequest, ImportPgnRequest, IoErrorDto}
 import io.quarkus.runtime.annotations.RegisterForReflection
 
 @RegisterForReflection(
   targets = Array(
-    classOf[ApiErrorDto],
-    classOf[CreateGameRequestDto],
-    classOf[ErrorEventDto],
-    classOf[GameFullDto],
-    classOf[GameFullEventDto],
-    classOf[GameStateDto],
-    classOf[GameStateEventDto],
-    classOf[ImportFenRequestDto],
-    classOf[ImportPgnRequestDto],
-    classOf[LegalMoveDto],
-    classOf[LegalMovesResponseDto],
-    classOf[OkResponseDto],
-    classOf[PlayerInfoDto],
+    classOf[ImportFenRequest],
+    classOf[ImportPgnRequest],
+    classOf[IoErrorDto],
     classOf[GameContext],
+    classOf[GameResult],
+    classOf[DrawReason],
     classOf[Color],
     classOf[Piece],
     classOf[PieceType],
@@ -32,8 +24,6 @@ import io.quarkus.runtime.annotations.RegisterForReflection
     classOf[Move],
     classOf[MoveType],
     classOf[PromotionPiece],
-    classOf[GameResult],
-    classOf[DrawReason],
   ),
 )
 class NativeReflectionConfig
