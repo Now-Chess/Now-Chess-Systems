@@ -1,0 +1,23 @@
+meta {
+  name: Create Game
+  type: http
+  seq: 1
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/api/board/game
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "white": {"id": "p1", "displayName": "Alice"},
+    "black": {"id": "p2", "displayName": "Bob"}
+  }
+}

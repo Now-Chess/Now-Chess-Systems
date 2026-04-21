@@ -1,0 +1,12 @@
+meta {
+  name: Export FEN
+  type: http
+  seq: 1
+}
+
+http {
+  method: GET
+  url: {{baseUrl}}/api/board/game/{{gameId}}/export/fen
+  body: none
+  auth: none
+}

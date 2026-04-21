@@ -63,6 +63,32 @@ class GameEngineResignTest extends AnyFunSuite with Matchers:
       case other =>
         fail(s"Expected InvalidMoveEvent, but got $other")
 
+  test("resign() without color resigns side to move"):
+    val engine   = new GameEngine()
+    val observer = new ResignMockObserver()
+    engine.subscribe(observer)
+
+    engine.resign()
+
+    engine.context.result shouldBe Some(GameResult.Win(Color.Black))
+
+  test("resign() without color does nothing when game already over"):
+    val engine   = new GameEngine()
+    val observer = new ResignMockObserver()
+    engine.subscribe(observer)
+
+    // End the game with checkmate
+    engine.processUserInput("f2f3")
+    engine.processUserInput("e7e5")
+    engine.processUserInput("g2g4")
+    observer.events.clear()
+    engine.processUserInput("d8h4")
+
+    // Try to resign without color parameter
+    val resultBefore = engine.context.result
+    engine.resign()
+    resultBefore shouldBe engine.context.result
+
 private class ResignMockObserver extends Observer:
   val events = mutable.ListBuffer[GameEvent]()
 

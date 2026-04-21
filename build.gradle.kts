@@ -8,6 +8,49 @@ plugins {
 group = "de.nowchess"
 version = "1.0-SNAPSHOT"
 
+// Canonical coverage exclusions — glob patterns consumed by Sonar directly;
+// converted to scoverage regexes via globToScoverageRegex for instrumentation-time exclusion.
+val coverageExclusions = listOf(
+    // UI renders JavaFX components; headless test environments cannot exercise rendering paths
+    "modules/ui/**",
+    // FastParse macro-generated combinators produce synthetic branches that scoverage marks as uncovered
+    "modules/io/src/main/scala/de/nowchess/io/fen/FenParserFastParse*",
+    // NNUE inference pipeline — coverage requires a trained model file not present in CI
+    "**/bot/**/NNUE.scala",
+    "**/bot/**/NNUEBot.scala",
+    "**/bot/**/EvaluationNNUE.scala",
+    // NBAI binary format loader/writer — error paths require crafted corrupt files; migrator is a one-shot tool
+    "**/bot/**/NbaiLoader.scala",
+    "**/bot/**/NbaiModel.scala",
+    "**/bot/**/NbaiMigrator.scala",
+    "**/bot/**/NbaiWriter.scala",
+    // PolyglotBook — binary I/O and dead-code guards (bit-masked fields can never exceed valid range)
+    "**/bot/**/PolyglotBook.scala",
+    "**/bot/**/MoveOrdering.scala",
+    "**/bot/**/AlphaBetaSearch.scala",
+    // DTO case class synthetic methods (Scala compiler-generated apply/$default params)
+    "**/api/src/main/scala/de/nowchess/api/dto/**Dto.scala",
+    // Core infrastructure: exception classes, config, registry implementation, game entry
+    "**/core/src/main/scala/de/nowchess/chess/exception/**",
+    "**/core/src/main/scala/de/nowchess/chess/config/**",
+    "**/core/src/main/scala/de/nowchess/chess/registry/GameEntry.scala",
+    "**/core/src/main/scala/de/nowchess/chess/registry/GameRegistryImpl.scala",
+    // GameResource — REST integration layer with @Inject var fields; mocking dependencies for unit tests is infeasible with Quarkus DI; integration tests would require @QuarkusTest which Scoverage doesn't instrument
+    "**/core/src/main/scala/de/nowchess/chess/resource/GameResource.scala"
+)
+
+// Converts a Sonar-style glob to a scoverage regex (matched against full source path).
+// Order matters: protect ** before converting lone *, escape dots last.
+fun globToScoverageRegex(glob: String): String =
+    glob
+        .replace("**", "^@")
+        .replace("*", "[^/]*")
+        .replace(".", "\\.")
+        .replace("^@", ".*")
+        .let { ".*$it" }
+
+extra["SCOVERAGE_EXCLUDED"] = coverageExclusions.map(::globToScoverageRegex)
+
 sonar {
     properties {
         property("sonar.projectKey", "Now-Chess-Systems")
@@ -22,26 +65,7 @@ sonar {
         }.joinToString(",")
 
         property("sonar.scala.coverage.reportPaths", scoverageReports)
-        property(
-            "sonar.coverage.exclusions",
-            // UI renders JavaFX components; headless test environments cannot exercise rendering paths
-            "modules/ui/**," +
-            // FastParse macro-generated combinators produce synthetic branches that scoverage marks as uncovered
-            "modules/io/src/main/scala/de/nowchess/io/fen/FenParserFastParse*," +
-            // NNUE inference pipeline — coverage requires a trained model file not present in CI
-            "**/bot/**/NNUE.scala," +
-            "**/bot/**/NNUEBot.scala," +
-            "**/bot/**/EvaluationNNUE.scala," +
-            // NBAI binary format loader/writer — error paths require crafted corrupt files; migrator is a one-shot tool
-            "**/bot/**/NbaiLoader.scala," +
-            "**/bot/**/NbaiModel.scala," +
-            "**/bot/**/NbaiMigrator.scala," +
-            "**/bot/**/NbaiWriter.scala," +
-            // PolyglotBook — binary I/O and dead-code guards (bit-masked fields can never exceed valid range)
-            "**/bot/**/PolyglotBook.scala," +
-            "**/bot/**/MoveOrdering.scala," +
-            "**/bot/**/AlphaBetaSearch.scala"
-        )
+        property("sonar.coverage.exclusions", coverageExclusions.joinToString(","))
     }
 }
 

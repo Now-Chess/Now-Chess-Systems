@@ -1,0 +1,19 @@
+meta {
+  name: Get Legal Moves
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/board/game/{{gameId}}/moves
+  body: none
+  auth: none
+}
+
+params:query {
+  square: e2
+}
+
+vars:pre-request {
+  gameId: tjOgyEcS
+}

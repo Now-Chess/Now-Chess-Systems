@@ -8,6 +8,8 @@ version = "1.0-SNAPSHOT"
 
 @Suppress("UNCHECKED_CAST")
 val versions = rootProject.extra["VERSIONS"] as Map<String, String>
+@Suppress("UNCHECKED_CAST")
+val scoverageExcluded = rootProject.extra["SCOVERAGE_EXCLUDED"] as List<String>
 
 repositories {
     mavenCentral()
@@ -26,16 +28,7 @@ scoverage {
             "de\\.nowchess\\.bot\\.util\\.PolyglotBook",
         )
     )
-    excludedFiles.set(
-        listOf(
-            ".*NNUE\\.scala",
-            ".*NNUEBot\\.scala",
-            ".*NbaiLoader\\.scala",
-            ".*NbaiMigrator\\.scala",
-            ".*NbaiWriter\\.scala",
-            ".*PolyglotBook\\.scala",
-        )
-    )
+    excludedFiles.set(scoverageExcluded)
 }
 
 tasks.withType<ScalaCompile> {
@@ -44,7 +37,7 @@ tasks.withType<ScalaCompile> {
 
 dependencies {
 
-    implementation("org.scala-lang:scala3-compiler_3") {
+    compileOnly("org.scala-lang:scala3-compiler_3") {
         version {
             strictly(versions["SCALA3"]!!)
         }

@@ -27,7 +27,7 @@ tasks.withType<ScalaCompile> {
 
 dependencies {
 
-    implementation("org.scala-lang:scala3-compiler_3") {
+    compileOnly("org.scala-lang:scala3-compiler_3") {
         version {
             strictly(versions["SCALA3"]!!)
         }

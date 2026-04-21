@@ -8,6 +8,8 @@ version = "1.0-SNAPSHOT"
 
 @Suppress("UNCHECKED_CAST")
 val versions = rootProject.extra["VERSIONS"] as Map<String, String>
+@Suppress("UNCHECKED_CAST")
+val scoverageExcluded = rootProject.extra["SCOVERAGE_EXCLUDED"] as List<String>
 
 repositories {
     mavenCentral()
@@ -19,6 +21,7 @@ scala {
 
 scoverage {
     scoverageVersion.set(versions["SCOVERAGE"]!!)
+    excludedFiles.set(scoverageExcluded)
 }
 
 configurations.scoverage {
@@ -31,7 +34,7 @@ configurations.scoverage {
 
 dependencies {
 
-    implementation("org.scala-lang:scala3-compiler_3") {
+    compileOnly("org.scala-lang:scala3-compiler_3") {
         version {
             strictly(versions["SCALA3"]!!)
         }

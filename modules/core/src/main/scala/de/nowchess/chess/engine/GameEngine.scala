@@ -38,9 +38,10 @@ class GameEngine(
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
   // Synchronized accessors for current state
-  def board: Board         = synchronized(currentContext.board)
-  def turn: Color          = synchronized(currentContext.turn)
-  def context: GameContext = synchronized(currentContext)
+  def board: Board                      = synchronized(currentContext.board)
+  def turn: Color                       = synchronized(currentContext.turn)
+  def context: GameContext              = synchronized(currentContext)
+  def pendingDrawOfferBy: Option[Color] = synchronized(pendingDrawOffer)
 
   /** Check if undo is available. */
   def canUndo: Boolean = synchronized(invoker.canUndo)
@@ -67,21 +68,7 @@ class GameEngine(
         performRedo()
 
       case "draw" =>
-        if currentContext.halfMoveClock >= 100 then
-          currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.FiftyMoveRule)))
-          invoker.clear()
-          notifyObservers(DrawEvent(currentContext, DrawReason.FiftyMoveRule))
-        else if ruleSet.isThreefoldRepetition(currentContext) then
-          currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.ThreefoldRepetition)))
-          invoker.clear()
-          notifyObservers(DrawEvent(currentContext, DrawReason.ThreefoldRepetition))
-        else
-          notifyObservers(
-            InvalidMoveEvent(
-              currentContext,
-              InvalidMoveReason.DrawCannotBeClaimed,
-            ),
-          )
+        claimDraw()
 
       case "" =>
         notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.EmptyInput))
@@ -195,6 +182,21 @@ class GameEngine(
           notifyObservers(DrawOfferDeclinedEvent(currentContext, color))
   }
 
+  /** Claim a draw by fifty-move rule or threefold repetition. */
+  def claimDraw(): Unit = synchronized {
+    if currentContext.result.isDefined then
+      notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.GameAlreadyOver))
+    else if currentContext.halfMoveClock >= 100 then
+      currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.FiftyMoveRule)))
+      invoker.clear()
+      notifyObservers(DrawEvent(currentContext, DrawReason.FiftyMoveRule))
+    else if ruleSet.isThreefoldRepetition(currentContext) then
+      currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.ThreefoldRepetition)))
+      invoker.clear()
+      notifyObservers(DrawEvent(currentContext, DrawReason.ThreefoldRepetition))
+    else notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.DrawCannotBeClaimed))
+  }
+
   /** Load a game using the provided importer. If the imported context has moves, they are replayed through the command
     * system. Otherwise, the position is set directly. Notifies observers with PgnLoadedEvent on success.
     */
@@ -256,6 +258,22 @@ class GameEngine(
     pendingDrawOffer = None
     invoker.clear()
     notifyObservers(BoardResetEvent(currentContext))
+  }
+
+  /** Resign the game on behalf of the side to move. */
+  def resign(): Unit = synchronized {
+    if currentContext.result.isEmpty then
+      val winner = currentContext.turn.opposite
+      currentContext = currentContext.withResult(Some(GameResult.Win(winner)))
+      invoker.clear()
+  }
+
+  /** Apply a draw result directly (for agreement, fifty-move claim, etc.). */
+  def applyDraw(reason: DrawReason): Unit = synchronized {
+    if currentContext.result.isEmpty then
+      currentContext = currentContext.withResult(Some(GameResult.Draw(reason)))
+      invoker.clear()
+      notifyObservers(DrawEvent(currentContext, reason))
   }
 
   /** Kick off play when the side to move is a bot (e.g. bot-vs-bot from initial position). */

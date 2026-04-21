@@ -1,0 +1,12 @@
+meta {
+  name: Undo Move
+  type: http
+  seq: 3
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/api/board/game/{{gameId}}/undo
+  body: none
+  auth: none
+}

@@ -1,0 +1,12 @@
+meta {
+  name: Accept Draw
+  type: http
+  seq: 2
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/api/board/game/{{gameId}}/draw/accept
+  body: none
+  auth: none
+}

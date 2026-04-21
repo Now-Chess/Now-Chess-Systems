@@ -1,0 +1,12 @@
+meta {
+  name: Claim Draw
+  type: http
+  seq: 4
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/api/board/game/{{gameId}}/draw/claim
+  body: none
+  auth: none
+}

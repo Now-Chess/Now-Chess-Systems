@@ -1,0 +1,12 @@
+meta {
+  name: Offer Draw
+  type: http
+  seq: 1
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/api/board/game/{{gameId}}/draw/offer
+  body: none
+  auth: none
+}

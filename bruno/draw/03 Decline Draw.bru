@@ -1,0 +1,12 @@
+meta {
+  name: Decline Draw
+  type: http
+  seq: 3
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/api/board/game/{{gameId}}/draw/decline
+  body: none
+  auth: none
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Make Move
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/board/game/{{gameId}}/move/b1c3
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  gameId: tjOgyEcS
+}
