@@ -130,7 +130,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
 
   // Edge cases with defaults
   test("parse invalid turn color returns error") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {"turn": "Invalid", "board": []},
       "moves": []
@@ -141,7 +141,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
   }
 
   test("parse invalid piece type filters it out") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {
         "turn": "White",
@@ -158,7 +158,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
   }
 
   test("parse invalid color in board filters piece") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {
         "turn": "White",
@@ -175,7 +175,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
   }
 
   test("parse with missing turn uses default") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {"board": []},
       "moves": []
@@ -187,7 +187,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
   }
 
   test("parse with missing board uses empty") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {"turn": "White"},
       "moves": []
@@ -199,7 +199,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
   }
 
   test("parse with missing moves uses empty list") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {"turn": "White", "board": []}
     }"""
@@ -210,7 +210,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
   }
 
   test("parse invalid square in board filters it") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {
         "turn": "White",
@@ -227,7 +227,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
   }
 
   test("parse all valid piece types") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {
         "turn": "White",
@@ -255,7 +255,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
   }
 
   test("parse with all castling rights false") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {
         "turn": "White",
@@ -278,7 +278,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
 
   // Move type parsing tests
   test("parse all move type variations") {
-    val json = """{
+    val json   = """{
       "metadata": {"event": "Game", "result": "*"},
       "gameState": {"turn": "White", "board": []},
       "moves": [
@@ -303,7 +303,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
   }
 
   test("parse invalid move type defaults to None") {
-    val json = """{
+    val json   = """{
       "metadata": {"event": "Game"},
       "gameState": {"turn": "White", "board": []},
       "moves": [{"from": "e2", "to": "e4", "type": {"type": "unknown"}}]
@@ -313,7 +313,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
   }
 
   test("parse promotion with invalid piece uses default") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {"turn": "White", "board": []},
       "moves": [{"from": "a7", "to": "a8", "type": {"type": "promotion", "promotionPiece": "invalid"}}]
@@ -323,7 +323,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
   }
 
   test("parse move with invalid from/to skips it") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {"turn": "White", "board": []},
       "moves": [{"from": "e2", "to": "invalid", "type": {"type": "normal"}}]
@@ -335,7 +335,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
   }
 
   test("parse normal move with isCapture true") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {"turn": "White", "board": []},
       "moves": [{"from": "e4", "to": "d5", "type": {"type": "normal", "isCapture": true}}]
@@ -348,7 +348,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
   }
 
   test("parse board with invalid pieces filters them") {
-    val json = """{
+    val json   = """{
       "metadata": {},
       "gameState": {
         "turn": "White",
@@ -366,7 +366,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
   }
 
   test("parse with empty board") {
-    val json = """{
+    val json   = """{
   "metadata": {"event": "Game", "players": {"white": "A", "black": "B"}, "date": "2026-04-06", "result": "*"},
   "gameState": {
     "board": [],
