@@ -54,7 +54,7 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Build native binary
-        run: ./gradlew :modules:${{ matrix.module }}:build -Dquarkus.native.enabled=true --no-daemon
+        run: ./gradlew :modules:${{ matrix.module }}:build -Dquarkus.native.enabled=true -Dquarkus.package.jar.enabled=false --no-daemon
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
