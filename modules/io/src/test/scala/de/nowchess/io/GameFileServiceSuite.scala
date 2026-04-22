@@ -1,13 +1,14 @@
 package de.nowchess.io
 
-import de.nowchess.api.game.GameContext
 import de.nowchess.api.board.{File, Rank, Square}
+import de.nowchess.api.game.GameContext
+import de.nowchess.api.io.GameContextExport
 import de.nowchess.api.move.Move
 import de.nowchess.io.json.{JsonExporter, JsonParser}
-import java.nio.file.{Files, Paths}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-import scala.util.Using
+
+import java.nio.file.{Files, Paths}
 
 class GameFileServiceSuite extends AnyFunSuite with Matchers:
 

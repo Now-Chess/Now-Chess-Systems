@@ -4,8 +4,8 @@ import fastparse.*
 import fastparse.NoWhitespace.*
 import de.nowchess.api.board.*
 import de.nowchess.api.game.GameContext
-import de.nowchess.io.GameContextImport
 import FenParserSupport.*
+import de.nowchess.api.io.GameContextImport
 
 object FenParserFastParse extends GameContextImport:
 

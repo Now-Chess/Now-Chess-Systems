@@ -12,9 +12,6 @@ import de.nowchess.chess.engine.GameEngine
 import de.nowchess.chess.exception.{BadRequestException, GameNotFoundException}
 import de.nowchess.chess.observer.*
 import de.nowchess.chess.registry.{GameEntry, GameRegistry}
-import de.nowchess.io.fen.FenExporter
-import de.nowchess.io.pgn.PgnExporter
-import de.nowchess.io.service.dto.{ImportFenRequest, ImportPgnRequest}
 import io.smallrye.mutiny.Multi
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
@@ -89,16 +86,8 @@ class GameResource:
   private def toGameStateDto(entry: GameEntry): GameStateDto =
     val ctx = entry.engine.context
     GameStateDto(
-      fen = FenExporter.exportGameContext(ctx),
-      pgn = PgnExporter.exportGame(
-        Map(
-          "Event"  -> "NowChess game",
-          "White"  -> entry.white.displayName,
-          "Black"  -> entry.black.displayName,
-          "Result" -> "*",
-        ),
-        ctx.moves,
-      ),
+      fen = ioClient.exportFen(ctx),
+      pgn = ioClient.exportPgn(ctx),
       turn = ctx.turn.label.toLowerCase,
       status = statusOf(entry),
       winner = ctx.result.collect { case GameResult.Win(c) => c.label.toLowerCase },

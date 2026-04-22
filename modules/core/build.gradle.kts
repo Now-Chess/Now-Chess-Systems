@@ -48,7 +48,6 @@ dependencies {
     }
 
     implementation(project(":modules:api"))
-    implementation(project(":modules:io"))
     implementation(project(":modules:rule"))
     implementation(project(":modules:bot"))
 
@@ -68,6 +67,8 @@ dependencies {
 
     implementation("com.fasterxml.jackson.module:jackson-module-scala_3:${versions["JACKSON_SCALA"]!!}")
 
+
+    testImplementation(project(":modules:io"))
 
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")

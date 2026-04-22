@@ -3,7 +3,7 @@ package de.nowchess.io.pgn
 import de.nowchess.api.board.*
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.api.game.GameContext
-import de.nowchess.io.GameContextExport
+import de.nowchess.api.io.GameContextExport
 import de.nowchess.rules.sets.DefaultRules
 
 object PgnExporter extends GameContextExport:

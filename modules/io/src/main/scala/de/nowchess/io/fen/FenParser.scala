@@ -2,7 +2,7 @@ package de.nowchess.io.fen
 
 import de.nowchess.api.board.*
 import de.nowchess.api.game.GameContext
-import de.nowchess.io.GameContextImport
+import de.nowchess.api.io.GameContextImport
 
 object FenParser extends GameContextImport:
 

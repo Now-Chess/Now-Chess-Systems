@@ -1,7 +1,6 @@
-package de.nowchess.io
+package de.nowchess.api.io
 
 import de.nowchess.api.game.GameContext
 
 trait GameContextExport:
-
   def exportGameContext(context: GameContext): String

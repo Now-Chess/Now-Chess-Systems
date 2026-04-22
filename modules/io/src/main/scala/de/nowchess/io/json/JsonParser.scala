@@ -5,7 +5,8 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import de.nowchess.api.board.*
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.api.game.GameContext
-import de.nowchess.io.GameContextImport
+import de.nowchess.api.io.GameContextImport
+
 import scala.util.Try
 
 /** Imports a GameContext from JSON format using Jackson.

@@ -3,15 +3,15 @@
 #
 # Before building the container image run:
 #
-# ./gradlew :modules:core:build -Dquarkus.native.enabled=true
+# ./gradlew :modules:io:build -Dquarkus.native.enabled=true
 #
 # Then, build the image with:
 #
-# docker build -f src/main/docker/Dockerfile.native -t quarkus/backcore .
+# docker build -f src/main/docker/Dockerfile.native -t quarkus/backio .
 #
 # Then run the container using:
 #
-# docker run -i --rm -p 8080:8080 quarkus/backcore
+# docker run -i --rm -p 8080:8080 quarkus/backio
 #
 # The `registry.access.redhat.com/ubi9/ubi-minimal:9.7` base image is based on UBI 9.
 # To use UBI 8, switch to `quay.io/ubi8/ubi-minimal:8.10`.
@@ -21,7 +21,7 @@ WORKDIR /work/
 RUN chown 1001 /work \
     && chmod "g+rwX" /work \
     && chown 1001:root /work
-COPY --chown=1001:root --chmod=0755 modules/core/build/*-runner /work/application
+COPY --chown=1001:root --chmod=0755 modules/io/build/*-runner /work/application
 
 EXPOSE 8080
 USER 1001

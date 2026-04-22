@@ -1,6 +1,8 @@
 package de.nowchess.io
 
 import de.nowchess.api.game.GameContext
+import de.nowchess.api.io.{GameContextExport, GameContextImport}
+
 import java.nio.file.{Files, Path}
 import java.nio.charset.StandardCharsets
 import scala.util.Try

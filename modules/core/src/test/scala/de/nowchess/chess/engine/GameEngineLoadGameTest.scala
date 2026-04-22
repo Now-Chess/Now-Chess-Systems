@@ -1,15 +1,12 @@
 package de.nowchess.chess.engine
 
-import scala.collection.mutable
-import de.nowchess.api.board.{Board, Color}
-import de.nowchess.api.game.GameContext
-import de.nowchess.chess.observer.{GameEvent, Observer, PgnLoadedEvent}
-import de.nowchess.io.pgn.PgnParser
+import de.nowchess.chess.observer.{GameEvent, Observer}
 import de.nowchess.io.fen.FenParser
-import de.nowchess.io.pgn.PgnExporter
-import de.nowchess.io.fen.FenExporter
+import de.nowchess.io.pgn.{PgnExporter, PgnParser}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
+
+import scala.collection.mutable
 
 class GameEngineLoadGameTest extends AnyFunSuite with Matchers:
 

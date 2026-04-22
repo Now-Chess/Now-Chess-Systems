@@ -1,7 +1,7 @@
 package de.nowchess.chess.client
 
+import de.nowchess.api.dto.{ImportFenRequest, ImportPgnRequest}
 import de.nowchess.api.game.GameContext
-import de.nowchess.io.service.dto.{ImportFenRequest, ImportPgnRequest}
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.MediaType
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient

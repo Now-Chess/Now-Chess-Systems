@@ -4,7 +4,7 @@ import de.nowchess.api.board.{Board, Color, File, PieceType, Rank, Square}
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.chess.observer.{GameEvent, InvalidMoveEvent, InvalidMoveReason, MoveRedoneEvent, Observer}
-import de.nowchess.io.GameContextImport
+import de.nowchess.api.io.GameContextImport
 import de.nowchess.rules.RuleSet
 import de.nowchess.rules.sets.DefaultRules
 import org.scalatest.funsuite.AnyFunSuite

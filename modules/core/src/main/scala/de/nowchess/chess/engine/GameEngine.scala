@@ -7,7 +7,7 @@ import de.nowchess.api.player.{PlayerId, PlayerInfo}
 import de.nowchess.chess.controller.Parser
 import de.nowchess.chess.observer.*
 import de.nowchess.chess.command.{CommandInvoker, MoveCommand, MoveResult}
-import de.nowchess.io.{GameContextExport, GameContextImport}
+import de.nowchess.api.io.{GameContextExport, GameContextImport}
 import de.nowchess.rules.RuleSet
 import de.nowchess.rules.sets.DefaultRules
 

@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import de.nowchess.api.board.Square
-import de.nowchess.io.json.{SquareKeyDeserializer, SquareKeySerializer}
 import io.quarkus.jackson.ObjectMapperCustomizer
 import jakarta.inject.Singleton
 

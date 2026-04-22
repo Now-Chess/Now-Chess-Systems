@@ -6,8 +6,9 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import de.nowchess.api.board.*
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.api.game.GameContext
-import de.nowchess.io.GameContextExport
+import de.nowchess.api.io.GameContextExport
 import de.nowchess.io.pgn.PgnExporter
+
 import java.time.{LocalDate, ZoneId, ZonedDateTime}
 
 /** Exports a GameContext to a comprehensive JSON format using Jackson.

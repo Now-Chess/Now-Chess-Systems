@@ -2,9 +2,10 @@ package de.nowchess.io.fen
 
 import de.nowchess.api.board.*
 import de.nowchess.api.game.GameContext
-import de.nowchess.io.GameContextImport
+
 import scala.util.parsing.combinator.RegexParsers
 import FenParserSupport.*
+import de.nowchess.api.io.GameContextImport
 
 object FenParserCombinators extends RegexParsers with GameContextImport:
 
