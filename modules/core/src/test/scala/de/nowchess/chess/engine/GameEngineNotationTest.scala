@@ -1,6 +1,7 @@
 package de.nowchess.chess.engine
 
 import de.nowchess.api.board.{Board, Color, File, Rank, Square}
+import de.nowchess.rules.sets.DefaultRules
 import de.nowchess.api.game.GameContext
 import de.nowchess.io.fen.FenParser
 import de.nowchess.chess.observer.*
@@ -37,7 +38,7 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
       .withTurn(Color.White)
       .withCastlingRights(castlingRights)
 
-    val engine = new GameEngine(ctx)
+    val engine = new GameEngine(ctx, DefaultRules)
     val events = captureEvents(engine)
 
     // White castles queenside: e1c1
@@ -65,7 +66,7 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
       .withEnPassantSquare(epSquare)
       .withCastlingRights(de.nowchess.api.board.CastlingRights(false, false, false, false))
 
-    val engine = new GameEngine(ctx)
+    val engine = new GameEngine(ctx, DefaultRules)
     val events = captureEvents(engine)
 
     // White pawn on e5 captures en passant to d6
@@ -96,7 +97,7 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
       .withTurn(Color.White)
       .withCastlingRights(de.nowchess.api.board.CastlingRights(false, false, false, false))
 
-    val engine = new GameEngine(ctx)
+    val engine = new GameEngine(ctx, DefaultRules)
     val events = captureEvents(engine)
 
     engine.processUserInput("e7e8b")
@@ -117,7 +118,7 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
       .withTurn(Color.White)
       .withCastlingRights(de.nowchess.api.board.CastlingRights(false, false, false, false))
 
-    val engine = new GameEngine(ctx)
+    val engine = new GameEngine(ctx, DefaultRules)
     val events = captureEvents(engine)
 
     // King moves e1 -> f1

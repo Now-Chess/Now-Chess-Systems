@@ -7,7 +7,7 @@ import de.nowchess.bot.bots.nnue.EvaluationNNUE
 import de.nowchess.bot.logic.AlphaBetaSearch
 import de.nowchess.bot.util.{PolyglotBook, ZobristHash}
 import de.nowchess.bot.{BotDifficulty, BotMoveRepetition}
-import de.nowchess.rules.RuleSet
+import de.nowchess.api.rules.RuleSet
 import de.nowchess.rules.sets.DefaultRules
 
 final class NNUEBot(

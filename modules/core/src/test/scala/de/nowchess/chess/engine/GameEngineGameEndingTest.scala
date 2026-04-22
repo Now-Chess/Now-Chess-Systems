@@ -1,5 +1,6 @@
 package de.nowchess.chess.engine
 
+import de.nowchess.rules.sets.DefaultRules
 import scala.collection.mutable
 import de.nowchess.api.board.Color
 import de.nowchess.api.game.DrawReason
@@ -11,7 +12,7 @@ import org.scalatest.matchers.should.Matchers
 class GameEngineGameEndingTest extends AnyFunSuite with Matchers:
 
   test("GameEngine handles Checkmate (Fool's Mate)"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new EndingMockObserver()
     engine.subscribe(observer)
 
@@ -31,7 +32,7 @@ class GameEngineGameEndingTest extends AnyFunSuite with Matchers:
         fail(s"Expected CheckmateEvent, but got $other")
 
   test("GameEngine handles check detection"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new EndingMockObserver()
     engine.subscribe(observer)
 
@@ -53,7 +54,7 @@ class GameEngineGameEndingTest extends AnyFunSuite with Matchers:
   // Wait, let's just use Sam Loyd's 10-move stalemate:
   // 1. e3 a5 2. Qh5 Ra6 3. Qxa5 h5 4. h4 Rah6 5. Qxc7 f6 6. Qxd7+ Kf7 7. Qxb7 Qd3 8. Qxb8 Qh7 9. Qxc8 Kg6 10. Qe6
   test("GameEngine handles Stalemate via 10-move known sequence"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new EndingMockObserver()
     engine.subscribe(observer)
 

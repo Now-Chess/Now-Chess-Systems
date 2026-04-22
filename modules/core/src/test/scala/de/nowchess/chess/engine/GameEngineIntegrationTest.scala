@@ -5,7 +5,7 @@ import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.chess.observer.{GameEvent, InvalidMoveEvent, InvalidMoveReason, MoveRedoneEvent, Observer}
 import de.nowchess.api.io.GameContextImport
-import de.nowchess.rules.RuleSet
+import de.nowchess.api.rules.RuleSet
 import de.nowchess.rules.sets.DefaultRules
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
@@ -21,7 +21,7 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
     events
 
   test("accessors expose redo availability and command history"):
-    val engine = new GameEngine()
+    val engine = new GameEngine(ruleSet = DefaultRules)
 
     engine.canRedo shouldBe false
     engine.commandHistory shouldBe empty
@@ -30,7 +30,7 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
     engine.commandHistory.nonEmpty shouldBe true
 
   test("processUserInput handles undo redo empty and malformed commands"):
-    val engine = new GameEngine()
+    val engine = new GameEngine(ruleSet = DefaultRules)
     val events = captureEvents(engine)
 
     engine.processUserInput("")
@@ -44,7 +44,7 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
     } should be >= 3
 
   test("processUserInput emits Illegal move for syntactically valid but illegal target"):
-    val engine = new GameEngine()
+    val engine = new GameEngine(ruleSet = DefaultRules)
     val events = captureEvents(engine)
 
     engine.processUserInput("e2e5")
@@ -56,14 +56,14 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
 
   test("loadGame returns Left when importer fails"):
 
-    val engine = new GameEngine()
+    val engine = new GameEngine(ruleSet = DefaultRules)
     val failingImporter = new GameContextImport:
       def importGameContext(input: String): Either[String, GameContext] = Left("boom")
 
     engine.loadGame(failingImporter, "ignored") shouldBe Left("boom")
 
   test("loadPosition replaces context clears history and notifies reset"):
-    val engine = new GameEngine()
+    val engine = new GameEngine(ruleSet = DefaultRules)
     val events = captureEvents(engine)
 
     engine.processUserInput("e2e4")
@@ -78,7 +78,7 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
     } shouldBe true
 
   test("redo event includes captured piece description when replaying a capture"):
-    val engine = new GameEngine()
+    val engine = new GameEngine(ruleSet = DefaultRules)
     val events = captureEvents(engine)
 
     EngineTestHelpers.loadFen(engine, "4k3/8/8/8/8/8/4K3/R6r w - - 0 1")
@@ -145,13 +145,13 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
 
   test("loadGame replay executes non-promotion moves through default replay branch"):
     val normalMove = Move(sq("e2"), sq("e4"), MoveType.Normal())
-    val engine     = new GameEngine()
+    val engine     = new GameEngine(ruleSet = DefaultRules)
 
     engine.replayMoves(List(normalMove), engine.context) shouldBe Right(())
     engine.context.moves.lastOption shouldBe Some(normalMove)
 
   test("replayMoves skips later moves after the first move triggers an error"):
-    val engine           = new GameEngine()
+    val engine           = new GameEngine(ruleSet = DefaultRules)
     val saved            = engine.context
     val illegalPromotion = Move(sq("e2"), sq("e1"), MoveType.Promotion(PromotionPiece.Queen))
     val trailingMove     = Move(sq("e2"), sq("e4"))
@@ -160,19 +160,19 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
     engine.context shouldBe saved
 
   test("normalMoveNotation handles missing source piece"):
-    val engine = new GameEngine()
+    val engine = new GameEngine(ruleSet = DefaultRules)
     val result = engine.normalMoveNotation(Move(sq("e3"), sq("e4")), Board.initial, isCapture = false)
 
     result shouldBe "e4"
 
   test("pieceNotation default branch returns empty string"):
-    val engine = new GameEngine()
+    val engine = new GameEngine(ruleSet = DefaultRules)
     val result = engine.pieceNotation(PieceType.Pawn)
 
     result shouldBe ""
 
   test("observerCount reflects subscribe and unsubscribe operations"):
-    val engine = new GameEngine()
+    val engine = new GameEngine(ruleSet = DefaultRules)
     val observer = new Observer:
       def onGameEvent(event: GameEvent): Unit = ()
 

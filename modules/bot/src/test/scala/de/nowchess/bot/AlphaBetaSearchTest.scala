@@ -6,7 +6,7 @@ import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.bot.ai.Evaluation
 import de.nowchess.bot.bots.classic.EvaluationClassic
 import de.nowchess.bot.logic.AlphaBetaSearch
-import de.nowchess.rules.RuleSet
+import de.nowchess.api.rules.RuleSet
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import de.nowchess.rules.sets.DefaultRules

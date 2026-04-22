@@ -14,7 +14,7 @@ import de.nowchess.chess.observer.{
   MoveExecutedEvent,
   Observer,
 }
-import de.nowchess.rules.RuleSet
+import de.nowchess.api.rules.RuleSet
 import de.nowchess.rules.sets.DefaultRules
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
@@ -29,7 +29,7 @@ class GameEnginePromotionTest extends AnyFunSuite with Matchers:
     events
 
   private def engineWith(board: Board, turn: Color = Color.White): GameEngine =
-    new GameEngine(initialContext = GameContext.initial.withBoard(board).withTurn(turn))
+    new GameEngine(initialContext = GameContext.initial.withBoard(board).withTurn(turn), ruleSet = DefaultRules)
 
   test("processUserInput without promotion suffix fires InvalidMoveEvent when pawn reaches back rank") {
     val promotionBoard = FenParser.parseBoard("8/4P3/4k3/8/8/8/8/8").get

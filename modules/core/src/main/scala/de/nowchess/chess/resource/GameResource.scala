@@ -6,6 +6,7 @@ import de.nowchess.api.dto.*
 import de.nowchess.api.game.{DrawReason, GameContext, GameResult}
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.api.player.{PlayerId, PlayerInfo}
+import de.nowchess.chess.adapter.RuleSetRestAdapter
 import de.nowchess.chess.client.IoServiceClient
 import de.nowchess.chess.controller.Parser
 import de.nowchess.chess.engine.GameEngine
@@ -36,6 +37,9 @@ class GameResource:
   @Inject
   @RestClient
   var ioClient: IoServiceClient = uninitialized
+
+  @Inject
+  var ruleSetAdapter: RuleSetRestAdapter = uninitialized
   // scalafix:on DisableSyntax.var
 
   private val DefaultWhite = PlayerInfo(PlayerId("p1"), "Player 1")
@@ -103,7 +107,7 @@ class GameResource:
     dto.fold(default)(d => PlayerInfo(PlayerId(d.id), d.displayName))
 
   private def newEntry(ctx: GameContext, white: PlayerInfo, black: PlayerInfo): GameEntry =
-    GameEntry(registry.generateId(), GameEngine(initialContext = ctx), white, black)
+    GameEntry(registry.generateId(), GameEngine(initialContext = ctx, ruleSet = ruleSetAdapter), white, black)
 
   private def applyMoveInput(engine: GameEngine, uci: String): Option[String] =
     val error = new AtomicReference[Option[String]](None)
@@ -138,6 +142,7 @@ class GameResource:
     val black = playerInfoFrom(req.black, DefaultBlack)
     val entry = newEntry(GameContext.initial, white, black)
     registry.store(entry)
+    println(s"Created game ${entry.gameId}")
     created(toGameFullDto(entry))
 
   @GET

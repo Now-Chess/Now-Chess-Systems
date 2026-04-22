@@ -41,6 +41,8 @@ val coverageExclusions = listOf(
     "**/io/src/main/scala/de/nowchess/io/service/resource/IoResource.scala",
     // JacksonConfig — Quarkus lifecycle hook, no testable logic beyond ObjectMapper registration
     "**/io/src/main/scala/de/nowchess/io/service/config/JacksonConfig.scala",
+    //RuleSetRestAdapter - Quarkus integration of rule into core, only testable with Quarkus tests
+    "**/core/src/main/de/nowchess/chess/adapter/RuleSetRestAdapter.scala"
 )
 
 // Converts a Sonar-style glob to a scoverage regex (matched against full source path).

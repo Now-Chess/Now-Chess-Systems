@@ -5,7 +5,7 @@ import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.{Move, MoveType}
 import de.nowchess.bot.ai.Evaluation
 import de.nowchess.bot.util.ZobristHash
-import de.nowchess.rules.RuleSet
+import de.nowchess.api.rules.RuleSet
 import de.nowchess.rules.sets.DefaultRules
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 

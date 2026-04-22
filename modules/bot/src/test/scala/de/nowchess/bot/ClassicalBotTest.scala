@@ -5,7 +5,7 @@ import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.Move
 import de.nowchess.api.move.MoveType
 import de.nowchess.bot.bots.ClassicalBot
-import de.nowchess.rules.RuleSet
+import de.nowchess.api.rules.RuleSet
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import de.nowchess.rules.sets.DefaultRules

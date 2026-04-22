@@ -1,7 +1,7 @@
-package de.nowchess.rules
+package de.nowchess.api.rules
 
-import de.nowchess.api.game.GameContext
 import de.nowchess.api.board.Square
+import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.Move
 
 /** Extension point for chess rule variants (standard, Chess960, etc.). All rule queries are stateless: given a

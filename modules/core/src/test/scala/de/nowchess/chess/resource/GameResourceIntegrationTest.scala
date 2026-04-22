@@ -1,11 +1,13 @@
 package de.nowchess.chess.resource
 
+import de.nowchess.api.board.Square
 import de.nowchess.api.dto.*
 import de.nowchess.api.game.GameContext
-import de.nowchess.chess.client.IoServiceClient
+import de.nowchess.chess.client.{IoServiceClient, RuleMoveRequest, RuleServiceClient, RuleSquareRequest}
 import de.nowchess.chess.exception.BadRequestException
 import de.nowchess.io.fen.FenExporter
 import de.nowchess.io.pgn.PgnParser
+import de.nowchess.rules.sets.DefaultRules
 import io.quarkus.test.InjectMock
 import io.quarkus.test.junit.QuarkusTest
 import jakarta.inject.Inject
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.{BeforeEach, DisplayName, Test}
 import org.junit.jupiter.api.Assertions.*
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
+import org.mockito.invocation.InvocationOnMock
 
 import scala.compiletime.uninitialized
 
@@ -29,6 +32,10 @@ class GameResourceIntegrationTest:
   @RestClient
   var ioClient: IoServiceClient = uninitialized
 
+  @InjectMock
+  @RestClient
+  var ruleClient: RuleServiceClient = uninitialized
+
   @BeforeEach
   def setupMocks(): Unit =
     when(ioClient.importFen(any())).thenReturn(GameContext.initial)
@@ -37,6 +44,32 @@ class GameResourceIntegrationTest:
     )
     when(ioClient.exportFen(any())).thenReturn(FenExporter.exportGameContext(GameContext.initial))
     when(ioClient.exportPgn(any())).thenReturn("1. e4 c5")
+    when(ruleClient.legalMoves(any())).thenAnswer((inv: InvocationOnMock) =>
+      val req = inv.getArgument[RuleSquareRequest](0)
+      DefaultRules.legalMoves(req.context)(Square.fromAlgebraic(req.square).get),
+    )
+    when(ruleClient.allLegalMoves(any())).thenAnswer((inv: InvocationOnMock) =>
+      DefaultRules.allLegalMoves(inv.getArgument[GameContext](0)),
+    )
+    when(ruleClient.applyMove(any())).thenAnswer((inv: InvocationOnMock) =>
+      val req = inv.getArgument[RuleMoveRequest](0)
+      DefaultRules.applyMove(req.context)(req.move),
+    )
+    when(ruleClient.isCheck(any())).thenAnswer((inv: InvocationOnMock) =>
+      DefaultRules.isCheck(inv.getArgument[GameContext](0)),
+    )
+    when(ruleClient.isCheckmate(any())).thenAnswer((inv: InvocationOnMock) =>
+      DefaultRules.isCheckmate(inv.getArgument[GameContext](0)),
+    )
+    when(ruleClient.isStalemate(any())).thenAnswer((inv: InvocationOnMock) =>
+      DefaultRules.isStalemate(inv.getArgument[GameContext](0)),
+    )
+    when(ruleClient.isInsufficientMaterial(any())).thenAnswer((inv: InvocationOnMock) =>
+      DefaultRules.isInsufficientMaterial(inv.getArgument[GameContext](0)),
+    )
+    when(ruleClient.isThreefoldRepetition(any())).thenAnswer((inv: InvocationOnMock) =>
+      DefaultRules.isThreefoldRepetition(inv.getArgument[GameContext](0)),
+    )
 
   @Test
   @DisplayName("createGame returns 201")

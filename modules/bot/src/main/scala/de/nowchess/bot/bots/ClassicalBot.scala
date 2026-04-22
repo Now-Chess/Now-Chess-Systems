@@ -7,7 +7,7 @@ import de.nowchess.bot.bots.classic.EvaluationClassic
 import de.nowchess.bot.logic.AlphaBetaSearch
 import de.nowchess.bot.util.PolyglotBook
 import de.nowchess.bot.{BotDifficulty, BotMoveRepetition}
-import de.nowchess.rules.RuleSet
+import de.nowchess.api.rules.RuleSet
 import de.nowchess.rules.sets.DefaultRules
 
 final class ClassicalBot(

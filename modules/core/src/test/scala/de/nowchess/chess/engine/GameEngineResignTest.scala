@@ -1,5 +1,6 @@
 package de.nowchess.chess.engine
 
+import de.nowchess.rules.sets.DefaultRules
 import scala.collection.mutable
 import de.nowchess.api.board.Color
 import de.nowchess.api.game.GameResult
@@ -10,7 +11,7 @@ import org.scalatest.matchers.should.Matchers
 class GameEngineResignTest extends AnyFunSuite with Matchers:
 
   test("White resigns"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new ResignMockObserver()
     engine.subscribe(observer)
 
@@ -25,7 +26,7 @@ class GameEngineResignTest extends AnyFunSuite with Matchers:
         fail(s"Expected ResignEvent, but got $other")
 
   test("Black resigns"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new ResignMockObserver()
     engine.subscribe(observer)
 
@@ -40,7 +41,7 @@ class GameEngineResignTest extends AnyFunSuite with Matchers:
         fail(s"Expected ResignEvent, but got $other")
 
   test("Cannot resign when game is already over"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new ResignMockObserver()
     engine.subscribe(observer)
 
@@ -64,7 +65,7 @@ class GameEngineResignTest extends AnyFunSuite with Matchers:
         fail(s"Expected InvalidMoveEvent, but got $other")
 
   test("resign() without color resigns side to move"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new ResignMockObserver()
     engine.subscribe(observer)
 
@@ -73,7 +74,7 @@ class GameEngineResignTest extends AnyFunSuite with Matchers:
     engine.context.result shouldBe Some(GameResult.Win(Color.Black))
 
   test("resign() without color does nothing when game already over"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new ResignMockObserver()
     engine.subscribe(observer)
 

@@ -1,6 +1,7 @@
 package de.nowchess.chess.registry
 
 import de.nowchess.api.player.{PlayerId, PlayerInfo}
+import de.nowchess.rules.sets.DefaultRules
 import de.nowchess.chess.engine.GameEngine
 import io.quarkus.test.junit.QuarkusTest
 import jakarta.inject.Inject
@@ -20,14 +21,24 @@ class GameRegistryImplTest:
   @Test
   @DisplayName("store saves entry")
   def testStore(): Unit =
-    val entry = GameEntry("g1", GameEngine(), PlayerInfo(PlayerId("p1"), "P1"), PlayerInfo(PlayerId("p2"), "P2"))
+    val entry = GameEntry(
+      "g1",
+      GameEngine(ruleSet = DefaultRules),
+      PlayerInfo(PlayerId("p1"), "P1"),
+      PlayerInfo(PlayerId("p2"), "P2"),
+    )
     registry.store(entry)
     assertTrue(registry.get("g1").isDefined)
 
   @Test
   @DisplayName("get returns stored entry")
   def testGet(): Unit =
-    val entry = GameEntry("g2", GameEngine(), PlayerInfo(PlayerId("p1"), "P1"), PlayerInfo(PlayerId("p2"), "P2"))
+    val entry = GameEntry(
+      "g2",
+      GameEngine(ruleSet = DefaultRules),
+      PlayerInfo(PlayerId("p1"), "P1"),
+      PlayerInfo(PlayerId("p2"), "P2"),
+    )
     registry.store(entry)
     val retrieved = registry.get("g2")
     assertTrue(retrieved.isDefined)
@@ -41,7 +52,12 @@ class GameRegistryImplTest:
   @Test
   @DisplayName("update modifies existing entry")
   def testUpdate(): Unit =
-    val entry = GameEntry("g3", GameEngine(), PlayerInfo(PlayerId("p1"), "P1"), PlayerInfo(PlayerId("p2"), "P2"))
+    val entry = GameEntry(
+      "g3",
+      GameEngine(ruleSet = DefaultRules),
+      PlayerInfo(PlayerId("p1"), "P1"),
+      PlayerInfo(PlayerId("p2"), "P2"),
+    )
     registry.store(entry)
     val updated = entry.copy(resigned = true)
     registry.update(updated)

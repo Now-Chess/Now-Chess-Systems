@@ -6,3 +6,5 @@ quarkus:
   rest-client:
     io-service:
       url: http://localhost:8081
+    rule-service:
+      url: http://localhost:8082

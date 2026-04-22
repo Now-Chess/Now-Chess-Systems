@@ -13,7 +13,7 @@ object EngineTestHelpers:
     new GameEngine(ruleSet = DefaultRules)
 
   def makeEngineWithBoard(board: Board, turn: Color = Color.White): GameEngine =
-    GameEngine(initialContext = GameContext.initial.withBoard(board).withTurn(turn))
+    GameEngine(initialContext = GameContext.initial.withBoard(board).withTurn(turn), ruleSet = DefaultRules)
 
   def loadFen(engine: GameEngine, fen: String): Unit =
     engine.loadGame(FenParser, fen)

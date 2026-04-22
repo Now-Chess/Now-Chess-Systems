@@ -8,8 +8,7 @@ import de.nowchess.chess.controller.Parser
 import de.nowchess.chess.observer.*
 import de.nowchess.chess.command.{CommandInvoker, MoveCommand, MoveResult}
 import de.nowchess.api.io.{GameContextExport, GameContextImport}
-import de.nowchess.rules.RuleSet
-import de.nowchess.rules.sets.DefaultRules
+import de.nowchess.api.rules.RuleSet
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -18,7 +17,7 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 class GameEngine(
     val initialContext: GameContext = GameContext.initial,
-    val ruleSet: RuleSet = DefaultRules,
+    val ruleSet: RuleSet,
     val participants: Map[Color, Participant] = Map(
       Color.White -> Human(PlayerInfo(PlayerId("p1"), "Player 1")),
       Color.Black -> Human(PlayerInfo(PlayerId("p2"), "Player 2")),

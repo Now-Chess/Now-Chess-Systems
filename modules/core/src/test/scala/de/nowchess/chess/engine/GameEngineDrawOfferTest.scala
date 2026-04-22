@@ -1,5 +1,6 @@
 package de.nowchess.chess.engine
 
+import de.nowchess.rules.sets.DefaultRules
 import scala.collection.mutable
 import de.nowchess.api.board.Color
 import de.nowchess.api.game.{DrawReason, GameResult}
@@ -18,7 +19,7 @@ import org.scalatest.matchers.should.Matchers
 class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
 
   test("White offers draw"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
 
@@ -32,7 +33,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
         fail(s"Expected DrawOfferEvent, but got $other")
 
   test("Black accepts White's draw offer"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
 
@@ -49,7 +50,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
         fail(s"Expected DrawEvent, but got $other")
 
   test("Black declines White's draw offer"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
 
@@ -65,7 +66,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
         fail(s"Expected DrawOfferDeclinedEvent, but got $other")
 
   test("Black offers draw"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
 
@@ -79,7 +80,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
         fail(s"Expected DrawOfferEvent, but got $other")
 
   test("White accepts Black's draw offer"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
 
@@ -96,7 +97,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
         fail(s"Expected DrawEvent, but got $other")
 
   test("Cannot accept draw when no offer pending"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
 
@@ -110,7 +111,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
         fail(s"Expected InvalidMoveEvent, but got $other")
 
   test("Cannot decline draw when no offer pending"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
 
@@ -124,7 +125,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
         fail(s"Expected InvalidMoveEvent, but got $other")
 
   test("Cannot offer draw when game is already over"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
 
@@ -147,7 +148,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
         fail(s"Expected InvalidMoveEvent, but got $other")
 
   test("Cannot accept your own draw offer"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
 
@@ -163,7 +164,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
         fail(s"Expected InvalidMoveEvent, but got $other")
 
   test("Cannot decline your own draw offer"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
 
@@ -179,7 +180,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
         fail(s"Expected InvalidMoveEvent, but got $other")
 
   test("Cannot make second draw offer when one is already pending"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
 
@@ -195,7 +196,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
         fail(s"Expected InvalidMoveEvent, but got $other")
 
   test("Draw offer is cleared when game ends by resignation (accept)"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
 
@@ -215,7 +216,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
         fail(s"Expected InvalidMoveEvent, but got $other")
 
   test("Draw offer is cleared when game ends by resignation (decline)"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
 
@@ -235,22 +236,22 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
         fail(s"Expected InvalidMoveEvent, but got $other")
 
   test("pendingDrawOfferBy returns None initially"):
-    val engine = new GameEngine()
+    val engine = new GameEngine(ruleSet = DefaultRules)
     engine.pendingDrawOfferBy shouldBe None
 
   test("pendingDrawOfferBy returns White after White offers"):
-    val engine = new GameEngine()
+    val engine = new GameEngine(ruleSet = DefaultRules)
     engine.offerDraw(Color.White)
     engine.pendingDrawOfferBy shouldBe Some(Color.White)
 
   test("pendingDrawOfferBy returns None after draw is accepted"):
-    val engine = new GameEngine()
+    val engine = new GameEngine(ruleSet = DefaultRules)
     engine.offerDraw(Color.White)
     engine.acceptDraw(Color.Black)
     engine.pendingDrawOfferBy shouldBe None
 
   test("applyDraw sets draw result when game not over"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
     engine.applyDraw(DrawReason.Agreement)
@@ -263,7 +264,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
         fail(s"Expected DrawEvent, but got $other")
 
   test("applyDraw does nothing when game already over"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
     // End the game with checkmate
@@ -276,7 +277,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
     observer.events should have length 0
 
   test("claimDraw with fifty-move rule when at half-move 100"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
     // Play moves to reach fifty-move rule claim
@@ -288,7 +289,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
     // This is hard to do naturally; skip for now if not critical
 
   test("claimDraw when game already over"):
-    val engine   = new GameEngine()
+    val engine   = new GameEngine(ruleSet = DefaultRules)
     val observer = new DrawOfferMockObserver()
     engine.subscribe(observer)
     // End the game with checkmate

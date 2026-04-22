@@ -9,7 +9,7 @@ import de.nowchess.bot.bots.nnue.EvaluationNNUE
 import de.nowchess.bot.logic.{AlphaBetaSearch, TranspositionTable}
 import de.nowchess.bot.util.PolyglotBook
 import de.nowchess.bot.{BotDifficulty, BotMoveRepetition, Config}
-import de.nowchess.rules.RuleSet
+import de.nowchess.api.rules.RuleSet
 import de.nowchess.rules.sets.DefaultRules
 
 final class HybridBot(

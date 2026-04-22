@@ -3,7 +3,7 @@ package de.nowchess.rules.sets
 import de.nowchess.api.board.*
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
-import de.nowchess.rules.RuleSet
+import de.nowchess.api.rules.RuleSet
 
 import scala.annotation.tailrec
 

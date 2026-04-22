@@ -48,7 +48,6 @@ dependencies {
     }
 
     implementation(project(":modules:api"))
-    implementation(project(":modules:rule"))
     implementation(project(":modules:bot"))
 
 
@@ -69,6 +68,7 @@ dependencies {
 
 
     testImplementation(project(":modules:io"))
+    testImplementation(project(":modules:rule"))
 
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
