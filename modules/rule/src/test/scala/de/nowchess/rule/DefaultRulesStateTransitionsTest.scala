@@ -11,7 +11,7 @@ import org.scalatest.matchers.should.Matchers
 class DefaultRulesStateTransitionsTest extends AnyFunSuite with Matchers:
 
   private def contextFromFen(fen: String): GameContext =
-    FenParser.parseFen(fen).fold(err => fail(err), identity)
+    FenParser.parseFen(fen).fold(err => fail(err.message), identity)
 
   private def sq(alg: String): Square =
     Square.fromAlgebraic(alg).getOrElse(fail(s"Invalid square in test: $alg"))

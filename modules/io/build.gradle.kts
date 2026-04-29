@@ -50,7 +50,9 @@ dependencies {
     implementation("com.lihaoyi:fastparse_3:${versions["FASTPARSE"]!!}")
 
     implementation(project(":modules:api"))
+    implementation(project(":modules:json"))
     implementation(project(":modules:rule"))
+    implementation(project(":modules:security"))
 
     // Jackson for JSON serialization/deserialization
     implementation("com.fasterxml.jackson.core:jackson-databind:${versions["JACKSON"]!!}")
@@ -63,6 +65,7 @@ dependencies {
     implementation("io.quarkus:quarkus-rest-jackson")
     implementation("io.quarkus:quarkus-arc")
     implementation("io.quarkus:quarkus-config-yaml")
+    implementation("io.quarkus:quarkus-grpc")
     implementation("io.quarkus:quarkus-smallrye-health")
     implementation("io.quarkus:quarkus-smallrye-openapi")
 
@@ -112,4 +115,16 @@ tasks.reportScoverage {
 }
 tasks.jar {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.withType(org.gradle.api.tasks.scala.ScalaCompile::class).configureEach {
+    if (name == "compileScoverageScala") {
+        source = source.asFileTree.matching {
+            exclude("**/grpc/*.scala")
+        }
+    }
+}
+
+tasks.named("compileScoverageJava").configure {
+    dependsOn(tasks.named("quarkusGenerateCode"))
 }

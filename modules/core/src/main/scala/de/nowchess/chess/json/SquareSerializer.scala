@@ -1,9 +1,0 @@
-package de.nowchess.chess.json
-
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.databind.{JsonSerializer, SerializerProvider}
-import de.nowchess.api.board.Square
-
-class SquareSerializer extends JsonSerializer[Square]:
-  override def serialize(value: Square, gen: JsonGenerator, provider: SerializerProvider): Unit =
-    gen.writeString(value.toString)

@@ -5,16 +5,23 @@
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleJvm" value="corretto-21" />
+        <option name="gradleJvm" value="ms-21" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/modules" />
+            <option value="$PROJECT_DIR$/modules/account" />
             <option value="$PROJECT_DIR$/modules/api" />
-            <option value="$PROJECT_DIR$/modules/bot" />
+            <option value="$PROJECT_DIR$/modules/bot-platform" />
+            <option value="$PROJECT_DIR$/modules/coordinator" />
             <option value="$PROJECT_DIR$/modules/core" />
             <option value="$PROJECT_DIR$/modules/io" />
+            <option value="$PROJECT_DIR$/modules/json" />
+            <option value="$PROJECT_DIR$/modules/official-bots" />
             <option value="$PROJECT_DIR$/modules/rule" />
+            <option value="$PROJECT_DIR$/modules/security" />
+            <option value="$PROJECT_DIR$/modules/store" />
+            <option value="$PROJECT_DIR$/modules/ws" />
           </set>
         </option>
       </GradleProjectSettings>

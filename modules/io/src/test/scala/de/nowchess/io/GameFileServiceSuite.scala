@@ -5,6 +5,7 @@ import de.nowchess.api.game.GameContext
 import de.nowchess.api.io.GameContextExport
 import de.nowchess.api.move.Move
 import de.nowchess.io.json.{JsonExporter, JsonParser}
+import org.scalactic.Prettifier.default
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
@@ -128,6 +129,6 @@ class GameFileServiceSuite extends AnyFunSuite with Matchers:
 
       val result = FileSystemGameService.saveGameToFile(context, tmpFile, faultyExporter)
       assert(result.isLeft)
-      assert(result.left.toOption.get.contains("Failed to save file"))
+      assert(result.left.toOption.get.message.contains("Failed to save file"))
     finally Files.deleteIfExists(tmpFile)
   }

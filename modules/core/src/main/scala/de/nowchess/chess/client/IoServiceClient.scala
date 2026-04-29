@@ -2,12 +2,17 @@ package de.nowchess.chess.client
 
 import de.nowchess.api.dto.{ImportFenRequest, ImportPgnRequest}
 import de.nowchess.api.game.GameContext
+import de.nowchess.security.InternalSecretClientFilter
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.MediaType
+import org.eclipse.microprofile.rest.client.annotation.RegisterProvider
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient
+
+case class CombinedExportResponse(fen: String, pgn: String)
 
 @Path("/io")
 @RegisterRestClient(configKey = "io-service")
+@RegisterProvider(classOf[InternalSecretClientFilter])
 trait IoServiceClient:
 
   @POST
@@ -33,3 +38,9 @@ trait IoServiceClient:
   @Consumes(Array(MediaType.APPLICATION_JSON))
   @Produces(Array("application/x-chess-pgn"))
   def exportPgn(ctx: GameContext): String
+
+  @POST
+  @Path("/export/combined")
+  @Consumes(Array(MediaType.APPLICATION_JSON))
+  @Produces(Array(MediaType.APPLICATION_JSON))
+  def exportCombined(ctx: GameContext): CombinedExportResponse

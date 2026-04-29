@@ -41,6 +41,9 @@ bin/
 graphify-out/
 .graphify_*.json
 
+### Keys ###
+**/keys/private.pem
+
 ### Mac OS ###
 .DS_Store
 /jacoco-reporter/.venv/

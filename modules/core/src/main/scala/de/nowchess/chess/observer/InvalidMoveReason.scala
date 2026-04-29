@@ -19,3 +19,8 @@ enum InvalidMoveReason:
   case CannotAcceptOwnDrawOffer
   case NoDrawOfferToDecline
   case CannotDeclineOwnDrawOffer
+  case TakebackRequestPending
+  case NoTakebackRequestToAccept
+  case CannotAcceptOwnTakebackRequest
+  case NoTakebackRequestToDecline
+  case CannotDeclineOwnTakebackRequest

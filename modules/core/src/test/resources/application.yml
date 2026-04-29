@@ -1,0 +1,24 @@
+quarkus:
+  grpc:
+    clients:
+      rule-grpc:
+        host: localhost
+        port: 9082
+      io-grpc:
+        host: localhost
+        port: 9081
+  rest-client:
+    store-service:
+      url: http://localhost:8085
+
+nowchess:
+  internal:
+    secret: test-secret
+    auth:
+      enabled: false
+  coordinator:
+    enabled: false
+  redis:
+    host: localhost
+    port: 6379
+    prefix: test-core

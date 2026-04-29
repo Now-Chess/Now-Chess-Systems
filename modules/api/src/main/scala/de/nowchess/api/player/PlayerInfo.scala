@@ -23,4 +23,10 @@ object PlayerId:
 final case class PlayerInfo(
     id: PlayerId,
     displayName: String,
+    playerType: PlayerType = PlayerType.Human,
 )
+
+enum PlayerType:
+  case Human
+  case OfficialBot
+  case Bot

@@ -1,6 +1,7 @@
 package de.nowchess.io.fen
 
 import de.nowchess.api.board.*
+import de.nowchess.api.error.GameError
 import de.nowchess.api.game.GameContext
 
 import scala.util.parsing.combinator.RegexParsers
@@ -107,15 +108,15 @@ object FenParserCombinators extends RegexParsers with GameContextImport:
 
   // ── Public API ───────────────────────────────────────────────────────────
 
-  def parseFen(fen: String): Either[String, GameContext] =
+  def parseFen(fen: String): Either[GameError, GameContext] =
     parseAll(fenParser, fen) match
       case Success(ctx, _) => Right(ctx)
-      case other           => Left(s"Invalid FEN: ${other.toString}")
+      case other           => Left(GameError.ParseError(s"Invalid FEN: ${other.toString}"))
 
   def parseBoard(fen: String): Option[Board] =
     parseAll(boardParser, fen) match
       case Success(board, _) => Some(board)
       case _                 => None
 
-  def importGameContext(input: String): Either[String, GameContext] =
+  def importGameContext(input: String): Either[GameError, GameContext] =
     parseFen(input)

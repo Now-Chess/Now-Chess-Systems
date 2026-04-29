@@ -16,6 +16,74 @@
   - function main: () -> None
   - class TestCase
   - _...2 more_
+- `modules/account/src/main/scala/de/nowchess/account/client/CoreGameClient.scala` — class CoreGameClient, function createGame
+- `modules/account/src/main/scala/de/nowchess/account/config/JacksonConfig.scala` — class JacksonConfig, function customize
+- `modules/account/src/main/scala/de/nowchess/account/config/NativeReflectionConfig.scala` — class NativeReflectionConfig
+- `modules/account/src/main/scala/de/nowchess/account/domain/Challenge.scala`
+  - class Challenge
+  - function gameIdOpt
+  - function declineReasonOpt
+  - function timeControlLimitOpt
+  - function timeControlIncrementOpt
+- `modules/account/src/main/scala/de/nowchess/account/domain/ChallengeColorConverter.scala` — class ChallengeColorConverter
+- `modules/account/src/main/scala/de/nowchess/account/domain/ChallengeStatusConverter.scala` — class ChallengeStatusConverter
+- `modules/account/src/main/scala/de/nowchess/account/domain/DeclineReasonConverter.scala` — class DeclineReasonConverter
+- `modules/account/src/main/scala/de/nowchess/account/domain/TimeControl.scala` — class TimeControl
+- `modules/account/src/main/scala/de/nowchess/account/domain/UserAccount.scala`
+  - class UserAccount
+  - function getBotAccounts
+  - class BotAccount
+  - class OfficialBotAccount
+- `modules/account/src/main/scala/de/nowchess/account/error/AccountError.scala` — function message
+- `modules/account/src/main/scala/de/nowchess/account/error/ChallengeError.scala` — function message
+- `modules/account/src/main/scala/de/nowchess/account/filter/AlreadyLoggedInFilter.scala` — class AlreadyLoggedInFilter
+- `modules/account/src/main/scala/de/nowchess/account/repository/AccountRepository.scala`
+  - class UserAccountRepository
+  - function findByUsername
+  - function findById
+  - function persist
+  - function findByEmail
+  - function findAll
+  - _...12 more_
+- `modules/account/src/main/scala/de/nowchess/account/repository/ChallengeRepository.scala`
+  - class ChallengeRepository
+  - function findActiveByChallengerId
+  - function findActiveByDestUserId
+  - function findDuplicateChallenge
+  - function findById
+  - function persist
+  - _...1 more_
+- `modules/account/src/main/scala/de/nowchess/account/resource/AccountResource.scala`
+  - class AccountResource
+  - function register
+  - function login
+  - function me
+  - function publicProfile
+  - function banUser
+  - _...10 more_
+- `modules/account/src/main/scala/de/nowchess/account/resource/ChallengeResource.scala`
+  - class ChallengeResource
+  - function create
+  - function list
+  - function accept
+  - function decline
+  - function cancel
+- `modules/account/src/main/scala/de/nowchess/account/service/AccountService.scala`
+  - class AccountService
+  - function register
+  - function login
+  - function findByUsername
+  - function findById
+  - function createBotAccount
+  - _...11 more_
+- `modules/account/src/main/scala/de/nowchess/account/service/ChallengeService.scala`
+  - class ChallengeService
+  - function create
+  - function accept
+  - function decline
+  - function cancel
+  - function listForUser
+  - _...1 more_
 - `modules/api/src/main/scala/de/nowchess/api/board/Board.scala`
   - class Board
   - function apply
@@ -45,6 +113,15 @@
 - `modules/api/src/main/scala/de/nowchess/api/dto/ErrorEventDto.scala` — class ErrorEventDto, function apply
 - `modules/api/src/main/scala/de/nowchess/api/dto/GameFullEventDto.scala` — class GameFullEventDto, function apply
 - `modules/api/src/main/scala/de/nowchess/api/dto/GameStateEventDto.scala` — class GameStateEventDto, function apply
+- `modules/api/src/main/scala/de/nowchess/api/error/GameError.scala` — function message
+- `modules/api/src/main/scala/de/nowchess/api/game/ClockState.scala`
+  - function activeColor
+  - function afterMove
+  - function remainingMs
+  - function remainingMs
+  - function afterMove
+  - function remainingMs
+  - _...3 more_
 - `modules/api/src/main/scala/de/nowchess/api/game/GameContext.scala`
   - function kingSquare
   - function withBoard
@@ -53,11 +130,21 @@
   - function withEnPassantSquare
   - function withHalfMoveClock
   - _...4 more_
+- `modules/api/src/main/scala/de/nowchess/api/io/GameContextExport.scala` — class GameContextExport, function exportGameContext
+- `modules/api/src/main/scala/de/nowchess/api/io/GameContextImport.scala` — class GameContextImport, function importGameContext
 - `modules/api/src/main/scala/de/nowchess/api/player/PlayerInfo.scala` — class PlayerId, function apply
 - `modules/api/src/main/scala/de/nowchess/api/response/ApiResponse.scala`
   - class ApiResponse
   - function error
   - function totalPages
+- `modules/api/src/main/scala/de/nowchess/api/rules/RuleSet.scala`
+  - class RuleSet
+  - function candidateMoves
+  - function legalMoves
+  - function allLegalMoves
+  - function isCheck
+  - function isCheckmate
+  - _...6 more_
 - `modules/bot/python/nnue.py`
   - function get_weights_dir: ()
   - function get_data_dir: ()
@@ -162,30 +249,136 @@
   - class ZobristHash
   - function hash
   - function nextHash
-- `modules/core/src/main/scala/de/nowchess/chess/command/Command.scala`
-  - class Command
-  - function execute
-  - function undo
-  - function description
-  - class MoveResult
-- `modules/core/src/main/scala/de/nowchess/chess/command/CommandInvoker.scala`
-  - class CommandInvoker
-  - function execute
-  - function undo
-  - function redo
-  - function history
-  - function getCurrentIndex
-  - _...3 more_
+- `modules/coordinator/src/main/scala/de/nowchess/coordinator/CoordinatorApp.scala` — class CoordinatorApp
+- `modules/coordinator/src/main/scala/de/nowchess/coordinator/config/BeansProducer.scala`
+  - class BeansProducer
+  - function redissonClient
+  - function kubernetesClient
+- `modules/coordinator/src/main/scala/de/nowchess/coordinator/config/CoordinatorConfig.scala`
+  - class CoordinatorConfig
+  - function maxGamesPerCore
+  - function maxDeviationPercent
+  - function rebalanceInterval
+  - function rebalanceMinInterval
+  - function heartbeatTtl
+  - _...11 more_
+- `modules/coordinator/src/main/scala/de/nowchess/coordinator/config/JacksonConfig.scala` — class JacksonConfig, function customize
+- `modules/coordinator/src/main/scala/de/nowchess/coordinator/config/NativeReflectionConfig.scala` — class NativeReflectionConfig
+- `modules/coordinator/src/main/scala/de/nowchess/coordinator/grpc/CoordinatorGrpcServer.scala` — class CoordinatorGrpcServer
+- `modules/coordinator/src/main/scala/de/nowchess/coordinator/grpc/CoreGrpcClient.scala`
+  - class CoreGrpcClient
+  - function shutdown
+  - function batchResubscribeGames
+  - function unsubscribeGames
+  - function evictGames
+- `modules/coordinator/src/main/scala/de/nowchess/coordinator/resource/CoordinatorResource.scala`
+  - class CoordinatorResource
+  - function listInstances
+  - function getMetrics
+  - function triggerRebalance
+  - function triggerFailover
+  - function triggerScaleUp
+  - _...1 more_
+- `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/AutoScaler.scala`
+  - class AutoScaler
+  - function checkAndScale
+  - function scaleUp
+  - function scaleDown
+- `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/CacheEvictionManager.scala`
+  - class CacheEvictionManager
+  - function setRedisPrefix
+  - function evictStaleGames
+- `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/FailoverService.scala`
+  - class FailoverService
+  - function setRedisPrefix
+  - function onInstanceStreamDropped
+- `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/HealthMonitor.scala`
+  - class HealthMonitor
+  - function setRedisPrefix
+  - function checkInstanceHealth
+  - function watchK8sPods
+- `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/InstanceRegistry.scala`
+  - class InstanceRegistry
+  - function setRedisPrefix
+  - function getInstance
+  - function getAllInstances
+  - function updateInstanceFromRedis
+  - function markInstanceDead
+  - _...1 more_
+- `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/LoadBalancer.scala`
+  - class LoadBalancer
+  - function setRedisPrefix
+  - function shouldRebalance
+  - function rebalance
+- `modules/core/src/main/scala/de/nowchess/chess/adapter/RuleSetRestAdapter.scala`
+  - class RuleSetRestAdapter
+  - function candidateMoves
+  - function legalMoves
+  - function allLegalMoves
+  - function isCheck
+  - function isCheckmate
+  - _...5 more_
+- `modules/core/src/main/scala/de/nowchess/chess/client/IoServiceClient.scala`
+  - class IoServiceClient
+  - function importFen
+  - function importPgn
+  - function exportFen
+  - function exportPgn
+  - function exportCombined
+- `modules/core/src/main/scala/de/nowchess/chess/client/RuleServiceClient.scala`
+  - class RuleServiceClient
+  - function candidateMoves
+  - function legalMoves
+  - function allLegalMoves
+  - function isCheck
+  - function isCheckmate
+  - _...6 more_
+- `modules/core/src/main/scala/de/nowchess/chess/client/StoreServiceClient.scala` — class StoreServiceClient, function getGame
 - `modules/core/src/main/scala/de/nowchess/chess/config/JacksonConfig.scala` — class JacksonConfig, function customize
+- `modules/core/src/main/scala/de/nowchess/chess/config/NativeReflectionConfig.scala` — class NativeReflectionConfig
+- `modules/core/src/main/scala/de/nowchess/chess/config/RedisConfig.scala` — class RedisConfig
+- `modules/core/src/main/scala/de/nowchess/chess/config/RedissonProducer.scala`
+  - class RedissonProducer
+  - function produceRedissonClient
+  - function shutdown
 - `modules/core/src/main/scala/de/nowchess/chess/controller/Parser.scala` — class Parser, function parseMove
 - `modules/core/src/main/scala/de/nowchess/chess/engine/GameEngine.scala`
   - class GameEngine
   - function board
   - function turn
   - function context
-  - function canUndo
-  - function canRedo
-  - _...11 more_
+  - function pendingDrawOfferBy
+  - function currentClockState
+  - _...22 more_
+- `modules/core/src/main/scala/de/nowchess/chess/exception/ApiException.scala`
+  - class ApiException
+  - class GameNotFoundException
+  - class BadRequestException
+- `modules/core/src/main/scala/de/nowchess/chess/exception/ApiExceptionMapper.scala` — class ApiExceptionMapper, function toResponse
+- `modules/core/src/main/scala/de/nowchess/chess/grpc/CoordinatorServiceHandler.scala` — class CoordinatorServiceHandler
+- `modules/core/src/main/scala/de/nowchess/chess/grpc/CoreProtoMapper.scala`
+  - class CoreProtoMapper
+  - function toProtoColor
+  - function fromProtoColor
+  - function toProtoPieceType
+  - function fromProtoPieceType
+  - function toProtoMoveKind
+  - _...9 more_
+- `modules/core/src/main/scala/de/nowchess/chess/grpc/IoGrpcClientWrapper.scala`
+  - class IoGrpcClientWrapper
+  - function exportCombined
+  - function importFen
+  - function importPgn
+  - function exportFen
+  - function exportPgn
+- `modules/core/src/main/scala/de/nowchess/chess/grpc/RuleSetGrpcAdapter.scala`
+  - class RuleSetGrpcAdapter
+  - function candidateMoves
+  - function legalMoves
+  - function allLegalMoves
+  - function isCheck
+  - function isCheckmate
+  - _...5 more_
 - `modules/core/src/main/scala/de/nowchess/chess/observer/Observer.scala`
   - function context
   - class Observer
@@ -194,28 +387,52 @@
   - function subscribe
   - function unsubscribe
   - _...1 more_
+- `modules/core/src/main/scala/de/nowchess/chess/redis/C2sMessage.scala` — class C2sMessage
+- `modules/core/src/main/scala/de/nowchess/chess/redis/GameRedisPublisher.scala` — class GameRedisPublisher, function onGameEvent
+- `modules/core/src/main/scala/de/nowchess/chess/redis/GameRedisSubscriberManager.scala`
+  - class GameRedisSubscriberManager
+  - function subscribeGame
+  - function onMessage
+  - function unsubscribeGame
+  - function batchResubscribeGames
+  - function unsubscribeGames
+  - _...3 more_
 - `modules/core/src/main/scala/de/nowchess/chess/registry/GameRegistry.scala`
   - class GameRegistry
   - function store
   - function get
   - function update
   - function generateId
-- `modules/core/src/main/scala/de/nowchess/chess/registry/GameRegistryImpl.scala`
-  - class GameRegistryImpl
+- `modules/core/src/main/scala/de/nowchess/chess/registry/RedisGameRegistry.scala`
+  - class RedisGameRegistry
+  - function generateId
   - function store
   - function get
   - function update
-  - function generateId
+- `modules/core/src/main/scala/de/nowchess/chess/resource/GameDtoMapper.scala`
+  - class GameDtoMapper
+  - function statusOf
+  - function moveToUci
+  - function toPlayerDto
+  - function toClockDto
+  - function toGameStateDto
+  - _...1 more_
 - `modules/core/src/main/scala/de/nowchess/chess/resource/GameResource.scala`
+  - class GameResource
   - function onGameEvent
   - function createGame
   - function getGame
-  - function streamGame
-  - function onGameEvent
   - function resignGame
+  - function makeMove
   - _...9 more_
-- `modules/io/src/main/scala/de/nowchess/io/GameContextExport.scala` — class GameContextExport, function exportGameContext
-- `modules/io/src/main/scala/de/nowchess/io/GameContextImport.scala` — class GameContextImport, function importGameContext
+- `modules/core/src/main/scala/de/nowchess/chess/service/InstanceHeartbeatService.scala`
+  - class InstanceHeartbeatService
+  - function onStart
+  - function onShutdown
+  - function setRedisPrefix
+  - function setSubscriptionCount
+  - function setLocalCacheSize
+  - _...2 more_
 - `modules/io/src/main/scala/de/nowchess/io/GameFileService.scala`
   - class GameFileService
   - function saveGameToFile
@@ -244,6 +461,15 @@
   - function parseBoard
   - function importGameContext
 - `modules/io/src/main/scala/de/nowchess/io/fen/FenParserSupport.scala` — function buildSquares
+- `modules/io/src/main/scala/de/nowchess/io/grpc/IoGrpcService.scala` — class IoGrpcService
+- `modules/io/src/main/scala/de/nowchess/io/grpc/IoProtoMapper.scala`
+  - class IoProtoMapper
+  - function toProtoColor
+  - function fromProtoColor
+  - function toProtoPieceType
+  - function fromProtoPieceType
+  - function toProtoMoveKind
+  - _...9 more_
 - `modules/io/src/main/scala/de/nowchess/io/json/JsonExporter.scala` — class JsonExporter, function exportGameContext
 - `modules/io/src/main/scala/de/nowchess/io/json/JsonParser.scala` — class JsonParser, function importGameContext
 - `modules/io/src/main/scala/de/nowchess/io/pgn/PgnExporter.scala`
@@ -256,17 +482,73 @@
   - function importGameContext
   - function parsePgn
   - function parseAlgebraicMove
-- `modules/rule/src/main/scala/de/nowchess/rules/RuleSet.scala`
-  - class RuleSet
+- `modules/io/src/main/scala/de/nowchess/io/service/config/JacksonConfig.scala` — class JacksonConfig, function customize
+- `modules/io/src/main/scala/de/nowchess/io/service/config/NativeReflectionConfig.scala` — class NativeReflectionConfig
+- `modules/io/src/main/scala/de/nowchess/io/service/resource/IoResource.scala`
+  - class IoResource
+  - function importFen
+  - function importPgn
+  - function exportFen
+  - function exportPgn
+  - function exportCombined
+- `modules/json/src/main/scala/de/nowchess/json/ChessJacksonModule.scala` — class ChessJacksonModule
+- `modules/json/src/main/scala/de/nowchess/json/GameResultDeserializer.scala` — class GameResultDeserializer
+- `modules/json/src/main/scala/de/nowchess/json/GameResultSerializer.scala` — class GameResultSerializer
+- `modules/json/src/main/scala/de/nowchess/json/MoveTypeDeserializer.scala` — class MoveTypeDeserializer
+- `modules/json/src/main/scala/de/nowchess/json/MoveTypeSerializer.scala` — class MoveTypeSerializer
+- `modules/json/src/main/scala/de/nowchess/json/SquareDeserializer.scala` — class SquareDeserializer
+- `modules/json/src/main/scala/de/nowchess/json/SquareKeyDeserializer.scala` — class SquareKeyDeserializer
+- `modules/json/src/main/scala/de/nowchess/json/SquareKeySerializer.scala` — class SquareKeySerializer
+- `modules/json/src/main/scala/de/nowchess/json/SquareSerializer.scala` — class SquareSerializer
+- `modules/rule/src/main/scala/de/nowchess/rules/config/JacksonConfig.scala` — class JacksonConfig, function customize
+- `modules/rule/src/main/scala/de/nowchess/rules/config/NativeReflectionConfig.scala` — class NativeReflectionConfig
+- `modules/rule/src/main/scala/de/nowchess/rules/grpc/ProtoMapper.scala`
+  - class ProtoMapper
+  - function toProtoColor
+  - function fromProtoColor
+  - function toProtoPieceType
+  - function fromProtoPieceType
+  - function toProtoMoveKind
+  - _...9 more_
+- `modules/rule/src/main/scala/de/nowchess/rules/grpc/RuleGrpcService.scala` — class RuleGrpcService
+- `modules/rule/src/main/scala/de/nowchess/rules/resource/RuleSetResource.scala`
+  - class RuleSetResource
   - function candidateMoves
   - function legalMoves
   - function allLegalMoves
   - function isCheck
   - function isCheckmate
-  - _...5 more_
-- `modules/rule/src/main/scala/de/nowchess/rules/sets/DefaultRules.scala`
-  - class DefaultRules
-  - function positionOf
-  - function loop
-  - function toMoves
-  - function loop
+  - _...6 more_
+- `modules/rule/src/main/scala/de/nowchess/rules/sets/DefaultRules.scala` — class DefaultRules, function positionOf
+- `modules/store/src/main/scala/de/nowchess/store/config/JacksonConfig.scala` — class JacksonConfig, function customize
+- `modules/store/src/main/scala/de/nowchess/store/config/NativeReflectionConfig.scala` — class NativeReflectionConfig
+- `modules/store/src/main/scala/de/nowchess/store/config/RedisConfig.scala` — class RedisConfig
+- `modules/store/src/main/scala/de/nowchess/store/config/RedissonProducer.scala`
+  - class RedissonProducer
+  - function redissonClient
+  - function close
+- `modules/store/src/main/scala/de/nowchess/store/domain/GameRecord.scala` — class GameRecord
+- `modules/store/src/main/scala/de/nowchess/store/redis/GameWritebackStreamListener.scala`
+  - class GameWritebackStreamListener
+  - function startListening
+  - function onMessage
+- `modules/store/src/main/scala/de/nowchess/store/repository/GameRecordRepository.scala`
+  - class GameRecordRepository
+  - function findByGameId
+  - function persist
+  - function merge
+- `modules/store/src/main/scala/de/nowchess/store/resource/StoreGameResource.scala` — class StoreGameResource, function getGame
+- `modules/store/src/main/scala/de/nowchess/store/service/GameWritebackService.scala` — class GameWritebackService, function writeBack
+- `modules/ws/src/main/scala/de/nowchess/ws/config/JacksonConfig.scala` — class JacksonConfig, function customize
+- `modules/ws/src/main/scala/de/nowchess/ws/config/NativeReflectionConfig.scala` — class NativeReflectionConfig
+- `modules/ws/src/main/scala/de/nowchess/ws/config/RedisConfig.scala` — class RedisConfig
+- `modules/ws/src/main/scala/de/nowchess/ws/config/RedissonProducer.scala`
+  - class RedissonProducer
+  - function produceRedissonClient
+  - function shutdown
+- `modules/ws/src/main/scala/de/nowchess/ws/resource/GameWebSocketResource.scala`
+  - class GameWebSocketResource
+  - function onOpen
+  - function onMessage
+  - function onTextMessage
+  - function onClose

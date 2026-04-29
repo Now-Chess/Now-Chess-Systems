@@ -1,9 +1,10 @@
 package de.nowchess.io.service.resource
 
 import de.nowchess.api.game.GameContext
+import de.nowchess.security.InternalOnly
 import de.nowchess.io.fen.{FenExporter, FenParser}
 import de.nowchess.io.pgn.{PgnExporter, PgnParser}
-import de.nowchess.io.service.dto.{ImportFenRequest, ImportPgnRequest, IoErrorDto}
+import de.nowchess.io.service.dto.{CombinedExportResponse, ImportFenRequest, ImportPgnRequest, IoErrorDto}
 import io.smallrye.mutiny.Uni
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.ws.rs.*
@@ -15,6 +16,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag
 
 @Path("/io")
 @ApplicationScoped
+@InternalOnly
 @Tag(name = "IO", description = "Chess notation import and export")
 class IoResource:
 
@@ -33,7 +35,7 @@ class IoResource:
     Uni.createFrom().item {
       FenParser.parseFen(body.fen) match
         case Left(err) =>
-          Response.status(400).entity(IoErrorDto("INVALID_FEN", err)).build()
+          Response.status(400).entity(IoErrorDto("INVALID_FEN", err.message)).build()
         case Right(ctx) =>
           Response.ok(ctx).build()
     }
@@ -53,7 +55,7 @@ class IoResource:
     Uni.createFrom().item {
       PgnParser.importGameContext(body.pgn) match
         case Left(err) =>
-          Response.status(400).entity(IoErrorDto("INVALID_PGN", err)).build()
+          Response.status(400).entity(IoErrorDto("INVALID_PGN", err.message)).build()
         case Right(ctx) =>
           Response.ok(ctx).build()
     }
@@ -75,3 +77,18 @@ class IoResource:
   @APIResponse(responseCode = "200", description = "PGN text")
   def exportPgn(ctx: GameContext): Uni[Response] =
     Uni.createFrom().item(Response.ok(PgnExporter.exportGameContext(ctx)).build())
+
+  @POST
+  @Path("/export/combined")
+  @Consumes(Array(MediaType.APPLICATION_JSON))
+  @Produces(Array(MediaType.APPLICATION_JSON))
+  @Operation(summary = "Export FEN and PGN", description = "Serialize a GameContext to both FEN and PGN in one call")
+  @APIResponse(responseCode = "200", description = "FEN and PGN")
+  def exportCombined(ctx: GameContext): Uni[Response] =
+    Uni
+      .createFrom()
+      .item(
+        Response
+          .ok(CombinedExportResponse(FenExporter.exportGameContext(ctx), PgnExporter.exportGameContext(ctx)))
+          .build(),
+      )

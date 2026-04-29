@@ -1,0 +1,44 @@
+# Routes
+
+## gRPC
+
+- `/CoordinatorService/BatchResubscribeGames` (BatchResubscribeRequest) → BatchResubscribeResponse
+- `/CoordinatorService/UnsubscribeGames` (UnsubscribeGamesRequest) → UnsubscribeGamesResponse
+- `/CoordinatorService/EvictGames` (EvictGamesRequest) → EvictGamesResponse
+- `/CoordinatorService/DrainInstance` (DrainInstanceRequest) → DrainInstanceResponse
+- `/CoordinatorService/BatchResubscribeGames` (BatchResubscribeRequest) → BatchResubscribeResponse
+- `/CoordinatorService/UnsubscribeGames` (UnsubscribeGamesRequest) → UnsubscribeGamesResponse
+- `/CoordinatorService/EvictGames` (EvictGamesRequest) → EvictGamesResponse
+- `/CoordinatorService/DrainInstance` (DrainInstanceRequest) → DrainInstanceResponse
+- `/IoService/ImportFen` (ProtoImportFenRequest) → ProtoGameContext
+- `/IoService/ImportPgn` (ProtoImportPgnRequest) → ProtoGameContext
+- `/IoService/ExportCombined` (ProtoGameContext) → ProtoCombinedExport
+- `/IoService/ExportFen` (ProtoGameContext) → ProtoStringResult
+- `/IoService/ExportPgn` (ProtoGameContext) → ProtoStringResult
+- `/RuleService/CandidateMoves` (ProtoSquareRequest) → ProtoMoveList
+- `/RuleService/LegalMoves` (ProtoSquareRequest) → ProtoMoveList
+- `/RuleService/AllLegalMoves` (ProtoGameContext) → ProtoMoveList
+- `/RuleService/IsCheck` (ProtoGameContext) → ProtoBoolResult
+- `/RuleService/IsCheckmate` (ProtoGameContext) → ProtoBoolResult
+- `/RuleService/IsStalemate` (ProtoGameContext) → ProtoBoolResult
+- `/RuleService/IsInsufficientMaterial` (ProtoGameContext) → ProtoBoolResult
+- `/RuleService/IsFiftyMoveRule` (ProtoGameContext) → ProtoBoolResult
+- `/RuleService/IsThreefoldRepetition` (ProtoGameContext) → ProtoBoolResult
+- `/RuleService/ApplyMove` (ProtoMoveRequest) → ProtoGameContext
+- `/RuleService/PostMoveStatus` (ProtoGameContext) → ProtoPostMoveStatus
+- `/IoService/ImportFen` (ProtoImportFenRequest) → ProtoGameContext
+- `/IoService/ImportPgn` (ProtoImportPgnRequest) → ProtoGameContext
+- `/IoService/ExportCombined` (ProtoGameContext) → ProtoCombinedExport
+- `/IoService/ExportFen` (ProtoGameContext) → ProtoStringResult
+- `/IoService/ExportPgn` (ProtoGameContext) → ProtoStringResult
+- `/RuleService/CandidateMoves` (ProtoSquareRequest) → ProtoMoveList
+- `/RuleService/LegalMoves` (ProtoSquareRequest) → ProtoMoveList
+- `/RuleService/AllLegalMoves` (ProtoGameContext) → ProtoMoveList
+- `/RuleService/IsCheck` (ProtoGameContext) → ProtoBoolResult
+- `/RuleService/IsCheckmate` (ProtoGameContext) → ProtoBoolResult
+- `/RuleService/IsStalemate` (ProtoGameContext) → ProtoBoolResult
+- `/RuleService/IsInsufficientMaterial` (ProtoGameContext) → ProtoBoolResult
+- `/RuleService/IsFiftyMoveRule` (ProtoGameContext) → ProtoBoolResult
+- `/RuleService/IsThreefoldRepetition` (ProtoGameContext) → ProtoBoolResult
+- `/RuleService/ApplyMove` (ProtoMoveRequest) → ProtoGameContext
+- `/RuleService/PostMoveStatus` (ProtoGameContext) → ProtoPostMoveStatus

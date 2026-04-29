@@ -48,7 +48,11 @@ dependencies {
     }
 
     implementation(project(":modules:api"))
-    implementation(project(":modules:bot"))
+    implementation(project(":modules:json"))
+    implementation(project(":modules:rule"))
+    implementation(project(":modules:io"))
+    implementation(project(":modules:official-bots"))
+    implementation(project(":modules:security"))
 
 
     implementation(enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}"))
@@ -56,6 +60,7 @@ dependencies {
     implementation("io.quarkus:quarkus-hibernate-orm")
     implementation("io.quarkus:quarkus-rest-client-jackson")
     implementation("io.quarkus:quarkus-rest-client")
+    implementation("io.quarkus:quarkus-grpc")
     implementation("io.quarkus:quarkus-rest-jackson")
     implementation("io.quarkus:quarkus-config-yaml")
     implementation("io.quarkus:quarkus-smallrye-fault-tolerance")
@@ -63,9 +68,10 @@ dependencies {
     implementation("io.quarkus:quarkus-smallrye-health")
     implementation("io.quarkus:quarkus-micrometer")
     implementation("io.quarkus:quarkus-arc")
+    implementation("io.quarkus:quarkus-websockets-next")
 
     implementation("com.fasterxml.jackson.module:jackson-module-scala_3:${versions["JACKSON_SCALA"]!!}")
-
+    implementation("io.quarkus:quarkus-redis-client")
 
     testImplementation(project(":modules:io"))
     testImplementation(project(":modules:rule"))
@@ -117,5 +123,27 @@ tasks.reportScoverage {
 
 tasks.jar {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.withType(org.gradle.api.tasks.scala.ScalaCompile::class).configureEach {
+    if (name == "compileScoverageScala") {
+        source = source.asFileTree.matching {
+            exclude("**/grpc/*.scala")
+            exclude("**/coordinator/*.scala")
+            exclude("**/registry/RedisGameRegistry.scala")
+            exclude("**/service/InstanceHeartbeatService.scala")
+            exclude("**/resource/GameDtoMapper.scala")
+            exclude("**/resource/GameResource.scala")
+            exclude("**/redis/GameRedis*.scala")
+        }
+    }
+}
+
+tasks.named("compileScoverageJava").configure {
+    dependsOn(tasks.named("quarkusGenerateCode"))
+}
+
+tasks.compileScala {
+    dependsOn(tasks.named("compileJava"))
 }
 

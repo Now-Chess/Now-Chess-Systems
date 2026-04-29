@@ -1,8 +1,15 @@
 quarkus:
   http:
     port: 8081
+  grpc:
+    server:
+      use-separate-server: false
   application:
     name: nowchess-io
+
+nowchess:
+  internal:
+    secret: 123abc
   smallrye-openapi:
     info-title: NowChess IO Service
     info-version: 1.0.0

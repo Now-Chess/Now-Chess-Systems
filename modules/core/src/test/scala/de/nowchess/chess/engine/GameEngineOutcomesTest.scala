@@ -1,6 +1,7 @@
 package de.nowchess.chess.engine
 
 import de.nowchess.api.board.Color
+import de.nowchess.api.game.WinReason.Checkmate
 import de.nowchess.api.game.{DrawReason, GameResult}
 import de.nowchess.chess.observer.*
 import org.scalatest.funsuite.AnyFunSuite
@@ -23,7 +24,7 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
     engine.processUserInput("d8h4")
 
     observer.hasEvent[CheckmateEvent] shouldBe true
-    engine.context.result shouldBe Some(GameResult.Win(Color.Black))
+    engine.context.result shouldBe Some(GameResult.Win(Color.Black, Checkmate))
 
   test("checkmate with white winner"):
     val engine   = EngineTestHelpers.makeEngine()
@@ -43,7 +44,7 @@ class GameEngineOutcomesTest extends AnyFunSuite with Matchers:
     val evt = observer.getEvent[CheckmateEvent]
     evt.isDefined shouldBe true
     evt.get.winner shouldBe Color.White
-    engine.context.result shouldBe Some(GameResult.Win(Color.White))
+    engine.context.result shouldBe Some(GameResult.Win(Color.White, Checkmate))
 
   // ── Stalemate ───────────────────────────────────────────────────
 

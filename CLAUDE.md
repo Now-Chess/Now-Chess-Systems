@@ -22,7 +22,6 @@ Use consistently.
 | `rule` | Game rules | api |
 | `bot`  | Bots and AI | api,rule,io |
 | `io`   | Export formats | api, core |
-| `ui`   | Entrypoint & UI | core, io |
 
 ## Style
 

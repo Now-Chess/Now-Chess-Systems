@@ -95,13 +95,13 @@ class JsonParserTest extends AnyFunSuite with Matchers:
     val invalidJson = "{ this is not valid json at all }"
     val result      = JsonParser.importGameContext(invalidJson)
     assert(result.isLeft)
-    assert(result.left.toOption.get.contains("JSON parsing error"))
+    assert(result.left.toOption.get.message.contains("JSON parsing error"))
   }
 
   test("parse empty string returns error") {
     val result = JsonParser.importGameContext("")
     assert(result.isLeft)
-    assert(result.left.toOption.get.contains("JSON parsing error"))
+    assert(result.left.toOption.get.message.contains("JSON parsing error"))
   }
 
   test("parse number value returns error") {
@@ -113,7 +113,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
     val malformed = """{"metadata": {"unclosed": """
     val result    = JsonParser.importGameContext(malformed)
     assert(result.isLeft)
-    assert(result.left.toOption.get.contains("JSON parsing error"))
+    assert(result.left.toOption.get.message.contains("JSON parsing error"))
   }
 
   test("parse invalid JSON array returns error") {
@@ -137,7 +137,7 @@ class JsonParserTest extends AnyFunSuite with Matchers:
     }"""
     val result = JsonParser.importGameContext(json)
     assert(result.isLeft)
-    assert(result.left.toOption.get.contains("Invalid turn color"))
+    assert(result.left.toOption.get.message.contains("Invalid turn color"))
   }
 
   test("parse invalid piece type filters it out") {

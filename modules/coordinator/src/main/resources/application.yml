@@ -1,0 +1,52 @@
+quarkus:
+  application:
+    name: nowchess-coordinator
+  http:
+    port: 8086
+  redis:
+    hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
+  grpc:
+    server:
+      port: 9086
+  rest-client:
+    connection-timeout: 5000
+    read-timeout: 10000
+  smallrye-openapi:
+    info-title: NowChess Coordinator Service
+    info-version: 1.0.0
+    info-description: Coordination endpoints for instance health, balancing, failover, and scaling
+    path: /openapi
+  swagger-ui:
+    always-include: true
+    path: /swagger-ui
+
+nowchess:
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    prefix: ${REDIS_PREFIX:nowchess}
+
+  coordinator:
+    max-games-per-core: 500
+    max-deviation-percent: 20
+    rebalance-interval: 30s
+    rebalance-min-interval: 60s
+    heartbeat-ttl: 5s
+    stream-heartbeat-interval: PT0.2S
+    cache-eviction-interval: 10m
+    game-idle-threshold: 45m
+    auto-scale-enabled: false
+    scale-up-threshold: 0.8
+    scale-down-threshold: 0.3
+    scale-min-replicas: 2
+    scale-max-replicas: 10
+    k8s-namespace: default
+    k8s-rollout-name: nowchess-core
+    k8s-rollout-label-selector: "app=nowchess-core"
+
+---
+# dev profile
+"%dev":
+  quarkus:
+    log:
+      level: DEBUG

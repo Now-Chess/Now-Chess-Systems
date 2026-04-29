@@ -1,0 +1,24 @@
+quarkus:
+  http:
+    port: 8087
+  application:
+    name: nowchess-bot-platform
+  redis:
+    hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
+  smallrye-jwt:
+    enabled: true
+  log:
+    level: INFO
+
+nowchess:
+  redis:
+    host: localhost
+    port: 6379
+    prefix: nowchess
+
+"%deployed":
+  nowchess:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      prefix: ${REDIS_PREFIX:nowchess}

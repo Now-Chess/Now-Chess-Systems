@@ -4,4 +4,5 @@ final case class ImportFenRequestDto(
     fen: String,
     white: Option[PlayerInfoDto],
     black: Option[PlayerInfoDto],
+    timeControl: Option[TimeControlDto],
 )

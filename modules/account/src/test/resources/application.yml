@@ -1,0 +1,36 @@
+quarkus:
+  http:
+    port: 8083
+  application:
+    name: nowchess-account
+  smallrye-openapi:
+    info-title: NowChess Account Service
+    path: /openapi
+  swagger-ui:
+    always-include: true
+    path: /swagger-ui
+  datasource:
+    db-kind: h2
+    username: sa
+    password: ""
+    jdbc:
+      url: "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1"
+  hibernate-orm:
+    schema-management:
+      strategy: drop-and-create
+mp:
+  jwt:
+    verify:
+      publickey:
+        location: keys/test-public.pem
+      issuer: nowchess
+smallrye:
+  jwt:
+    sign:
+      key:
+        location: keys/test-private.pem
+nowchess:
+  internal:
+    secret: test-secret
+    auth:
+      enabled: false

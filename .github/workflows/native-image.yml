@@ -31,8 +31,15 @@ jobs:
     strategy:
       matrix:
         module:
+          - account
+          - bot-platform
+          - coordinator
           - core
           - io
+          - official-bots
+          - rule
+          - store
+          - ws
 
     steps:
       - uses: actions/checkout@v4

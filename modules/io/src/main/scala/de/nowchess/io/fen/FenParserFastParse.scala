@@ -3,6 +3,7 @@ package de.nowchess.io.fen
 import fastparse.*
 import fastparse.NoWhitespace.*
 import de.nowchess.api.board.*
+import de.nowchess.api.error.GameError
 import de.nowchess.api.game.GameContext
 import FenParserSupport.*
 import de.nowchess.api.io.GameContextImport
@@ -103,10 +104,10 @@ object FenParserFastParse extends GameContextImport:
 
   // ── Public API ───────────────────────────────────────────────────────────
 
-  def parseFen(fen: String): Either[String, GameContext] =
+  def parseFen(fen: String): Either[GameError, GameContext] =
     parse(fen, fenParser(using _)) match
       case Parsed.Success(ctx, _) => Right(ctx)
-      case f: Parsed.Failure      => Left(s"Invalid FEN: ${f.msg}")
+      case f: Parsed.Failure      => Left(GameError.ParseError(s"Invalid FEN: ${f.msg}"))
 
   private def boardParserFull(using P[Any]): P[Board] =
     boardParser ~ End
@@ -116,5 +117,5 @@ object FenParserFastParse extends GameContextImport:
       case Parsed.Success(board, _) => Some(board)
       case _                        => None
 
-  def importGameContext(input: String): Either[String, GameContext] =
+  def importGameContext(input: String): Either[GameError, GameContext] =
     parseFen(input)

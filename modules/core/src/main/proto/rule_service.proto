@@ -1,0 +1,38 @@
+syntax = "proto3";
+option java_package = "de.nowchess.core.proto";
+option java_multiple_files = true;
+option java_outer_classname = "RuleServiceProto";
+
+import "chess_types.proto";
+
+message ProtoSquareRequest {
+  ProtoGameContext context = 1;
+  string           square  = 2;
+}
+
+message ProtoMoveRequest {
+  ProtoGameContext context = 1;
+  ProtoMove        move    = 2;
+}
+
+message ProtoMoveList {
+  repeated ProtoMove moves = 1;
+}
+
+message ProtoBoolResult {
+  bool value = 1;
+}
+
+service RuleService {
+  rpc CandidateMoves         (ProtoSquareRequest) returns (ProtoMoveList);
+  rpc LegalMoves             (ProtoSquareRequest) returns (ProtoMoveList);
+  rpc AllLegalMoves          (ProtoGameContext)   returns (ProtoMoveList);
+  rpc IsCheck                (ProtoGameContext)   returns (ProtoBoolResult);
+  rpc IsCheckmate            (ProtoGameContext)   returns (ProtoBoolResult);
+  rpc IsStalemate            (ProtoGameContext)   returns (ProtoBoolResult);
+  rpc IsInsufficientMaterial (ProtoGameContext)   returns (ProtoBoolResult);
+  rpc IsFiftyMoveRule        (ProtoGameContext)   returns (ProtoBoolResult);
+  rpc IsThreefoldRepetition  (ProtoGameContext)   returns (ProtoBoolResult);
+  rpc ApplyMove              (ProtoMoveRequest)   returns (ProtoGameContext);
+  rpc PostMoveStatus         (ProtoGameContext)   returns (ProtoPostMoveStatus);
+}

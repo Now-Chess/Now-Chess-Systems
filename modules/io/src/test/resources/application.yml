@@ -1,0 +1,5 @@
+nowchess:
+  internal:
+    secret: test-secret
+    auth:
+      enabled: false

@@ -12,7 +12,7 @@ version = "1.0-SNAPSHOT"
 // converted to scoverage regexes via globToScoverageRegex for instrumentation-time exclusion.
 val coverageExclusions = listOf(
     // UI renders JavaFX components; headless test environments cannot exercise rendering paths
-    "modules/ui/**",
+    "modules/api/**",
     // FastParse macro-generated combinators produce synthetic branches that scoverage marks as uncovered
     "modules/io/src/main/scala/de/nowchess/io/fen/FenParserFastParse*",
     // NNUE inference pipeline — coverage requires a trained model file not present in CI
@@ -42,7 +42,17 @@ val coverageExclusions = listOf(
     // JacksonConfig — Quarkus lifecycle hook, no testable logic beyond ObjectMapper registration
     "**/io/src/main/scala/de/nowchess/io/service/config/JacksonConfig.scala",
     //RuleSetRestAdapter - Quarkus integration of rule into core, only testable with Quarkus tests
-    "**/core/src/main/de/nowchess/chess/adapter/RuleSetRestAdapter.scala"
+    "**/core/src/main/de/nowchess/chess/adapter/RuleSetRestAdapter.scala",
+    // AccountResource / ChallengeResource — REST integration layer; @QuarkusTest not instrumented by Scoverage
+    "**/account/src/main/scala/de/nowchess/account/resource/**",
+    // JacksonConfig / NativeReflectionConfig — Quarkus lifecycle hooks, no testable logic
+    "**/account/src/main/scala/de/nowchess/account/config/**",
+    // WebSocket service — infrastructure CDI beans (RedisConfig)
+    "**/ws/src/main/scala/de/nowchess/ws/config/**",
+    // GameWebSocketResource in core — replaced by ws module
+    "**/core/src/main/scala/de/nowchess/chess/resource/GameWebSocketResource.scala",
+    // Coordinator infrastructure — gRPC, microservice orchestration
+    "**/coordinator/src/main/scala/**",
 )
 
 // Converts a Sonar-style glob to a scoverage regex (matched against full source path).

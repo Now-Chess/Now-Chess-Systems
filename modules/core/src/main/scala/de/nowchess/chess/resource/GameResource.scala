@@ -1,24 +1,35 @@
 package de.nowchess.chess.resource
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import de.nowchess.api.board.Square
+import de.nowchess.api.board.{Color, Square}
 import de.nowchess.api.dto.*
-import de.nowchess.api.game.{DrawReason, GameContext, GameResult}
+import de.nowchess.api.game.{
+  CorrespondenceClockState,
+  DrawReason,
+  GameContext,
+  GameMode,
+  GameResult,
+  LiveClockState,
+  TimeControl,
+  WinReason,
+}
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.api.player.{PlayerId, PlayerInfo}
-import de.nowchess.chess.adapter.RuleSetRestAdapter
-import de.nowchess.chess.client.IoServiceClient
+import java.time.Instant
+import de.nowchess.api.rules.RuleSet
 import de.nowchess.chess.controller.Parser
 import de.nowchess.chess.engine.GameEngine
 import de.nowchess.chess.exception.{BadRequestException, GameNotFoundException}
+import de.nowchess.chess.grpc.{IoGrpcClientWrapper, RuleSetGrpcAdapter}
 import de.nowchess.chess.observer.*
+import de.nowchess.chess.redis.GameRedisSubscriberManager
 import de.nowchess.chess.registry.{GameEntry, GameRegistry}
-import io.smallrye.mutiny.Multi
+import de.nowchess.security.InternalOnly
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.{MediaType, Response}
-import org.eclipse.microprofile.rest.client.inject.RestClient
+import org.eclipse.microprofile.jwt.JsonWebToken
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.compiletime.uninitialized
@@ -35,41 +46,47 @@ class GameResource:
   var objectMapper: ObjectMapper = uninitialized
 
   @Inject
-  @RestClient
-  var ioClient: IoServiceClient = uninitialized
+  var ioClient: IoGrpcClientWrapper = uninitialized
 
   @Inject
-  var ruleSetAdapter: RuleSetRestAdapter = uninitialized
+  var ruleSetAdapter: RuleSetGrpcAdapter = uninitialized
+
+  @Inject
+  var jwt: JsonWebToken = uninitialized
+
+  @Inject
+  var subscriberManager: GameRedisSubscriberManager = uninitialized
   // scalafix:on DisableSyntax.var
 
   private val DefaultWhite = PlayerInfo(PlayerId("p1"), "Player 1")
   private val DefaultBlack = PlayerInfo(PlayerId("p2"), "Player 2")
 
+  // ── auth helpers ─────────────────────────────────────────────────────────
+  // scalafix:off DisableSyntax.throw
+
+  private def colorOf(entry: GameEntry): Color =
+    entry.mode match
+      case GameMode.Open => entry.engine.context.turn
+      case GameMode.Authenticated =>
+        val subject = Option(jwt)
+          .flatMap(j => Option(j.getSubject))
+          .getOrElse(throw ForbiddenException("Authentication required"))
+        if entry.white.id.value == subject then Color.White
+        else if entry.black.id.value == subject then Color.Black
+        else throw ForbiddenException("You are not a player in this game")
+
+  private def assertIsCurrentPlayer(entry: GameEntry): Unit =
+    if entry.mode == GameMode.Authenticated then
+      val color = colorOf(entry)
+      if color != entry.engine.context.turn then throw ForbiddenException("Not your turn")
+
+  private def assertIsNotBot(): Unit =
+    val botType = Option(jwt.getClaim[AnyRef]("type")).map(_.toString).getOrElse("")
+    if Set("bot", "official-bot").contains(botType) then throw ForbiddenException("Only bots can make moves")
+
+  // scalafix:on DisableSyntax.throw
+
   // ── mapping ──────────────────────────────────────────────────────────────
-
-  private def statusOf(entry: GameEntry): String =
-    if entry.engine.pendingDrawOfferBy.isDefined then "drawOffered"
-    else
-      val ctx = entry.engine.context
-      ctx.result match
-        case Some(GameResult.Win(_)) =>
-          if entry.resigned then "resign" else "checkmate"
-        case Some(GameResult.Draw(DrawReason.Stalemate))            => "stalemate"
-        case Some(GameResult.Draw(DrawReason.InsufficientMaterial)) => "insufficientMaterial"
-        case Some(GameResult.Draw(_))                               => "draw"
-        case None =>
-          if ctx.halfMoveClock >= 100 then "fiftyMoveAvailable"
-          else if entry.engine.ruleSet.isCheck(ctx) then "check"
-          else "started"
-
-  private def moveToUci(move: Move): String =
-    val base = s"${move.from}${move.to}"
-    move.moveType match
-      case MoveType.Promotion(PromotionPiece.Queen)  => s"${base}q"
-      case MoveType.Promotion(PromotionPiece.Rook)   => s"${base}r"
-      case MoveType.Promotion(PromotionPiece.Bishop) => s"${base}b"
-      case MoveType.Promotion(PromotionPiece.Knight) => s"${base}n"
-      case _                                         => base
 
   private def toLegalMoveDto(move: Move): LegalMoveDto =
     val (moveTypeStr, promotionStr) = move.moveType match
@@ -82,32 +99,34 @@ class GameResource:
       case MoveType.Promotion(PromotionPiece.Rook)   => ("promotion", Some("rook"))
       case MoveType.Promotion(PromotionPiece.Bishop) => ("promotion", Some("bishop"))
       case MoveType.Promotion(PromotionPiece.Knight) => ("promotion", Some("knight"))
-    LegalMoveDto(move.from.toString, move.to.toString, moveToUci(move), moveTypeStr, promotionStr)
-
-  private def toPlayerDto(info: PlayerInfo): PlayerInfoDto =
-    PlayerInfoDto(info.id.value, info.displayName)
-
-  private def toGameStateDto(entry: GameEntry): GameStateDto =
-    val ctx = entry.engine.context
-    GameStateDto(
-      fen = ioClient.exportFen(ctx),
-      pgn = ioClient.exportPgn(ctx),
-      turn = ctx.turn.label.toLowerCase,
-      status = statusOf(entry),
-      winner = ctx.result.collect { case GameResult.Win(c) => c.label.toLowerCase },
-      moves = ctx.moves.map(moveToUci),
-      undoAvailable = entry.engine.canUndo,
-      redoAvailable = entry.engine.canRedo,
-    )
-
-  private def toGameFullDto(entry: GameEntry): GameFullDto =
-    GameFullDto(entry.gameId, toPlayerDto(entry.white), toPlayerDto(entry.black), toGameStateDto(entry))
+    LegalMoveDto(move.from.toString, move.to.toString, GameDtoMapper.moveToUci(move), moveTypeStr, promotionStr)
 
   private def playerInfoFrom(dto: Option[PlayerInfoDto], default: PlayerInfo): PlayerInfo =
     dto.fold(default)(d => PlayerInfo(PlayerId(d.id), d.displayName))
 
-  private def newEntry(ctx: GameContext, white: PlayerInfo, black: PlayerInfo): GameEntry =
-    GameEntry(registry.generateId(), GameEngine(initialContext = ctx, ruleSet = ruleSetAdapter), white, black)
+  private def toTimeControl(dto: Option[TimeControlDto]): TimeControl =
+    dto match
+      case None => TimeControl.Unlimited
+      case Some(tc) =>
+        tc.daysPerMove match
+          case Some(d) => TimeControl.Correspondence(d)
+          case None =>
+            tc.limitSeconds.fold(TimeControl.Unlimited)(l => TimeControl.Clock(l, tc.incrementSeconds.getOrElse(0)))
+
+  private def newEntry(
+      ctx: GameContext,
+      white: PlayerInfo,
+      black: PlayerInfo,
+      tc: TimeControl = TimeControl.Unlimited,
+      mode: GameMode = GameMode.Open,
+  ): GameEntry =
+    GameEntry(
+      registry.generateId(),
+      GameEngine(initialContext = ctx, ruleSet = ruleSetAdapter, timeControl = tc),
+      white,
+      black,
+      mode = mode,
+    )
 
   private def applyMoveInput(engine: GameEngine, uci: String): Option[String] =
     val error = new AtomicReference[Option[String]](None)
@@ -134,43 +153,27 @@ class GameResource:
   // scalafix:off DisableSyntax.throw
 
   @POST
+  @InternalOnly
   @Consumes(Array(MediaType.APPLICATION_JSON))
   @Produces(Array(MediaType.APPLICATION_JSON))
   def createGame(body: CreateGameRequestDto): Response =
-    val req   = Option(body).getOrElse(CreateGameRequestDto(None, None))
+    val req   = Option(body).getOrElse(CreateGameRequestDto(None, None, None, None))
     val white = playerInfoFrom(req.white, DefaultWhite)
     val black = playerInfoFrom(req.black, DefaultBlack)
-    val entry = newEntry(GameContext.initial, white, black)
+    val tc    = toTimeControl(req.timeControl)
+    val mode  = req.mode.getOrElse(GameMode.Open)
+    val entry = newEntry(GameContext.initial, white, black, tc, mode)
     registry.store(entry)
+    subscriberManager.subscribeGame(entry.gameId)
     println(s"Created game ${entry.gameId}")
-    created(toGameFullDto(entry))
+    created(GameDtoMapper.toGameFullDto(entry, ioClient))
 
   @GET
   @Path("/{gameId}")
   @Produces(Array(MediaType.APPLICATION_JSON))
   def getGame(@PathParam("gameId") gameId: String): Response =
     val entry = registry.get(gameId).getOrElse(throw GameNotFoundException(gameId))
-    ok(toGameFullDto(entry))
-
-  @GET
-  @Path("/{gameId}/stream")
-  @Produces(Array("application/x-ndjson"))
-  def streamGame(@PathParam("gameId") gameId: String): Multi[String] =
-    val entry = registry.get(gameId).getOrElse(throw GameNotFoundException(gameId))
-    Multi
-      .createFrom()
-      .emitter[String] { emitter =>
-        emitter.emit(objectMapper.writeValueAsString(GameFullEventDto(toGameFullDto(entry))) + "\n")
-        val obs = new Observer:
-          def onGameEvent(event: GameEvent): Unit =
-            registry.get(gameId).foreach { updated =>
-              emitter.emit(
-                objectMapper.writeValueAsString(GameStateEventDto(toGameStateDto(updated))) + "\n",
-              )
-            }
-        entry.engine.subscribe(obs)
-        emitter.onTermination(() => entry.engine.unsubscribe(obs))
-      }
+    ok(GameDtoMapper.toGameFullDto(entry, ioClient))
 
   @POST
   @Path("/{gameId}/resign")
@@ -178,7 +181,8 @@ class GameResource:
   def resignGame(@PathParam("gameId") gameId: String): Response =
     val entry = registry.get(gameId).getOrElse(throw GameNotFoundException(gameId))
     assertGameNotOver(entry)
-    entry.engine.resign()
+    val color = colorOf(entry)
+    entry.engine.resign(color)
     registry.update(entry.copy(resigned = true))
     ok(OkResponseDto())
 
@@ -186,17 +190,15 @@ class GameResource:
   @Path("/{gameId}/move/{uci}")
   @Produces(Array(MediaType.APPLICATION_JSON))
   def makeMove(@PathParam("gameId") gameId: String, @PathParam("uci") uci: String): Response =
+    assertIsNotBot()
     val entry = registry.get(gameId).getOrElse(throw GameNotFoundException(gameId))
     assertGameNotOver(entry)
-    val (from, to, promoOpt) = Parser
-      .parseMove(uci)
-      .getOrElse(throw BadRequestException("INVALID_UCI", s"Invalid UCI notation: $uci", Some("uci")))
-    val candidates  = entry.engine.ruleSet.legalMoves(entry.engine.context)(from).filter(_.to == to)
-    val isPromotion = candidates.exists { case Move(_, _, MoveType.Promotion(_)) => true; case _ => false }
-    if candidates.isEmpty || (isPromotion && promoOpt.isEmpty) then
-      throw BadRequestException("INVALID_MOVE", s"$uci is not a legal move", Some("uci"))
+    assertIsCurrentPlayer(entry)
+    if Parser.parseMove(uci).isEmpty then
+      throw BadRequestException("INVALID_UCI", s"Invalid UCI notation: $uci", Some("uci"))
     applyMoveInput(entry.engine, uci).foreach(err => throw BadRequestException("INVALID_MOVE", err, Some("uci")))
-    ok(toGameStateDto(entry))
+    registry.update(entry)
+    ok(GameDtoMapper.toGameStateDto(entry, ioClient))
 
   @GET
   @Path("/{gameId}/moves")
@@ -223,7 +225,8 @@ class GameResource:
     val entry = registry.get(gameId).getOrElse(throw GameNotFoundException(gameId))
     if !entry.engine.canUndo then throw BadRequestException("NO_UNDO", "No moves to undo")
     entry.engine.undo()
-    ok(toGameStateDto(entry))
+    registry.update(entry)
+    ok(GameDtoMapper.toGameStateDto(entry, ioClient))
 
   @POST
   @Path("/{gameId}/redo")
@@ -232,7 +235,8 @@ class GameResource:
     val entry = registry.get(gameId).getOrElse(throw GameNotFoundException(gameId))
     if !entry.engine.canRedo then throw BadRequestException("NO_REDO", "No moves to redo")
     entry.engine.redo()
-    ok(toGameStateDto(entry))
+    registry.update(entry)
+    ok(GameDtoMapper.toGameStateDto(entry, ioClient))
 
   @POST
   @Path("/{gameId}/draw/{action}")
@@ -243,43 +247,55 @@ class GameResource:
   ): Response =
     val entry = registry.get(gameId).getOrElse(throw GameNotFoundException(gameId))
     assertGameNotOver(entry)
+    val color = colorOf(entry)
     action match
-      case "offer" =>
-        entry.engine.offerDraw(entry.engine.context.turn)
-        ok(OkResponseDto())
+      case "offer"   => entry.engine.offerDraw(color); registry.update(entry); ok(OkResponseDto())
+      case "accept"  => entry.engine.acceptDraw(color); registry.update(entry); ok(OkResponseDto())
+      case "decline" => entry.engine.declineDraw(color); registry.update(entry); ok(OkResponseDto())
+      case "claim"   => entry.engine.claimDraw(); registry.update(entry); ok(OkResponseDto())
+      case _         => throw BadRequestException("INVALID_ACTION", s"Unknown draw action: $action", Some("action"))
+
+  @POST
+  @Path("/{gameId}/takeback/{action}")
+  @Produces(Array(MediaType.APPLICATION_JSON))
+  def takebackAction(
+      @PathParam("gameId") gameId: String,
+      @PathParam("action") action: String,
+  ): Response =
+    val entry = registry.get(gameId).getOrElse(throw GameNotFoundException(gameId))
+    assertGameNotOver(entry)
+    val color = colorOf(entry)
+    action match
+      case "request" => entry.engine.requestTakeback(color); registry.update(entry); ok(OkResponseDto())
       case "accept" =>
-        entry.engine.acceptDraw(entry.engine.context.turn)
-        ok(OkResponseDto())
-      case "decline" =>
-        entry.engine.declineDraw(entry.engine.context.turn)
-        ok(OkResponseDto())
-      case "claim" =>
-        entry.engine.claimDraw()
-        ok(OkResponseDto())
-      case _ =>
-        throw BadRequestException("INVALID_ACTION", s"Unknown draw action: $action", Some("action"))
+        entry.engine.acceptTakeback(color); registry.update(entry); ok(GameDtoMapper.toGameStateDto(entry, ioClient))
+      case "decline" => entry.engine.declineTakeback(color); registry.update(entry); ok(OkResponseDto())
+      case _         => throw BadRequestException("INVALID_ACTION", s"Unknown takeback action: $action", Some("action"))
 
   @POST
   @Path("/import/fen")
   @Consumes(Array(MediaType.APPLICATION_JSON))
   @Produces(Array(MediaType.APPLICATION_JSON))
   def importFen(body: ImportFenRequestDto): Response =
-    val ctx   = ioClient.importFen(ImportFenRequest(body.fen))
+    val ctx   = ioClient.importFen(body.fen)
     val white = playerInfoFrom(body.white, DefaultWhite)
     val black = playerInfoFrom(body.black, DefaultBlack)
-    val entry = newEntry(ctx, white, black)
+    val tc    = toTimeControl(body.timeControl)
+    val entry = newEntry(ctx, white, black, tc)
     registry.store(entry)
-    created(toGameFullDto(entry))
+    subscriberManager.subscribeGame(entry.gameId)
+    created(GameDtoMapper.toGameFullDto(entry, ioClient))
 
   @POST
   @Path("/import/pgn")
   @Consumes(Array(MediaType.APPLICATION_JSON))
   @Produces(Array(MediaType.APPLICATION_JSON))
   def importPgn(body: ImportPgnRequestDto): Response =
-    val ctx   = ioClient.importPgn(ImportPgnRequest(body.pgn))
+    val ctx   = ioClient.importPgn(body.pgn)
     val entry = newEntry(ctx, DefaultWhite, DefaultBlack)
     registry.store(entry)
-    created(toGameFullDto(entry))
+    subscriberManager.subscribeGame(entry.gameId)
+    created(GameDtoMapper.toGameFullDto(entry, ioClient))
 
   @GET
   @Path("/{gameId}/export/fen")

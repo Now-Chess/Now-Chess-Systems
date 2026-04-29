@@ -1,0 +1,58 @@
+syntax = "proto3";
+option java_package = "de.nowchess.coordinator.proto";
+option java_multiple_files = true;
+option java_outer_classname = "CoordinatorServiceProto";
+
+service CoordinatorService {
+  rpc HeartbeatStream(stream HeartbeatFrame) returns (stream CoordinatorCommand);
+  rpc BatchResubscribeGames(BatchResubscribeRequest) returns (BatchResubscribeResponse);
+  rpc UnsubscribeGames(UnsubscribeGamesRequest) returns (UnsubscribeGamesResponse);
+  rpc EvictGames(EvictGamesRequest) returns (EvictGamesResponse);
+  rpc DrainInstance(DrainInstanceRequest) returns (DrainInstanceResponse);
+}
+
+message HeartbeatFrame {
+  string instanceId = 1;
+  string hostname = 2;
+  int32 httpPort = 3;
+  int32 grpcPort = 4;
+  int32 subscriptionCount = 5;
+  int32 localCacheSize = 6;
+  int64 timestampMillis = 7;
+}
+
+message CoordinatorCommand {
+  string type = 1;
+  string payload = 2;
+}
+
+message BatchResubscribeRequest {
+  repeated string gameIds = 1;
+}
+
+message BatchResubscribeResponse {
+  int32 subscribedCount = 1;
+  repeated string failedGameIds = 2;
+}
+
+message UnsubscribeGamesRequest {
+  repeated string gameIds = 1;
+}
+
+message UnsubscribeGamesResponse {
+  int32 unsubscribedCount = 1;
+}
+
+message EvictGamesRequest {
+  repeated string gameIds = 1;
+}
+
+message EvictGamesResponse {
+  int32 evictedCount = 1;
+}
+
+message DrainInstanceRequest {}
+
+message DrainInstanceResponse {
+  int32 gamesMigrated = 1;
+}

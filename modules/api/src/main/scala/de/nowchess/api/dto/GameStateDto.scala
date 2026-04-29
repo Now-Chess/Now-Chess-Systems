@@ -9,4 +9,6 @@ final case class GameStateDto(
     moves: List[String],
     undoAvailable: Boolean,
     redoAvailable: Boolean,
+    clock: Option[ClockDto],
+    takebackRequestedBy: Option[String] = None,
 )

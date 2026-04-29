@@ -16,7 +16,14 @@ pluginManagement {
 include(
     "modules:core",
     "modules:api",
+    "modules:json",
     "modules:io",
     "modules:rule",
-    "modules:bot",
+    "modules:security",
+    "modules:bot-platform",
+    "modules:official-bots",
+    "modules:account",
+    "modules:ws",
+    "modules:store",
+    "modules:coordinator",
 )

@@ -1,0 +1,28 @@
+package de.nowchess.api.dto
+
+case class GameWritebackEventDto(
+    gameId: String,
+    fen: String,
+    pgn: String,
+    moveCount: Int,
+    whiteId: String,
+    whiteName: String,
+    blackId: String,
+    blackName: String,
+    mode: String,
+    resigned: Boolean,
+    limitSeconds: Option[Int],
+    incrementSeconds: Option[Int],
+    daysPerMove: Option[Int],
+    whiteRemainingMs: Option[Long],
+    blackRemainingMs: Option[Long],
+    incrementMs: Option[Long],
+    clockLastTickAt: Option[Long],
+    clockMoveDeadline: Option[Long],
+    clockActiveColor: Option[String],
+    pendingDrawOffer: Option[String],
+    result: Option[String] = None,
+    terminationReason: Option[String] = None,
+    redoStack: List[String] = Nil,
+    pendingTakebackRequest: Option[String] = None,
+)

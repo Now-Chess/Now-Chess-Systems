@@ -1,6 +1,7 @@
 package de.nowchess.io.pgn
 
 import de.nowchess.api.board.*
+import de.nowchess.api.error.GameError
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.io.GameContextImport
@@ -17,7 +18,7 @@ object PgnParser extends GameContextImport:
   /** Strictly validate a PGN text. Returns Right(PgnGame) if every move token is a legal move in the evolving position.
     * Returns Left(error message) on the first illegal or impossible move, or any unrecognised token.
     */
-  def validatePgn(pgn: String): Either[String, PgnGame] =
+  def validatePgn(pgn: String): Either[GameError, PgnGame] =
     val lines               = pgn.split("\n").map(_.trim)
     val (headerLines, rest) = lines.span(_.startsWith("["))
     val headers             = parseHeaders(headerLines)
@@ -28,7 +29,7 @@ object PgnParser extends GameContextImport:
     * moves applied and .moves populated. Returns Left(error message) if validation fails or move replay encounters an
     * issue.
     */
-  def importGameContext(input: String): Either[String, GameContext] =
+  def importGameContext(input: String): Either[GameError, GameContext] =
     validatePgn(input).flatMap { game =>
       Right(game.moves.foldLeft(GameContext.initial)((ctx, move) => DefaultRules.applyMove(ctx)(move)))
     }
@@ -173,17 +174,17 @@ object PgnParser extends GameContextImport:
   // ── Strict validation helpers ─────────────────────────────────────────────
 
   /** Walk all move tokens, failing immediately on any unresolvable or illegal move. */
-  private def validateMovesText(moveText: String): Either[String, List[Move]] =
+  private def validateMovesText(moveText: String): Either[GameError, List[Move]] =
     val tokens = moveText.split("\\s+").filter(_.nonEmpty)
     tokens
       .foldLeft(
-        Right((GameContext.initial, Color.White, List.empty[Move])): Either[String, (GameContext, Color, List[Move])],
+        Right((GameContext.initial, Color.White, List.empty[Move])): Either[GameError, (GameContext, Color, List[Move])],
       ) { case (acc, token) =>
         acc.flatMap { case (ctx, color, moves) =>
           if isMoveNumberOrResult(token) then Right((ctx, color, moves))
           else
             parseAlgebraicMove(token, ctx, color) match
-              case None => Left(s"Illegal or impossible move: '$token'")
+              case None => Left(GameError.ParseError(s"Illegal or impossible move: '$token'"))
               case Some(move) =>
                 val nextCtx = DefaultRules.applyMove(ctx)(move)
                 Right((nextCtx, color.opposite, moves :+ move))

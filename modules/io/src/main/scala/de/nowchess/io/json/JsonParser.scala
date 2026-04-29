@@ -3,6 +3,7 @@ package de.nowchess.io.json
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import de.nowchess.api.board.*
+import de.nowchess.api.error.GameError
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.io.GameContextImport
@@ -27,9 +28,9 @@ object JsonParser extends GameContextImport:
     .registerModule(DefaultScalaModule)
     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
-  def importGameContext(input: String): Either[String, GameContext] =
+  def importGameContext(input: String): Either[GameError, GameContext] =
     Try(mapper.readValue(input, classOf[JsonGameRecord])).toEither.left
-      .map(e => "JSON parsing error: " + e.getMessage)
+      .map(e => GameError.ParseError("JSON parsing error: " + e.getMessage))
       .flatMap { data =>
         val gs       = data.gameState.getOrElse(JsonGameState())
         val rawBoard = gs.board.getOrElse(Nil)
@@ -54,7 +55,7 @@ object JsonParser extends GameContextImport:
         )
       }
 
-  private def parseBoard(pieces: List[JsonPiece]): Either[String, Board] =
+  private def parseBoard(pieces: List[JsonPiece]): Either[GameError, Board] =
     val parsedPieces = pieces.flatMap { p =>
       for
         sq    <- p.square.flatMap(Square.fromAlgebraic)
@@ -64,8 +65,8 @@ object JsonParser extends GameContextImport:
     }
     Right(Board(parsedPieces.toMap))
 
-  private def parseTurn(color: String): Either[String, Color] =
-    parseColor(color).toRight(s"Invalid turn color: $color")
+  private def parseTurn(color: String): Either[GameError, Color] =
+    parseColor(color).toRight(GameError.ParseError(s"Invalid turn color: $color"))
 
   private def parseColor(color: String): Option[Color] =
     if color == "White" then Some(Color.White)
@@ -90,7 +91,7 @@ object JsonParser extends GameContextImport:
       cr.blackQueenSide.getOrElse(false),
     )
 
-  private def parseMoves(moves: List[JsonMove]): Either[String, List[Move]] =
+  private def parseMoves(moves: List[JsonMove]): Either[GameError, List[Move]] =
     Right(moves.flatMap { m =>
       for
         from     <- m.from.flatMap(Square.fromAlgebraic)

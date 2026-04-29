@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import de.nowchess.api.board.Square
 import de.nowchess.api.game.GameContext
-import de.nowchess.io.json.{SquareKeyDeserializer, SquareKeySerializer}
+import de.nowchess.json.{SquareKeyDeserializer, SquareKeySerializer}
 import io.quarkus.test.junit.QuarkusTest
 import io.restassured.RestAssured
 import io.restassured.http.ContentType

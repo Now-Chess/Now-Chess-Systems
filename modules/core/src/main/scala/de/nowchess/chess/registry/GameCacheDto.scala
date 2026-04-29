@@ -1,0 +1,25 @@
+package de.nowchess.chess.registry
+
+case class GameCacheDto(
+    gameId: String,
+    whiteId: String,
+    whiteName: String,
+    blackId: String,
+    blackName: String,
+    mode: String,
+    pgn: String,
+    fen: String,
+    resigned: Boolean,
+    limitSeconds: Option[Int],
+    incrementSeconds: Option[Int],
+    daysPerMove: Option[Int],
+    whiteRemainingMs: Option[Long],
+    blackRemainingMs: Option[Long],
+    incrementMs: Option[Long],
+    clockLastTickAt: Option[Long],
+    clockMoveDeadline: Option[Long],
+    clockActiveColor: Option[String],
+    pendingDrawOffer: Option[String],
+    redoStack: List[String] = Nil,
+    pendingTakebackRequest: Option[String] = None,
+)

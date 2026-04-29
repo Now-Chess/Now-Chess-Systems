@@ -1,0 +1,39 @@
+{
+  "name": "NowChessSystems",
+  "dockerComposeFile": ["docker-compose.yml"],
+  "service": "workspace",
+  "workspaceFolder": "/workspaces/NowChessSystems",
+  "shutdownAction": "stopCompose",
+  "overrideCommand": false,
+  "remoteUser": "vscode",
+  "forwardPorts": [8080, 8081, 8082, 8083, 8084, 8085, 8086, 9086],
+  "portsAttributes": {
+    "8080": {"label": "NowChess Core", "onAutoForward": "notify"},
+    "8081": {"label": "NowChess Io", "onAutoForward": "notify"},
+    "8082": {"label": "NowChess Rule", "onAutoForward": "notify"},
+    "8083": {"label": "NowChess Account", "onAutoForward": "notify"},
+    "8084": {"label": "NowChess WebSocket", "onAutoForward": "notify"},
+    "8085": {"label": "NowChess Store", "onAutoForward": "notify"},
+    "8086": {"label": "NowChess Coordinator HTTP", "onAutoForward": "notify"},
+    "9086": {"label": "NowChess Coordinator gRPC", "onAutoForward": "notify"}
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "java.import.gradle.wrapper.enabled": true,
+        "files.watcherExclude": {
+          "**/build/**": true,
+          "**/.gradle/**": true
+        }
+      },
+      "extensions": [
+        "scala-lang.scala",
+        "redhat.java",
+        "vscjava.vscode-java-pack"
+      ]
+    }
+  },
+  "postCreateCommand": "bash -lc './gradlew --no-daemon help >/dev/null'"
+}
+

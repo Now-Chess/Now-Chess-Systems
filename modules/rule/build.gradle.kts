@@ -22,8 +22,15 @@ scoverage {
     scoverageVersion.set(versions["SCOVERAGE"]!!)
 }
 
+sourceSets {
+    main {
+        java.srcDir("build/classes/java/quarkus-generated-sources/grpc")
+    }
+}
+
 tasks.withType<ScalaCompile> {
     scalaCompileOptions.additionalParameters = listOf("-encoding", "UTF-8")
+    dependsOn("quarkusGenerateCode")
 }
 
 val quarkusPlatformGroupId: String by project
@@ -44,6 +51,8 @@ dependencies {
     }
 
     implementation(project(":modules:api"))
+    implementation(project(":modules:json"))
+    implementation(project(":modules:security"))
 
     implementation(platform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}"))
     implementation("io.quarkus:quarkus-rest")
@@ -52,6 +61,7 @@ dependencies {
     implementation("io.quarkus:quarkus-rest-client")
     implementation("io.quarkus:quarkus-rest-jackson")
     implementation("io.quarkus:quarkus-config-yaml")
+    implementation("io.quarkus:quarkus-grpc")
     implementation("io.quarkus:quarkus-smallrye-fault-tolerance")
     implementation("io.quarkus:quarkus-smallrye-jwt")
     implementation("io.quarkus:quarkus-smallrye-health")
@@ -105,4 +115,17 @@ tasks.reportScoverage {
 
 tasks.jar {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.withType(ScalaCompile::class).configureEach {
+    if (name == "compileScoverageScala") {
+        source = source.asFileTree.matching {
+            exclude("**/grpc/*.scala")
+        }
+    }
+}
+
+tasks.named("compileScoverageJava").configure {
+    dependsOn(tasks.named("quarkusGenerateCode"))
+    dependsOn(tasks.named("compileQuarkusGeneratedSourcesJava"))
 }

@@ -1,12 +1,22 @@
 package de.nowchess.chess.registry
 
+import de.nowchess.api.game.GameContext
 import de.nowchess.api.player.{PlayerId, PlayerInfo}
+import de.nowchess.chess.client.{CombinedExportResponse, StoreServiceClient}
+import de.nowchess.chess.grpc.IoGrpcClientWrapper
+import de.nowchess.io.fen.FenExporter
+import de.nowchess.io.pgn.PgnExporter
 import de.nowchess.rules.sets.DefaultRules
 import de.nowchess.chess.engine.GameEngine
+import io.quarkus.test.InjectMock
 import io.quarkus.test.junit.QuarkusTest
 import jakarta.inject.Inject
-import org.junit.jupiter.api.{DisplayName, Test}
+import org.eclipse.microprofile.rest.client.inject.RestClient
+import org.junit.jupiter.api.{BeforeEach, DisplayName, Test}
 import org.junit.jupiter.api.Assertions.*
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.when
+import org.mockito.invocation.InvocationOnMock
 
 import scala.compiletime.uninitialized
 
@@ -17,6 +27,25 @@ class GameRegistryImplTest:
 
   @Inject
   var registry: GameRegistry = uninitialized
+
+  @InjectMock
+  var ioWrapper: IoGrpcClientWrapper = uninitialized
+
+  @InjectMock
+  @RestClient
+  var storeClient: StoreServiceClient = uninitialized
+
+  @BeforeEach
+  def setupMocks(): Unit =
+    when(ioWrapper.exportCombined(any())).thenAnswer((inv: InvocationOnMock) =>
+      val ctx = inv.getArgument[GameContext](0)
+      CombinedExportResponse(FenExporter.exportGameContext(ctx), PgnExporter.exportGameContext(ctx)),
+    )
+    when(ioWrapper.importPgn(any[String]())).thenAnswer((inv: InvocationOnMock) =>
+      de.nowchess.io.pgn.PgnParser
+        .importGameContext(inv.getArgument[String](0))
+        .getOrElse(GameContext.initial),
+    )
 
   @Test
   @DisplayName("store saves entry")

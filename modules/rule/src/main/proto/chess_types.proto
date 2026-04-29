@@ -1,0 +1,87 @@
+syntax = "proto3";
+option java_package = "de.nowchess.rules.proto";
+option java_multiple_files = true;
+option java_outer_classname = "ChessTypesProto";
+
+enum ProtoColor {
+  WHITE = 0;
+  BLACK = 1;
+}
+
+enum ProtoPieceType {
+  PAWN   = 0;
+  KNIGHT = 1;
+  BISHOP = 2;
+  ROOK   = 3;
+  QUEEN  = 4;
+  KING   = 5;
+}
+
+enum ProtoMoveKind {
+  QUIET            = 0;
+  CAPTURE          = 1;
+  CASTLE_KINGSIDE  = 2;
+  CASTLE_QUEENSIDE = 3;
+  EN_PASSANT       = 4;
+  PROMO_QUEEN      = 5;
+  PROMO_ROOK       = 6;
+  PROMO_BISHOP     = 7;
+  PROMO_KNIGHT     = 8;
+}
+
+enum ProtoGameResultKind {
+  ONGOING           = 0;
+  WIN_CHECKMATE_W   = 1;
+  WIN_CHECKMATE_B   = 2;
+  WIN_RESIGN_W      = 3;
+  WIN_RESIGN_B      = 4;
+  WIN_TIME_W        = 5;
+  WIN_TIME_B        = 6;
+  DRAW_STALEMATE    = 7;
+  DRAW_INSUFFICIENT = 8;
+  DRAW_FIFTY_MOVE   = 9;
+  DRAW_THREEFOLD    = 10;
+  DRAW_AGREEMENT    = 11;
+}
+
+message ProtoPiece {
+  ProtoColor     color      = 1;
+  ProtoPieceType piece_type = 2;
+}
+
+message ProtoSquarePiece {
+  string     square = 1;
+  ProtoPiece piece  = 2;
+}
+
+message ProtoMove {
+  string        from      = 1;
+  string        to        = 2;
+  ProtoMoveKind move_kind = 3;
+}
+
+message ProtoCastlingRights {
+  bool white_king_side  = 1;
+  bool white_queen_side = 2;
+  bool black_king_side  = 3;
+  bool black_queen_side = 4;
+}
+
+message ProtoGameContext {
+  repeated ProtoSquarePiece board             = 1;
+  ProtoColor                turn              = 2;
+  ProtoCastlingRights       castling_rights   = 3;
+  string                    en_passant_square = 4;
+  int32                     half_move_clock   = 5;
+  repeated ProtoMove        moves             = 6;
+  ProtoGameResultKind       result            = 7;
+  repeated ProtoSquarePiece initial_board     = 8;
+}
+
+message ProtoPostMoveStatus {
+  bool is_checkmate             = 1;
+  bool is_stalemate             = 2;
+  bool is_insufficient_material = 3;
+  bool is_check                 = 4;
+  bool is_threefold_repetition  = 5;
+}

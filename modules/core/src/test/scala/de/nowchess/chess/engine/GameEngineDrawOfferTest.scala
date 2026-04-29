@@ -202,7 +202,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
 
     engine.offerDraw(Color.White)
     observer.events.clear()
-    engine.resign(Color.Black)
+    engine.resign()
 
     // Try to accept the now-cleared draw offer
     observer.events.clear()
@@ -222,7 +222,7 @@ class GameEngineDrawOfferTest extends AnyFunSuite with Matchers:
 
     engine.offerDraw(Color.White)
     observer.events.clear()
-    engine.resign(Color.Black)
+    engine.resign()
 
     // Try to accept the now-cleared draw offer
     observer.events.clear()

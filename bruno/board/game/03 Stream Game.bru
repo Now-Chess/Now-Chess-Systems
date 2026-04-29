@@ -1,19 +1,34 @@
 meta {
   name: Stream Game
-  type: http
+  type: ws
   seq: 3
 }
 
-get {
-  url: {{baseUrl}}/api/board/game/{{gameId}}/stream
-  body: none
+ws {
+  url: {{wsBaseUrl}}/api/board/game/{{gameId}}/ws
+  body: ws
   auth: none
 }
 
-headers {
-  Accept: application/x-ndjson
+body:ws {
+  name: move
+  content: '''
+    {
+      "type": "MOVE",
+      "uci": "b1c3"
+    }
+  '''
+}
+
+body:ws {
+  name: ping
+  content: '''
+    {
+      "type": "PING"
+    }
+  '''
 }
 
 vars:pre-request {
-  gameId: tjOgyEcS
+  gameId: j0nPtcjl
 }

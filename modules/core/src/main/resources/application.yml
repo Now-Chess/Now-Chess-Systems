@@ -3,8 +3,111 @@ quarkus:
     port: 8080
   application:
     name: nowchess-core
-  rest-client:
-    io-service:
-      url: http://localhost:8081
-    rule-service:
-      url: http://localhost:8082
+  redis:
+    hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
+  grpc:
+    clients:
+      rule-grpc:
+        host: localhost
+        port: 8082
+      io-grpc:
+        host: localhost
+        port: 8081
+      coordinator-grpc:
+        host: localhost
+        port: 9086
+    server:
+      use-separate-server: false
+
+nowchess:
+  redis:
+    host: localhost
+    port: 6379
+    prefix: nowchess
+
+  internal:
+    secret: 123abc
+
+  coordinator:
+    enabled: ${NOWCHESS_COORDINATOR_ENABLED:false}
+    host: localhost
+    grpc-port: 9086
+    stream-heartbeat-interval: 200ms
+    redis-heartbeat-interval: 2s
+    instance-id: ${HOSTNAME:local}-${quarkus.uuid}
+
+"%dev":
+  mp:
+    jwt:
+      verify:
+        publickey:
+          location: keys/public.pem
+        issuer: nowchess
+  quarkus:
+    http:
+      cors:
+        ~: true
+        origins: http://localhost:4200
+        methods: GET,POST,PUT,DELETE,OPTIONS
+        headers: Content-Type,Accept,Authorization
+    grpc:
+      clients:
+        rule-grpc:
+          host: localhost
+          port: 8082
+        io-grpc:
+          host: localhost
+          port: 8081
+    rest-client:
+      io-service:
+        url: http://localhost:8081
+      rule-service:
+        url: http://localhost:8082
+      store-service:
+        url: http://localhost:8085
+
+"%deployed":
+  mp:
+    jwt:
+      verify:
+        publickey:
+          location: ${JWT_PUBLIC_KEY_PATH:keys/public.pem}
+        issuer: nowchess
+  quarkus:
+    http:
+      cors:
+        ~: true
+        origins: ${CORS_ORIGINS}
+        methods: GET,POST,PUT,DELETE,OPTIONS
+        headers: Content-Type,Accept,Authorization
+    grpc:
+      clients:
+        rule-grpc:
+          host: ${RULE_SERVICE_HOST}
+          port: ${RULE_SERVICE_GRPC_PORT:9082}
+        io-grpc:
+          host: ${IO_SERVICE_HOST}
+          port: ${IO_SERVICE_GRPC_PORT:9081}
+        coordinator-grpc:
+          host: ${COORDINATOR_SERVICE_HOST:localhost}
+          port: ${COORDINATOR_SERVICE_GRPC_PORT:9086}
+    rest-client:
+      io-service:
+        url: ${IO_SERVICE_URL}
+      rule-service:
+        url: ${RULE_SERVICE_URL}
+      store-service:
+        url: ${STORE_SERVICE_URL}
+  nowchess:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      prefix: ${REDIS_PREFIX:nowchess}
+
+    coordinator:
+      enabled: ${NOWCHESS_COORDINATOR_ENABLED:true}
+      host: ${COORDINATOR_SERVICE_HOST:localhost}
+      grpc-port: ${COORDINATOR_SERVICE_GRPC_PORT:9086}
+      stream-heartbeat-interval: 200ms
+      redis-heartbeat-interval: 2s
+      instance-id: ${HOSTNAME:local}-${quarkus.uuid}

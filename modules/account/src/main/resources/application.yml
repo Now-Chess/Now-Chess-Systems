@@ -1,0 +1,64 @@
+quarkus:
+  http:
+    port: 8083
+  application:
+    name: nowchess-account
+  redis:
+    hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
+  rest-client:
+    core-service:
+      url: http://localhost:8080
+  smallrye-openapi:
+    info-title: NowChess Account Service
+    path: /openapi
+  swagger-ui:
+    always-include: true
+    path: /swagger-ui
+  datasource:
+    db-kind: h2
+    username: sa
+    password: ""
+    jdbc:
+      url: jdbc:h2:mem:nowchess;DB_CLOSE_DELAY=-1
+  hibernate-orm:
+    schema-management:
+      strategy: drop-and-create
+
+nowchess:
+  redis:
+    host: localhost
+    port: 6379
+    prefix: nowchess
+  internal:
+    secret: 123abc
+
+"%deployed":
+  quarkus:
+    rest-client:
+      core-service:
+        url: ${CORE_SERVICE_URL}
+  nowchess:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      prefix: ${REDIS_PREFIX:nowchess}
+    datasource:
+      db-kind: postgresql
+      username: ${DB_USER}
+      password: ${DB_PASSWORD}
+      jdbc:
+        url: ${DB_URL}
+    hibernate-orm:
+      schema-management:
+        strategy: update
+  mp:
+    jwt:
+      verify:
+        publickey:
+          location: ${JWT_PUBLIC_KEY_PATH:keys/public.pem}
+        issuer: nowchess
+  smallrye:
+    jwt:
+      sign:
+        key:
+          location: ${JWT_PRIVATE_KEY_PATH:keys/private.pem}

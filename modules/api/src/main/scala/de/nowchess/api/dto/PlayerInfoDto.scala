@@ -1,3 +1,5 @@
 package de.nowchess.api.dto
 
-final case class PlayerInfoDto(id: String, displayName: String)
+import de.nowchess.api.player.PlayerType
+
+final case class PlayerInfoDto(id: String, displayName: String, playerType: PlayerType)

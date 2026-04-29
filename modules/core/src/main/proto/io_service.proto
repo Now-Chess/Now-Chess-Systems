@@ -1,0 +1,31 @@
+syntax = "proto3";
+option java_package = "de.nowchess.core.proto";
+option java_multiple_files = true;
+option java_outer_classname = "IoServiceProto";
+
+import "chess_types.proto";
+
+message ProtoImportFenRequest {
+  string fen = 1;
+}
+
+message ProtoImportPgnRequest {
+  string pgn = 1;
+}
+
+message ProtoCombinedExport {
+  string fen = 1;
+  string pgn = 2;
+}
+
+message ProtoStringResult {
+  string value = 1;
+}
+
+service IoService {
+  rpc ImportFen      (ProtoImportFenRequest) returns (ProtoGameContext);
+  rpc ImportPgn      (ProtoImportPgnRequest) returns (ProtoGameContext);
+  rpc ExportCombined (ProtoGameContext)      returns (ProtoCombinedExport);
+  rpc ExportFen      (ProtoGameContext)      returns (ProtoStringResult);
+  rpc ExportPgn      (ProtoGameContext)      returns (ProtoStringResult);
+}

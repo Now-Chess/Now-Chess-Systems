@@ -4,7 +4,7 @@ import de.nowchess.api.board.Square
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.Move
 import de.nowchess.chess.client.{RuleMoveRequest, RuleServiceClient, RuleSquareRequest}
-import de.nowchess.api.rules.RuleSet
+import de.nowchess.api.rules.{PostMoveStatus, RuleSet}
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import org.eclipse.microprofile.rest.client.inject.RestClient
@@ -49,3 +49,6 @@ class RuleSetRestAdapter extends RuleSet:
 
   def applyMove(ctx: GameContext)(move: Move): GameContext =
     client.applyMove(RuleMoveRequest(ctx, move))
+
+  override def postMoveStatus(ctx: GameContext): PostMoveStatus =
+    client.postMoveStatus(ctx)

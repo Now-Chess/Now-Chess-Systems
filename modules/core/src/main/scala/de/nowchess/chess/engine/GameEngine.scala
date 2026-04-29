@@ -2,15 +2,25 @@ package de.nowchess.chess.engine
 
 import de.nowchess.api.board.{Board, Color, Piece, PieceType, Square}
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
-import de.nowchess.api.game.{BotParticipant, DrawReason, GameContext, GameResult, Human, Participant}
-import de.nowchess.api.player.{PlayerId, PlayerInfo}
+import de.nowchess.api.game.{
+  ClockState,
+  CorrespondenceClockState,
+  DrawReason,
+  GameContext,
+  GameResult,
+  LiveClockState,
+  TimeControl,
+  WinReason,
+}
 import de.nowchess.chess.controller.Parser
 import de.nowchess.chess.observer.*
-import de.nowchess.chess.command.{CommandInvoker, MoveCommand, MoveResult}
+import de.nowchess.api.error.GameError
+import de.nowchess.api.game.WinReason.{Checkmate, Resignation}
 import de.nowchess.api.io.{GameContextExport, GameContextImport}
 import de.nowchess.api.rules.RuleSet
 
-import scala.concurrent.{ExecutionContext, Future}
+import java.time.Instant
+import java.util.concurrent.{Executors, ScheduledExecutorService, ScheduledFuture, TimeUnit}
 
 /** Pure game engine that manages game state and notifies observers of state changes. All rule queries delegate to the
   * injected RuleSet. All user interactions go through Commands; state changes are broadcast via GameEvents.
@@ -18,10 +28,11 @@ import scala.concurrent.{ExecutionContext, Future}
 class GameEngine(
     val initialContext: GameContext = GameContext.initial,
     val ruleSet: RuleSet,
-    val participants: Map[Color, Participant] = Map(
-      Color.White -> Human(PlayerInfo(PlayerId("p1"), "Player 1")),
-      Color.Black -> Human(PlayerInfo(PlayerId("p2"), "Player 2")),
-    ),
+    val timeControl: TimeControl = TimeControl.Unlimited,
+    initialClockState: Option[ClockState] = None,
+    initialDrawOffer: Option[Color] = None,
+    initialRedoStack: List[Move] = Nil,
+    initialTakebackRequest: Option[Color] = None,
 ) extends Observable:
   // Ensure that initialBoard is set correctly for threefold repetition detection
   private val contextWithInitialBoard =
@@ -31,25 +42,42 @@ class GameEngine(
   @SuppressWarnings(Array("DisableSyntax.var"))
   private var currentContext: GameContext = contextWithInitialBoard
   @SuppressWarnings(Array("DisableSyntax.var"))
-  private var pendingDrawOffer: Option[Color] = None
-  private val invoker                         = new CommandInvoker()
+  private var pendingDrawOffer: Option[Color] = initialDrawOffer
+  @SuppressWarnings(Array("DisableSyntax.var"))
+  private var clockState: Option[ClockState] =
+    initialClockState.orElse(ClockState.fromTimeControl(timeControl, contextWithInitialBoard.turn, Instant.now()))
+  @SuppressWarnings(Array("DisableSyntax.var"))
+  private var scheduledCheck: Option[ScheduledFuture[?]] = None
+  // One shared scheduler per engine; shut down with the game.
+  private val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
+  @SuppressWarnings(Array("DisableSyntax.var"))
+  private var redoStack: List[Move] = initialRedoStack
+  @SuppressWarnings(Array("DisableSyntax.var"))
+  private var isRedoing: Boolean = false
+  @SuppressWarnings(Array("DisableSyntax.var"))
+  private var pendingTakebackRequest: Option[Color] = initialTakebackRequest
 
-  private implicit val ec: ExecutionContext = ExecutionContext.global
+  // Start scheduler immediately for live clocks so passive expiry fires without waiting for a move.
+  clockState.foreach(scheduleExpiryCheck)
 
   // Synchronized accessors for current state
-  def board: Board                      = synchronized(currentContext.board)
-  def turn: Color                       = synchronized(currentContext.turn)
-  def context: GameContext              = synchronized(currentContext)
-  def pendingDrawOfferBy: Option[Color] = synchronized(pendingDrawOffer)
+  def board: Board                          = synchronized(currentContext.board)
+  def turn: Color                           = synchronized(currentContext.turn)
+  def context: GameContext                  = synchronized(currentContext)
+  def pendingDrawOfferBy: Option[Color]     = synchronized(pendingDrawOffer)
+  def currentClockState: Option[ClockState] = synchronized(clockState)
 
   /** Check if undo is available. */
-  def canUndo: Boolean = synchronized(invoker.canUndo)
+  def canUndo: Boolean = synchronized(currentContext.moves.nonEmpty)
 
   /** Check if redo is available. */
-  def canRedo: Boolean = synchronized(invoker.canRedo)
+  def canRedo: Boolean = synchronized(redoStack.nonEmpty)
 
-  /** Get the command history for inspection (testing/debugging). */
-  def commandHistory: List[de.nowchess.chess.command.Command] = synchronized(invoker.history)
+  /** Get redo stack moves for inspection. */
+  def redoStackMoves: List[Move] = synchronized(redoStack)
+
+  /** Get pending takeback request (if any). */
+  def pendingTakebackRequestBy: Option[Color] = synchronized(pendingTakebackRequest)
 
   /** Process a raw move input string and update game state if valid. Notifies all observers of the outcome via
     * GameEvent.
@@ -126,13 +154,17 @@ class GameEngine(
   def redo(): Unit = synchronized(performRedo())
 
   /** Resign from the game. The opponent wins. */
+  def resign(): Unit = synchronized(resign(currentContext.turn))
+
   def resign(color: Color): Unit = synchronized {
     if currentContext.result.isDefined then
       notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.GameAlreadyOver))
     else
-      currentContext = currentContext.withResult(Some(GameResult.Win(color.opposite)))
+      currentContext = currentContext.withResult(Some(GameResult.Win(color.opposite, Resignation)))
       pendingDrawOffer = None
-      invoker.clear()
+      pendingTakebackRequest = None
+      stopClock()
+      redoStack = Nil
       notifyObservers(ResignEvent(currentContext, color))
   }
 
@@ -162,7 +194,9 @@ class GameEngine(
         case Some(_) =>
           currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.Agreement)))
           pendingDrawOffer = None
-          invoker.clear()
+          pendingTakebackRequest = None
+          stopClock()
+          redoStack = Nil
           notifyObservers(DrawEvent(currentContext, DrawReason.Agreement))
   }
 
@@ -187,11 +221,13 @@ class GameEngine(
       notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.GameAlreadyOver))
     else if currentContext.halfMoveClock >= 100 then
       currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.FiftyMoveRule)))
-      invoker.clear()
+      stopClock()
+      redoStack = Nil
       notifyObservers(DrawEvent(currentContext, DrawReason.FiftyMoveRule))
     else if ruleSet.isThreefoldRepetition(currentContext) then
       currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.ThreefoldRepetition)))
-      invoker.clear()
+      stopClock()
+      redoStack = Nil
       notifyObservers(DrawEvent(currentContext, DrawReason.ThreefoldRepetition))
     else notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.DrawCannotBeClaimed))
   }
@@ -199,40 +235,44 @@ class GameEngine(
   /** Load a game using the provided importer. If the imported context has moves, they are replayed through the command
     * system. Otherwise, the position is set directly. Notifies observers with PgnLoadedEvent on success.
     */
-  def loadGame(importer: GameContextImport, input: String): Either[String, Unit] = synchronized {
+  def loadGame(importer: GameContextImport, input: String): Either[GameError, Unit] = synchronized {
     importer.importGameContext(input) match
       case Left(err) => Left(err)
       case Right(ctx) =>
         replayGame(ctx).map { _ =>
           pendingDrawOffer = None
+          pendingTakebackRequest = None
+          redoStack = Nil
+          stopClock()
+          clockState = ClockState.fromTimeControl(timeControl, currentContext.turn, Instant.now())
           notifyObservers(PgnLoadedEvent(currentContext))
         }
   }
 
-  private def replayGame(ctx: GameContext): Either[String, Unit] =
+  private def replayGame(ctx: GameContext): Either[GameError, Unit] =
     val savedContext = currentContext
     currentContext = GameContext.initial
-    invoker.clear()
+    redoStack = Nil
 
     if ctx.moves.isEmpty then
       currentContext = ctx.copy(initialBoard = ctx.board)
       Right(())
     else replayMoves(ctx.moves, savedContext)
 
-  private[engine] def replayMoves(moves: List[Move], savedContext: GameContext): Either[String, Unit] =
-    val result = moves.foldLeft[Either[String, Unit]](Right(())) { (acc, move) =>
+  private[engine] def replayMoves(moves: List[Move], savedContext: GameContext): Either[GameError, Unit] =
+    val result = moves.foldLeft[Either[GameError, Unit]](Right(())) { (acc, move) =>
       acc.flatMap(_ => applyReplayMove(move))
     }
     result.left.foreach(_ => currentContext = savedContext)
     result
 
-  private def applyReplayMove(move: Move): Either[String, Unit] =
+  private def applyReplayMove(move: Move): Either[GameError, Unit] =
     val legal = ruleSet.legalMoves(currentContext)(move.from)
     val candidate = move.moveType match
       case MoveType.Promotion(pp) => legal.find(m => m.to == move.to && m.moveType == MoveType.Promotion(pp))
       case _                      => legal.find(_.to == move.to)
     candidate match
-      case None     => Left("Illegal move.")
+      case None     => Left(GameError.IllegalMove)
       case Some(lm) => executeMove(lm); Right(())
 
   /** Export the current game context using the provided exporter. */
@@ -247,7 +287,10 @@ class GameEngine(
       else newContext
     currentContext = contextWithInitialBoard
     pendingDrawOffer = None
-    invoker.clear()
+    pendingTakebackRequest = None
+    redoStack = Nil
+    stopClock()
+    clockState = ClockState.fromTimeControl(timeControl, currentContext.turn, Instant.now())
     notifyObservers(BoardResetEvent(currentContext))
   }
 
@@ -255,45 +298,88 @@ class GameEngine(
   def reset(): Unit = synchronized {
     currentContext = GameContext.initial
     pendingDrawOffer = None
-    invoker.clear()
+    pendingTakebackRequest = None
+    redoStack = Nil
+    stopClock()
+    clockState = ClockState.fromTimeControl(timeControl, currentContext.turn, Instant.now())
     notifyObservers(BoardResetEvent(currentContext))
-  }
-
-  /** Resign the game on behalf of the side to move. */
-  def resign(): Unit = synchronized {
-    if currentContext.result.isEmpty then
-      val winner = currentContext.turn.opposite
-      currentContext = currentContext.withResult(Some(GameResult.Win(winner)))
-      invoker.clear()
   }
 
   /** Apply a draw result directly (for agreement, fifty-move claim, etc.). */
   def applyDraw(reason: DrawReason): Unit = synchronized {
     if currentContext.result.isEmpty then
       currentContext = currentContext.withResult(Some(GameResult.Draw(reason)))
-      invoker.clear()
+      stopClock()
+      redoStack = Nil
       notifyObservers(DrawEvent(currentContext, reason))
   }
 
-  /** Kick off play when the side to move is a bot (e.g. bot-vs-bot from initial position). */
-  def startGame(): Unit = synchronized(requestBotMoveIfNeeded())
+  /** Inject clock state directly (for testing). */
+  private[engine] def injectClockState(cs: Option[ClockState]): Unit = synchronized { clockState = cs }
+
+  // ──── Clock helpers ────
+
+  private def advanceClock(movedColor: Color): Unit =
+    clockState.foreach { cs =>
+      cs.afterMove(movedColor, Instant.now()) match
+        case Left(flagged)  => clockState = None; cancelScheduled(); handleTimeFlag(flagged)
+        case Right(updated) => clockState = Some(updated); scheduleExpiryCheck(updated)
+    }
+
+  private def handleTimeFlag(flagged: Color): Unit =
+    val result =
+      if ruleSet.isInsufficientMaterial(currentContext) then GameResult.Draw(DrawReason.InsufficientMaterial)
+      else GameResult.Win(flagged.opposite, WinReason.TimeControl)
+    currentContext = currentContext.withResult(Some(result))
+    pendingDrawOffer = None
+    pendingTakebackRequest = None
+    redoStack = Nil
+    notifyObservers(TimeFlagEvent(currentContext, flagged))
+
+  private def scheduleExpiryCheck(cs: ClockState): Unit =
+    cancelScheduled()
+    cs match
+      case live: LiveClockState =>
+        val delayMs = math.max(0L, live.remainingMs(live.activeColor, Instant.now()))
+        val future = scheduler.schedule(
+          new Runnable { def run(): Unit = checkClockExpiry() },
+          delayMs,
+          TimeUnit.MILLISECONDS,
+        )
+        scheduledCheck = Some(future)
+      case _ => ()
+
+  private def cancelScheduled(): Unit =
+    scheduledCheck.foreach(_.cancel(false))
+    scheduledCheck = None
+
+  private def stopClock(): Unit =
+    cancelScheduled()
+    clockState = None
+
+  private def checkClockExpiry(): Unit = synchronized {
+    if currentContext.result.isEmpty then
+      clockState.foreach { cs =>
+        if cs.remainingMs(cs.activeColor, Instant.now()) <= 0 then
+          clockState = None
+          handleTimeFlag(cs.activeColor)
+      }
+  }
 
   // ──── Private helpers ────
 
   private def executeMove(move: Move): Unit =
+    if !isRedoing then
+      redoStack = Nil
+      pendingTakebackRequest = None
+
     val contextBefore = currentContext
     val nextContext   = ruleSet.applyMove(currentContext)(move)
     val captured      = computeCaptured(currentContext, move)
-
-    val cmd = MoveCommand(
-      from = move.from,
-      to = move.to,
-      moveResult = Some(MoveResult.Successful(nextContext, captured)),
-      previousContext = Some(contextBefore),
-      notation = translateMoveToNotation(move, contextBefore.board),
-    )
-    invoker.execute(cmd)
+    val notation      = translateMoveToNotation(move, contextBefore.board)
     currentContext = nextContext
+
+    advanceClock(contextBefore.turn)
 
     notifyObservers(
       MoveExecutedEvent(
@@ -304,25 +390,28 @@ class GameEngine(
       ),
     )
 
-    if ruleSet.isCheckmate(currentContext) then
-      val winner = currentContext.turn.opposite
-      currentContext = currentContext.withResult(Some(GameResult.Win(winner)))
-      notifyObservers(CheckmateEvent(currentContext, winner))
-      invoker.clear()
-    else if ruleSet.isStalemate(currentContext) then
-      currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.Stalemate)))
-      notifyObservers(DrawEvent(currentContext, DrawReason.Stalemate))
-      invoker.clear()
-    else if ruleSet.isInsufficientMaterial(currentContext) then
-      currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.InsufficientMaterial)))
-      notifyObservers(DrawEvent(currentContext, DrawReason.InsufficientMaterial))
-      invoker.clear()
-    else if ruleSet.isCheck(currentContext) then notifyObservers(CheckDetectedEvent(currentContext))
+    val status = ruleSet.postMoveStatus(currentContext)
+    if currentContext.result.isEmpty then
+      if status.isCheckmate then
+        val winner = currentContext.turn.opposite
+        currentContext = currentContext.withResult(Some(GameResult.Win(winner, Checkmate)))
+        cancelScheduled()
+        notifyObservers(CheckmateEvent(currentContext, winner))
+        redoStack = Nil
+      else if status.isStalemate then
+        currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.Stalemate)))
+        cancelScheduled()
+        notifyObservers(DrawEvent(currentContext, DrawReason.Stalemate))
+        redoStack = Nil
+      else if status.isInsufficientMaterial then
+        currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.InsufficientMaterial)))
+        cancelScheduled()
+        notifyObservers(DrawEvent(currentContext, DrawReason.InsufficientMaterial))
+        redoStack = Nil
+      else if status.isCheck then notifyObservers(CheckDetectedEvent(currentContext))
 
     if currentContext.halfMoveClock >= 100 then notifyObservers(FiftyMoveRuleAvailableEvent(currentContext))
-    if ruleSet.isThreefoldRepetition(currentContext) then
-      notifyObservers(ThreefoldRepetitionAvailableEvent(currentContext))
-    else requestBotMoveIfNeeded()
+    if status.isThreefoldRepetition then notifyObservers(ThreefoldRepetitionAvailableEvent(currentContext))
 
   private def translateMoveToNotation(move: Move, boardBefore: Board): String =
     move.moveType match
@@ -373,73 +462,67 @@ class GameEngine(
       case _ =>
         context.board.pieceAt(move.to)
 
-  /** Request a move from the opponent bot if it's their turn. Spawns an async task to avoid blocking the engine.
-    */
-  private def requestBotMoveIfNeeded(): Unit =
-    val pendingBotMove = synchronized {
-      participants.get(currentContext.turn) match
-        case Some(BotParticipant(bot)) => Some((bot, currentContext))
-        case _                         => None
-    }
-
-    pendingBotMove.foreach { case (bot, contextAtRequest) =>
-      Future {
-        bot.nextMove(contextAtRequest) match
-          case Some(move) => applyBotMove(move)
-          case None       => handleBotNoMove()
-      }
-    }
-
-  private def applyBotMove(move: Move): Unit =
-    synchronized {
-      val color = currentContext.turn
-      val from  = move.from
-      val to    = move.to
-      currentContext.board.pieceAt(from) match
-        case Some(piece) if piece.color == color =>
-          val legal = ruleSet.legalMoves(currentContext)(from)
-          legal.find(m => m.to == to && m.moveType == move.moveType) match
-            case Some(legalMove) => executeMove(legalMove)
-            case None =>
-              notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.BotMoveIllegal))
-        case _ =>
-          notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.BotMoveInvalidSource))
-    }
-
-  private def handleBotNoMove(): Unit =
-    synchronized {
-      if ruleSet.isCheckmate(currentContext) then
-        val winner = currentContext.turn.opposite
-        notifyObservers(CheckmateEvent(currentContext, winner))
-      else if ruleSet.isStalemate(currentContext) then notifyObservers(DrawEvent(currentContext, DrawReason.Stalemate))
-    }
+  private def replayContextFromMoves(moves: List[Move]): GameContext =
+    moves.foldLeft(contextWithInitialBoard)((ctx, move) => ruleSet.applyMove(ctx)(move))
 
   private def performUndo(): Unit =
-    if invoker.canUndo then
-      val cmd = invoker.history(invoker.getCurrentIndex)
-      (cmd: @unchecked) match
-        case moveCmd: MoveCommand =>
-          moveCmd.previousContext.foreach(currentContext = _)
-          invoker.undo()
-          notifyObservers(MoveUndoneEvent(currentContext, moveCmd.notation))
-    else notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.NothingToUndo))
+    if currentContext.moves.isEmpty then
+      notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.NothingToUndo))
+    else
+      val lastMove = currentContext.moves.last
+      val prevCtx  = replayContextFromMoves(currentContext.moves.dropRight(1))
+      val notation = translateMoveToNotation(lastMove, prevCtx.board)
+      redoStack = lastMove :: redoStack
+      currentContext = prevCtx
+      notifyObservers(MoveUndoneEvent(currentContext, notation))
 
   private def performRedo(): Unit =
-    if invoker.canRedo then
-      val cmd = invoker.history(invoker.getCurrentIndex + 1)
-      (cmd: @unchecked) match
-        case moveCmd: MoveCommand =>
-          for case MoveResult.Successful(nextCtx, cap) <- moveCmd.moveResult do
-            currentContext = nextCtx
-            invoker.redo()
-            val capturedDesc = cap.map(c => s"${c.color.label} ${c.pieceType.label}")
-            notifyObservers(
-              MoveRedoneEvent(
-                currentContext,
-                moveCmd.notation,
-                moveCmd.from.toString,
-                moveCmd.to.toString,
-                capturedDesc,
-              ),
-            )
-    else notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.NothingToRedo))
+    if redoStack.isEmpty then notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.NothingToRedo))
+    else
+      val move = redoStack.head
+      redoStack = redoStack.tail
+      isRedoing = true
+      executeMove(move)
+      isRedoing = false
+
+  def requestTakeback(color: Color): Unit = synchronized {
+    if currentContext.result.isDefined then
+      notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.GameAlreadyOver))
+    else if currentContext.moves.isEmpty then
+      notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.NothingToUndo))
+    else
+      pendingTakebackRequest match
+        case Some(_) =>
+          notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.TakebackRequestPending))
+        case None =>
+          pendingTakebackRequest = Some(color)
+          notifyObservers(TakebackRequestedEvent(currentContext, color))
+  }
+
+  def acceptTakeback(color: Color): Unit = synchronized {
+    if currentContext.result.isDefined then
+      notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.GameAlreadyOver))
+    else
+      pendingTakebackRequest match
+        case None =>
+          notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.NoTakebackRequestToAccept))
+        case Some(requester) if requester == color =>
+          notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.CannotAcceptOwnTakebackRequest))
+        case Some(_) =>
+          pendingTakebackRequest = None
+          performUndo()
+  }
+
+  def declineTakeback(color: Color): Unit = synchronized {
+    if currentContext.result.isDefined then
+      notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.GameAlreadyOver))
+    else
+      pendingTakebackRequest match
+        case None =>
+          notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.NoTakebackRequestToDecline))
+        case Some(requester) if requester == color =>
+          notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.CannotDeclineOwnTakebackRequest))
+        case Some(_) =>
+          pendingTakebackRequest = None
+          notifyObservers(TakebackDeclinedEvent(currentContext, color))
+  }

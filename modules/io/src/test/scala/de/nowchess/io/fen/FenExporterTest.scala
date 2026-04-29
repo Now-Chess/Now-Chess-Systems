@@ -97,7 +97,7 @@ class FenExporterTest extends AnyFunSuite with Matchers:
     val fen = FenExporter.gameContextToFen(gameContext)
     FenParser.parseFen(fen) match
       case Right(ctx) => ctx.halfMoveClock shouldBe 42
-      case Left(err)  => fail(s"FEN parsing failed: $err")
+      case Left(err)  => fail(s"FEN parsing failed: ${err.message}")
 
   test("exportGameContext forwards to gameContextToFen"):
     val ctx = GameContext.initial

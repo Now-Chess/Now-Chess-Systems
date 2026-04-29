@@ -60,15 +60,6 @@ case class MoveUndoneEvent(
     pgnNotation: String,
 ) extends GameEvent
 
-/** Fired when a previously undone move is redone, carrying PGN notation of the replayed move. */
-case class MoveRedoneEvent(
-    context: GameContext,
-    pgnNotation: String,
-    fromSquare: String,
-    toSquare: String,
-    capturedPiece: Option[String],
-) extends GameEvent
-
 /** Fired after a PGN string is successfully loaded and all moves are replayed into history. */
 case class PgnLoadedEvent(
     context: GameContext,
@@ -88,6 +79,24 @@ case class DrawOfferEvent(
 
 /** Fired when the opponent declines a draw offer. */
 case class DrawOfferDeclinedEvent(
+    context: GameContext,
+    declinedBy: Color,
+) extends GameEvent
+
+/** Fired when a player's clock expires. */
+case class TimeFlagEvent(
+    context: GameContext,
+    flaggedColor: Color,
+) extends GameEvent
+
+/** Fired when a player requests a takeback of the last move. */
+case class TakebackRequestedEvent(
+    context: GameContext,
+    requestedBy: Color,
+) extends GameEvent
+
+/** Fired when a player declines a takeback request. */
+case class TakebackDeclinedEvent(
     context: GameContext,
     declinedBy: Color,
 ) extends GameEvent

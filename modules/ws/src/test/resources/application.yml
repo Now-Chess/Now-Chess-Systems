@@ -1,0 +1,11 @@
+quarkus:
+  http:
+    port: 8084
+  application:
+    name: nowchess-ws
+
+nowchess:
+  redis:
+    host: localhost
+    port: 6379
+    prefix: test

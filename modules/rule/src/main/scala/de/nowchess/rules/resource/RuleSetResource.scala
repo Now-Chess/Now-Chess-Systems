@@ -4,6 +4,8 @@ import de.nowchess.api.board.Square
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.Move
 import de.nowchess.rules.dto.*
+import de.nowchess.api.rules.PostMoveStatus
+import de.nowchess.security.InternalOnly
 import de.nowchess.rules.sets.DefaultRules
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.ws.rs.*
@@ -11,6 +13,7 @@ import jakarta.ws.rs.core.MediaType
 
 @Path("/api/rules")
 @ApplicationScoped
+@InternalOnly
 class RuleSetResource:
   private val rules = DefaultRules
 
@@ -88,3 +91,10 @@ class RuleSetResource:
   @Produces(Array(MediaType.APPLICATION_JSON))
   def applyMove(req: ContextMoveRequest): GameContext =
     rules.applyMove(req.context)(req.move)
+
+  @POST
+  @Path("/post-move-status")
+  @Consumes(Array(MediaType.APPLICATION_JSON))
+  @Produces(Array(MediaType.APPLICATION_JSON))
+  def postMoveStatus(ctx: GameContext): PostMoveStatus =
+    rules.postMoveStatus(ctx)

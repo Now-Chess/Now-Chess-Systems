@@ -1,0 +1,41 @@
+quarkus:
+  application:
+    name: nowchess-store
+  http.port: 8085
+  config:
+    yaml:
+      enabled: true
+  redis:
+    hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
+  datasource:
+    db-kind: postgresql
+    username: ${DB_USER:nowchess}
+    password: ${DB_PASSWORD:nowchess}
+    jdbc:
+      url: ${DB_URL:jdbc:postgresql://localhost:5432/nowchess}
+  hibernate-orm:
+    database:
+      generation: update
+
+nowchess:
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    prefix: ${REDIS_PREFIX:nowchess}
+
+"%test":
+  quarkus:
+    datasource:
+      db-kind: h2
+      username: sa
+      password: ""
+      jdbc:
+        url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    hibernate-orm:
+      database:
+        generation: drop-and-create
+  nowchess:
+    redis:
+      host: localhost
+      port: 6379
+      prefix: test-store

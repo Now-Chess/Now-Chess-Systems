@@ -2,8 +2,11 @@ package de.nowchess.chess.client
 
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.Move
+import de.nowchess.api.rules.PostMoveStatus
+import de.nowchess.security.InternalSecretClientFilter
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.MediaType
+import org.eclipse.microprofile.rest.client.annotation.RegisterProvider
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient
 
 case class RuleSquareRequest(context: GameContext, square: String)
@@ -11,6 +14,7 @@ case class RuleMoveRequest(context: GameContext, move: Move)
 
 @Path("/api/rules")
 @RegisterRestClient(configKey = "rule-service")
+@RegisterProvider(classOf[InternalSecretClientFilter])
 trait RuleServiceClient:
 
   @POST
@@ -72,3 +76,9 @@ trait RuleServiceClient:
   @Consumes(Array(MediaType.APPLICATION_JSON))
   @Produces(Array(MediaType.APPLICATION_JSON))
   def applyMove(req: RuleMoveRequest): GameContext
+
+  @POST
+  @Path("/post-move-status")
+  @Consumes(Array(MediaType.APPLICATION_JSON))
+  @Produces(Array(MediaType.APPLICATION_JSON))
+  def postMoveStatus(ctx: GameContext): PostMoveStatus

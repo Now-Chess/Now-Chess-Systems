@@ -1,6 +1,7 @@
 package de.nowchess.api.game
 
 import de.nowchess.api.board.{Board, CastlingRights, Color, File, Rank, Square}
+import de.nowchess.api.game.WinReason.Checkmate
 import de.nowchess.api.move.Move
 import de.nowchess.api.game.{DrawReason, GameResult}
 import org.scalatest.funsuite.AnyFunSuite
@@ -61,7 +62,7 @@ class GameContextTest extends AnyFunSuite with Matchers:
     GameContext.initial.withMove(move).moves shouldBe List(move)
 
   test("withResult sets Win result"):
-    val win = Some(GameResult.Win(Color.White))
+    val win = Some(GameResult.Win(Color.White, Checkmate))
     GameContext.initial.withResult(win).result shouldBe win
 
   test("withResult sets Draw result"):
@@ -69,7 +70,7 @@ class GameContextTest extends AnyFunSuite with Matchers:
     GameContext.initial.withResult(draw).result shouldBe draw
 
   test("withResult clears result"):
-    val ctx = GameContext.initial.withResult(Some(GameResult.Win(Color.Black)))
+    val ctx = GameContext.initial.withResult(Some(GameResult.Win(Color.Black, Checkmate)))
     ctx.withResult(None).result shouldBe None
 
   test("kingSquare returns white king position"):

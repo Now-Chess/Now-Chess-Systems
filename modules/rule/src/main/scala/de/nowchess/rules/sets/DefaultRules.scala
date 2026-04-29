@@ -3,60 +3,463 @@ package de.nowchess.rules.sets
 import de.nowchess.api.board.*
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
-import de.nowchess.api.rules.RuleSet
+import de.nowchess.api.rules.{PostMoveStatus, RuleSet}
 
-import scala.annotation.tailrec
-
-/** Standard chess rules implementation. Handles move generation, validation, check/checkmate/stalemate detection.
+/** Standard chess rules — optimized hot path.
+  *
+  * Internal representation: Array[Int](64), indexed by file + rank*8. Piece encoding: 0=empty, +1..+6=white
+  * (P/N/B/R/Q/K), -1..-6=black. Move generation uses pre-computed ray/jump tables and an integer-encoded move word to
+  * avoid heap allocation in tight loops. Check detection uses make/unmake on the mutable array instead of copying the
+  * immutable Board map.
   */
+// scalafix:off DisableSyntax.var
+// scalafix:off DisableSyntax.return
 object DefaultRules extends RuleSet:
 
-  /** Represents a position for threefold repetition (board state + turn + castling + en passant). */
-  private case class Position(
-      board: Board,
-      turn: Color,
-      castlingRights: CastlingRights,
-      enPassantSquare: Option[Square],
-  )
+  // ─── Piece constants ──────────────────────────────────────────────────────
+  private val PAWN = 1; private val KNIGHT = 2; private val BISHOP = 3
+  private val ROOK = 4; private val QUEEN  = 5; private val KING   = 6
 
-  // ── Direction vectors ──────────────────────────────────────────────
-  private val RookDirs: List[(Int, Int)]   = List((1, 0), (-1, 0), (0, 1), (0, -1))
-  private val BishopDirs: List[(Int, Int)] = List((1, 1), (1, -1), (-1, 1), (-1, -1))
-  private val QueenDirs: List[(Int, Int)]  = RookDirs ++ BishopDirs
-  private val KnightJumps: List[(Int, Int)] =
-    List((2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2))
+  private inline def idx(f: Int, r: Int): Int      = f + (r << 3)
+  private inline def fileOf(sq: Int): Int          = sq & 7
+  private inline def rankOf(sq: Int): Int          = sq >> 3
+  private inline def isEmpty(p: Int): Boolean      = p == 0
+  private inline def isWhitePiece(p: Int): Boolean = p > 0
+  private inline def pieceType(p: Int): Int        = if p > 0 then p else -p
 
-  // ── Pawn configuration helpers ─────────────────────────────────────
-  private def pawnForward(color: Color): Int   = if color == Color.White then 1 else -1
-  private def pawnStartRank(color: Color): Int = if color == Color.White then 1 else 6
-  private def pawnPromoRank(color: Color): Int = if color == Color.White then 7 else 0
+  private def encodePiece(c: Color, pt: PieceType): Int =
+    val raw = pt match
+      case PieceType.Pawn   => PAWN; case PieceType.Knight => KNIGHT
+      case PieceType.Bishop => BISHOP; case PieceType.Rook => ROOK
+      case PieceType.Queen  => QUEEN; case PieceType.King  => KING
+    if c == Color.White then raw else -raw
 
-  // ── Public API ─────────────────────────────────────────────────────
+  // ─── Pre-computed tables ──────────────────────────────────────────────────
+
+  private val KNIGHT_TARGETS: Array[Array[Int]] = Array.tabulate(64) { sq =>
+    val (f, r) = (fileOf(sq), rankOf(sq))
+    Array((2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)).collect {
+      case (df, dr) if f + df >= 0 && f + df < 8 && r + dr >= 0 && r + dr < 8 => idx(f + df, r + dr)
+    }
+  }
+
+  private val KING_TARGETS: Array[Array[Int]] = Array.tabulate(64) { sq =>
+    val (f, r) = (fileOf(sq), rankOf(sq))
+    Array((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)).collect {
+      case (df, dr) if f + df >= 0 && f + df < 8 && r + dr >= 0 && r + dr < 8 => idx(f + df, r + dr)
+    }
+  }
+
+  // Directions 0-3: rook (N,S,E,W); 4-7: bishop (NE,NW,SE,SW)
+  private val DIR_VECS: Array[(Int, Int)] =
+    Array((0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (-1, 1), (1, -1), (-1, -1))
+
+  // RAY_TABLES(sq)(d) = squares along direction d from sq, nearest first
+  private val RAY_TABLES: Array[Array[Array[Int]]] = Array.tabulate(64, 8) { (sq, d) =>
+    val (df, dr) = DIR_VECS(d)
+    val (f, r)   = (fileOf(sq), rankOf(sq))
+    val buf      = new scala.collection.mutable.ArrayBuffer[Int](7)
+    var nf       = f + df; var nr = r + dr
+    while nf >= 0 && nf < 8 && nr >= 0 && nr < 8 do
+      buf += idx(nf, nr); nf += df; nr += dr
+    buf.toArray
+  }
+
+  // PAWN_ATTACK_SOURCES(colorIdx)(target) = squares from which a pawn of that color attacks target.
+  // White pawn (fwd=+1) at (f±1, r-1) attacks (f, r) → sources are at rank r-1.
+  // Black pawn (fwd=-1) at (f±1, r+1) attacks (f, r) → sources are at rank r+1.
+  private val PAWN_ATTACK_SOURCES: Array[Array[Array[Int]]] = Array.tabulate(2) { colorIdx =>
+    val fwd = if colorIdx == 0 then 1 else -1
+    Array.tabulate(64) { sq =>
+      val (f, r) = (fileOf(sq), rankOf(sq))
+      Array(-1, 1).collect {
+        case df if f + df >= 0 && f + df < 8 && r - fwd >= 0 && r - fwd < 8 => idx(f + df, r - fwd)
+      }
+    }
+  }
+
+  // Pre-computed castling square indices (no runtime string parsing)
+  private val A1 = idx(0, 0); private val B1 = idx(1, 0); private val C1 = idx(2, 0)
+  private val D1 = idx(3, 0); private val E1 = idx(4, 0); private val F1 = idx(5, 0)
+  private val G1 = idx(6, 0); private val H1 = idx(7, 0)
+  private val A8 = idx(0, 7); private val B8 = idx(1, 7); private val C8 = idx(2, 7)
+  private val D8 = idx(3, 7); private val E8 = idx(4, 7); private val F8 = idx(5, 7)
+  private val G8 = idx(6, 7); private val H8 = idx(7, 7)
+
+  // Thread-local mutable board and move buffer — zero heap allocation in hot loops
+  private val tlBoard = ThreadLocal.withInitial[Array[Int]](() => new Array[Int](64))
+  // 320 slots: theoretical max ~218 chess moves, promotion bursts add 4 per pawn-on-7th
+  private val tlMoves = ThreadLocal.withInitial[Array[Int]](() => new Array[Int](320))
+
+  // ─── Move word encoding ───────────────────────────────────────────────────
+  // bits 0-5: from square, bits 6-11: to square, bits 12-15: move kind
+  private val KIND_QUIET   = 0; private val KIND_CAPTURE = 1; private val KIND_EP = 2
+  private val KIND_CASTLEK = 3; private val KIND_CASTLEQ = 4
+  private val KIND_PROMO_Q = 5; private val KIND_PROMO_R = 6
+  private val KIND_PROMO_B = 7; private val KIND_PROMO_N = 8
+
+  private inline def encMove(from: Int, to: Int, kind: Int): Int = from | (to << 6) | (kind << 12)
+  private inline def moveFrom(m: Int): Int                       = m & 63
+  private inline def moveTo(m: Int): Int                         = (m >> 6) & 63
+  private inline def moveKind(m: Int): Int                       = m >> 12
+
+  // ─── Board ↔ Array[Int] ──────────────────────────────────────────────────
+
+  private def fillBoard(board: Board, arr: Array[Int]): Unit =
+    java.util.Arrays.fill(arr, 0)
+    board.pieces.foreach { (sq, piece) =>
+      arr(idx(sq.file.ordinal, sq.rank.ordinal)) = encodePiece(piece.color, piece.pieceType)
+    }
+
+  private def toSquare(sq: Int): Square =
+    Square(File.values(fileOf(sq)), Rank.values(rankOf(sq)))
+
+  // ─── Attack detection (reverse lookup from target) ────────────────────────
+  // Cast rays/jumps FROM the target to find attackers — O(directions × ray_length) vs O(64 × ray_length)
+
+  private def isAttackedByColor(arr: Array[Int], target: Int, byWhite: Boolean): Boolean =
+    val sign     = if byWhite then 1 else -1
+    val colorIdx = if byWhite then 0 else 1
+
+    // Pawn
+    val pawnSrcs = PAWN_ATTACK_SOURCES(colorIdx)(target); var i = 0
+    while i < pawnSrcs.length do
+      if arr(pawnSrcs(i)) == sign * PAWN then return true
+      i += 1
+
+    // Knight
+    val knightSrcs = KNIGHT_TARGETS(target); i = 0
+    while i < knightSrcs.length do
+      if arr(knightSrcs(i)) == sign * KNIGHT then return true
+      i += 1
+
+    // King
+    val kingSrcs = KING_TARGETS(target); i = 0
+    while i < kingSrcs.length do
+      if arr(kingSrcs(i)) == sign * KING then return true
+      i += 1
+
+    // Rook/Queen on rook rays (directions 0-3)
+    val rays = RAY_TABLES(target); i = 0
+    while i < 4 do
+      val ray = rays(i); var j = 0
+      while j < ray.length do
+        val p = arr(ray(j))
+        if p != 0 then
+          if p == sign * ROOK || p == sign * QUEEN then return true
+          j = ray.length // blocked
+        j += 1
+      i += 1
+
+    // Bishop/Queen on bishop rays (directions 4-7)
+    i = 4
+    while i < 8 do
+      val ray = rays(i); var j = 0
+      while j < ray.length do
+        val p = arr(ray(j))
+        if p != 0 then
+          if p == sign * BISHOP || p == sign * QUEEN then return true
+          j = ray.length // blocked
+        j += 1
+      i += 1
+
+    false
+
+  private def findKing(arr: Array[Int], whiteKing: Boolean): Int =
+    val king = if whiteKing then KING else -KING; var sq = 0
+    while sq < 64 do
+      if arr(sq) == king then return sq
+      sq += 1
+    -1
+
+  // ─── Make/unmake for check validation ────────────────────────────────────
+  // Applies move on mutable arr, tests check, undoes — no Map copy.
+
+  private def leavesKingInCheck(arr: Array[Int], move: Int, whiteMoved: Boolean): Boolean =
+    val from      = moveFrom(move); val to = moveTo(move); val kind = moveKind(move)
+    val savedFrom = arr(from); val savedTo = arr(to)
+    var epSq      = -1
+    var rookFrom  = -1; var savedRookPiece = 0; var rookTo          = -1
+
+    kind match
+      case KIND_EP =>
+        epSq = idx(fileOf(to), rankOf(from))
+        arr(to) = savedFrom; arr(from) = 0; arr(epSq) = 0
+
+      case KIND_CASTLEK =>
+        rookFrom = if whiteMoved then H1 else H8
+        rookTo = if whiteMoved then F1 else F8
+        savedRookPiece = arr(rookFrom)
+        arr(to) = savedFrom; arr(from) = 0; arr(rookTo) = savedRookPiece; arr(rookFrom) = 0
+
+      case KIND_CASTLEQ =>
+        rookFrom = if whiteMoved then A1 else A8
+        rookTo = if whiteMoved then D1 else D8
+        savedRookPiece = arr(rookFrom)
+        arr(to) = savedFrom; arr(from) = 0; arr(rookTo) = savedRookPiece; arr(rookFrom) = 0
+
+      case k if k >= KIND_PROMO_Q =>
+        val promoted = k match
+          case KIND_PROMO_Q => if whiteMoved then QUEEN else -QUEEN
+          case KIND_PROMO_R => if whiteMoved then ROOK else -ROOK
+          case KIND_PROMO_B => if whiteMoved then BISHOP else -BISHOP
+          case _            => if whiteMoved then KNIGHT else -KNIGHT
+        arr(to) = promoted; arr(from) = 0
+
+      case _ =>
+        arr(to) = savedFrom; arr(from) = 0
+
+    val kingSq  = findKing(arr, whiteMoved)
+    val inCheck = kingSq >= 0 && isAttackedByColor(arr, kingSq, !whiteMoved)
+
+    // Undo
+    arr(from) = savedFrom; arr(to) = savedTo
+    if epSq >= 0 then arr(epSq) = if whiteMoved then -PAWN else PAWN
+    if rookFrom >= 0 then
+      arr(rookFrom) = savedRookPiece
+      arr(rookTo) = 0
+
+    inCheck
+
+  // ─── Move generation ─────────────────────────────────────────────────────
+
+  private def generateAll(arr: Array[Int], isWhite: Boolean, ctx: GameContext, buf: Array[Int]): Int =
+    var n = 0; var sq = 0
+    while sq < 64 do
+      val p = arr(sq)
+      if !isEmpty(p) && isWhitePiece(p) == isWhite then n = generatePiece(arr, sq, pieceType(p), isWhite, ctx, buf, n)
+      sq += 1
+    n
+
+  private def generatePiece(
+      arr: Array[Int],
+      sq: Int,
+      pt: Int,
+      isWhite: Boolean,
+      ctx: GameContext,
+      buf: Array[Int],
+      n: Int,
+  ): Int =
+    if pt == PAWN then generatePawnMoves(arr, sq, isWhite, ctx, buf, n)
+    else if pt == KNIGHT then generateJumps(arr, sq, isWhite, KNIGHT_TARGETS(sq), buf, n)
+    else if pt == BISHOP then generateRays(arr, sq, isWhite, buf, n, rookRays = false)
+    else if pt == ROOK then generateRays(arr, sq, isWhite, buf, n, rookRays = true)
+    else if pt == QUEEN then
+      val n2 = generateRays(arr, sq, isWhite, buf, n, rookRays = true)
+      generateRays(arr, sq, isWhite, buf, n2, rookRays = false)
+    else generateKingMoves(arr, sq, isWhite, ctx, buf, n)
+
+  private def generateJumps(
+      arr: Array[Int],
+      from: Int,
+      isWhite: Boolean,
+      targets: Array[Int],
+      buf: Array[Int],
+      start: Int,
+  ): Int =
+    var n = start; var i = 0
+    while i < targets.length do
+      val to = targets(i); val tgt = arr(to)
+      if isEmpty(tgt) then
+        buf(n) = encMove(from, to, KIND_QUIET); n += 1
+      else if isWhitePiece(tgt) != isWhite then
+        buf(n) = encMove(from, to, KIND_CAPTURE); n += 1
+      i += 1
+    n
+
+  private def generateRays(
+      arr: Array[Int],
+      from: Int,
+      isWhite: Boolean,
+      buf: Array[Int],
+      start: Int,
+      rookRays: Boolean,
+  ): Int =
+    var n    = start
+    val rays = RAY_TABLES(from)
+    val d0   = if rookRays then 0 else 4
+    val d1   = if rookRays then 4 else 8
+    var d    = d0
+    while d < d1 do
+      val ray = rays(d); var j = 0
+      while j < ray.length do
+        val to = ray(j); val tgt = arr(to)
+        if isEmpty(tgt) then
+          buf(n) = encMove(from, to, KIND_QUIET); n += 1
+        else
+          if isWhitePiece(tgt) != isWhite then
+            buf(n) = encMove(from, to, KIND_CAPTURE); n += 1
+          j = ray.length
+        j += 1
+      d += 1
+    n
+
+  private def generateKingMoves(
+      arr: Array[Int],
+      from: Int,
+      isWhite: Boolean,
+      ctx: GameContext,
+      buf: Array[Int],
+      start: Int,
+  ): Int =
+    val n = generateJumps(arr, from, isWhite, KING_TARGETS(from), buf, start)
+    generateCastlingMoves(arr, from, isWhite, ctx, buf, n)
+
+  private def generateCastlingMoves(
+      arr: Array[Int],
+      from: Int,
+      isWhite: Boolean,
+      ctx: GameContext,
+      buf: Array[Int],
+      start: Int,
+  ): Int =
+    var n  = start
+    val cr = ctx.castlingRights
+    if isWhite && from == E1 then
+      if cr.whiteKingSide && isEmpty(arr(F1)) && isEmpty(arr(G1)) &&
+        arr(E1) == KING && arr(H1) == ROOK &&
+        !isAttackedByColor(arr, E1, false) &&
+        !isAttackedByColor(arr, F1, false) &&
+        !isAttackedByColor(arr, G1, false)
+      then
+        buf(n) = encMove(E1, G1, KIND_CASTLEK); n += 1
+      if cr.whiteQueenSide && isEmpty(arr(D1)) && isEmpty(arr(C1)) && isEmpty(arr(B1)) &&
+        arr(E1) == KING && arr(A1) == ROOK &&
+        !isAttackedByColor(arr, E1, false) &&
+        !isAttackedByColor(arr, D1, false) &&
+        !isAttackedByColor(arr, C1, false)
+      then
+        buf(n) = encMove(E1, C1, KIND_CASTLEQ); n += 1
+    else if !isWhite && from == E8 then
+      if cr.blackKingSide && isEmpty(arr(F8)) && isEmpty(arr(G8)) &&
+        arr(E8) == -KING && arr(H8) == -ROOK &&
+        !isAttackedByColor(arr, E8, true) &&
+        !isAttackedByColor(arr, F8, true) &&
+        !isAttackedByColor(arr, G8, true)
+      then
+        buf(n) = encMove(E8, G8, KIND_CASTLEK); n += 1
+      if cr.blackQueenSide && isEmpty(arr(D8)) && isEmpty(arr(C8)) && isEmpty(arr(B8)) &&
+        arr(E8) == -KING && arr(A8) == -ROOK &&
+        !isAttackedByColor(arr, E8, true) &&
+        !isAttackedByColor(arr, D8, true) &&
+        !isAttackedByColor(arr, C8, true)
+      then
+        buf(n) = encMove(E8, C8, KIND_CASTLEQ); n += 1
+    n
+
+  private def generatePawnMoves(
+      arr: Array[Int],
+      from: Int,
+      isWhite: Boolean,
+      ctx: GameContext,
+      buf: Array[Int],
+      start: Int,
+  ): Int =
+    var n         = start
+    val f         = fileOf(from); val r = rankOf(from)
+    val fwd       = if isWhite then 1 else -1
+    val startRank = if isWhite then 1 else 6
+    val promoRank = if isWhite then 7 else 0
+    val r1        = r + fwd
+
+    if r1 >= 0 && r1 < 8 then
+      val to1 = idx(f, r1)
+      if isEmpty(arr(to1)) then
+        if r1 == promoRank then
+          buf(n) = encMove(from, to1, KIND_PROMO_Q); n += 1
+          buf(n) = encMove(from, to1, KIND_PROMO_R); n += 1
+          buf(n) = encMove(from, to1, KIND_PROMO_B); n += 1
+          buf(n) = encMove(from, to1, KIND_PROMO_N); n += 1
+        else
+          buf(n) = encMove(from, to1, KIND_QUIET); n += 1
+          if r == startRank then
+            val to2 = idx(f, r + fwd * 2)
+            if isEmpty(arr(to2)) then
+              buf(n) = encMove(from, to2, KIND_QUIET); n += 1
+
+      var di = 0
+      while di < 2 do
+        val nf = f + (if di == 0 then -1 else 1)
+        if nf >= 0 && nf < 8 then
+          val to  = idx(nf, r1)
+          val tgt = arr(to)
+          if !isEmpty(tgt) && isWhitePiece(tgt) != isWhite then
+            if r1 == promoRank then
+              buf(n) = encMove(from, to, KIND_PROMO_Q); n += 1
+              buf(n) = encMove(from, to, KIND_PROMO_R); n += 1
+              buf(n) = encMove(from, to, KIND_PROMO_B); n += 1
+              buf(n) = encMove(from, to, KIND_PROMO_N); n += 1
+            else
+              buf(n) = encMove(from, to, KIND_CAPTURE); n += 1
+        di += 1
+
+    ctx.enPassantSquare.foreach { epSq =>
+      val epI = idx(epSq.file.ordinal, epSq.rank.ordinal)
+      val epF = fileOf(epI); val epR = rankOf(epI)
+      if epR == r1 && (epF == f - 1 || epF == f + 1) then
+        buf(n) = encMove(from, epI, KIND_EP); n += 1
+    }
+    n
+
+  // ─── Decode integer move word → API Move ─────────────────────────────────
+
+  private def decodeMoveToApi(m: Int): Move =
+    val fromSq = toSquare(moveFrom(m)); val toSq = toSquare(moveTo(m))
+    moveKind(m) match
+      case KIND_QUIET   => Move(fromSq, toSq)
+      case KIND_CAPTURE => Move(fromSq, toSq, MoveType.Normal(isCapture = true))
+      case KIND_EP      => Move(fromSq, toSq, MoveType.EnPassant)
+      case KIND_CASTLEK => Move(fromSq, toSq, MoveType.CastleKingside)
+      case KIND_CASTLEQ => Move(fromSq, toSq, MoveType.CastleQueenside)
+      case KIND_PROMO_Q => Move(fromSq, toSq, MoveType.Promotion(PromotionPiece.Queen))
+      case KIND_PROMO_R => Move(fromSq, toSq, MoveType.Promotion(PromotionPiece.Rook))
+      case KIND_PROMO_B => Move(fromSq, toSq, MoveType.Promotion(PromotionPiece.Bishop))
+      case _            => Move(fromSq, toSq, MoveType.Promotion(PromotionPiece.Knight))
+
+  // ─── Public RuleSet API ───────────────────────────────────────────────────
 
   override def candidateMoves(context: GameContext)(square: Square): List[Move] =
-    context.board.pieceAt(square).fold(List.empty[Move]) { piece =>
-      if piece.color != context.turn then List.empty[Move]
-      else
-        piece.pieceType match
-          case PieceType.Pawn   => pawnCandidates(context, square, piece.color)
-          case PieceType.Knight => knightCandidates(context, square, piece.color)
-          case PieceType.Bishop => slidingMoves(context, square, piece.color, BishopDirs)
-          case PieceType.Rook   => slidingMoves(context, square, piece.color, RookDirs)
-          case PieceType.Queen  => slidingMoves(context, square, piece.color, QueenDirs)
-          case PieceType.King   => kingCandidates(context, square, piece.color)
-    }
+    val arr = new Array[Int](64)
+    fillBoard(context.board, arr)
+    val sqI   = idx(square.file.ordinal, square.rank.ordinal)
+    val piece = arr(sqI)
+    if isEmpty(piece) || isWhitePiece(piece) != (context.turn == Color.White) then return Nil
+    val buf = new Array[Int](64)
+    val n   = generatePiece(arr, sqI, pieceType(piece), context.turn == Color.White, context, buf, 0)
+    (0 until n).map(i => decodeMoveToApi(buf(i))).toList
 
   override def legalMoves(context: GameContext)(square: Square): List[Move] =
-    candidateMoves(context)(square).filter { move =>
-      !leavesKingInCheck(context, move)
-    }
+    val arr     = tlBoard.get(); fillBoard(context.board, arr)
+    val sqI     = idx(square.file.ordinal, square.rank.ordinal)
+    val piece   = arr(sqI)
+    val isWhite = context.turn == Color.White
+    if isEmpty(piece) || isWhitePiece(piece) != isWhite then return Nil
+    val buf    = tlMoves.get()
+    val n      = generatePiece(arr, sqI, pieceType(piece), isWhite, context, buf, 0)
+    val result = new scala.collection.mutable.ListBuffer[Move]()
+    var i      = 0
+    while i < n do
+      if !leavesKingInCheck(arr, buf(i), isWhite) then result += decodeMoveToApi(buf(i))
+      i += 1
+    result.toList
 
   override def allLegalMoves(context: GameContext): List[Move] =
-    Square.all.flatMap(sq => legalMoves(context)(sq)).toList
+    val arr     = tlBoard.get(); fillBoard(context.board, arr)
+    val isWhite = context.turn == Color.White
+    val buf     = tlMoves.get()
+    val n       = generateAll(arr, isWhite, context, buf)
+    val result  = new scala.collection.mutable.ListBuffer[Move]()
+    var i       = 0
+    while i < n do
+      if !leavesKingInCheck(arr, buf(i), isWhite) then result += decodeMoveToApi(buf(i))
+      i += 1
+    result.toList
 
   override def isCheck(context: GameContext): Boolean =
-    kingSquare(context.board, context.turn)
-      .fold(false)(sq => isAttackedBy(context.board, sq, context.turn.opposite))
+    val arr     = tlBoard.get(); fillBoard(context.board, arr)
+    val isWhite = context.turn == Color.White
+    val kingSq  = findKing(arr, isWhite)
+    kingSq >= 0 && isAttackedByColor(arr, kingSq, !isWhite)
 
   override def isCheckmate(context: GameContext): Boolean =
     isCheck(context) && allLegalMoves(context).isEmpty
@@ -71,295 +474,10 @@ object DefaultRules extends RuleSet:
     context.halfMoveClock >= 100
 
   override def isThreefoldRepetition(context: GameContext): Boolean =
-    val currentPosition = Position(
-      board = context.board,
-      turn = context.turn,
-      castlingRights = context.castlingRights,
-      enPassantSquare = context.enPassantSquare,
-    )
+    val currentPosition = Position(context.board, context.turn, context.castlingRights, context.enPassantSquare)
     countPositionOccurrences(context, currentPosition) >= 3
 
-  private def countPositionOccurrences(context: GameContext, targetPosition: Position): Int =
-    try
-      val initialCtx = GameContext(
-        board = context.initialBoard,
-        turn = Color.White,
-        castlingRights = CastlingRights.Initial,
-        enPassantSquare = None,
-        halfMoveClock = 0,
-        moves = List.empty,
-        initialBoard = context.initialBoard,
-      )
-
-      def positionOf(ctx: GameContext): Position =
-        Position(
-          board = ctx.board,
-          turn = ctx.turn,
-          castlingRights = ctx.castlingRights,
-          enPassantSquare = ctx.enPassantSquare,
-        )
-
-      val initialCount = if positionOf(initialCtx) == targetPosition then 1 else 0
-
-      context.moves
-        .foldLeft((initialCtx, initialCount)) { case ((tempCtx, count), move) =>
-          val nextCtx   = applyMove(tempCtx)(move)
-          val nextCount = if positionOf(nextCtx) == targetPosition then count + 1 else count
-          (nextCtx, nextCount)
-        }
-        ._2
-    catch
-      case _: Exception =>
-        // If replay fails, conservatively count only the current position (never triggers a draw)
-        1
-
-  // ── Sliding pieces (Bishop, Rook, Queen) ───────────────────────────
-
-  private def slidingMoves(
-      context: GameContext,
-      from: Square,
-      color: Color,
-      dirs: List[(Int, Int)],
-  ): List[Move] =
-    dirs.flatMap(dir => castRay(context.board, from, color, dir))
-
-  private def castRay(
-      board: Board,
-      from: Square,
-      color: Color,
-      dir: (Int, Int),
-  ): List[Move] =
-    @tailrec
-    def loop(sq: Square, acc: List[Move]): List[Move] =
-      sq.offset(dir._1, dir._2) match
-        case None => acc
-        case Some(next) =>
-          board.pieceAt(next) match
-            case None                        => loop(next, Move(from, next) :: acc)
-            case Some(p) if p.color != color => Move(from, next, MoveType.Normal(isCapture = true)) :: acc
-            case Some(_)                     => acc
-    loop(from, Nil).reverse
-
-  // ── Knight ─────────────────────────────────────────────────────────
-
-  private def knightCandidates(
-      context: GameContext,
-      from: Square,
-      color: Color,
-  ): List[Move] =
-    KnightJumps.flatMap { (df, dr) =>
-      from.offset(df, dr).flatMap { to =>
-        context.board.pieceAt(to) match
-          case Some(p) if p.color == color => None
-          case Some(_)                     => Some(Move(from, to, MoveType.Normal(isCapture = true)))
-          case None                        => Some(Move(from, to))
-      }
-    }
-
-  // ── King ───────────────────────────────────────────────────────────
-
-  private def kingCandidates(
-      context: GameContext,
-      from: Square,
-      color: Color,
-  ): List[Move] =
-    val steps = QueenDirs.flatMap { (df, dr) =>
-      from.offset(df, dr).flatMap { to =>
-        context.board.pieceAt(to) match
-          case Some(p) if p.color == color => None
-          case Some(_)                     => Some(Move(from, to, MoveType.Normal(isCapture = true)))
-          case None                        => Some(Move(from, to))
-      }
-    }
-    steps ++ castlingCandidates(context, from, color)
-
-  // ── Castling ───────────────────────────────────────────────────────
-
-  private case class CastlingMove(
-      kingFromAlg: String,
-      kingToAlg: String,
-      middleAlg: String,
-      rookFromAlg: String,
-      moveType: MoveType,
-  )
-
-  private def castlingCandidates(
-      context: GameContext,
-      from: Square,
-      color: Color,
-  ): List[Move] =
-    color match
-      case Color.White => whiteCastles(context, from)
-      case Color.Black => blackCastles(context, from)
-
-  private def whiteCastles(context: GameContext, from: Square): List[Move] =
-    val expected = Square.fromAlgebraic("e1").getOrElse(from)
-    if from != expected then List.empty
-    else
-      val moves = scala.collection.mutable.ListBuffer[Move]()
-      addCastleMove(
-        context,
-        moves,
-        context.castlingRights.whiteKingSide,
-        CastlingMove("e1", "g1", "f1", "h1", MoveType.CastleKingside),
-      )
-      addCastleMove(
-        context,
-        moves,
-        context.castlingRights.whiteQueenSide,
-        CastlingMove("e1", "c1", "d1", "a1", MoveType.CastleQueenside),
-      )
-      moves.toList
-
-  private def blackCastles(context: GameContext, from: Square): List[Move] =
-    val expected = Square.fromAlgebraic("e8").getOrElse(from)
-    if from != expected then List.empty
-    else
-      val moves = scala.collection.mutable.ListBuffer[Move]()
-      addCastleMove(
-        context,
-        moves,
-        context.castlingRights.blackKingSide,
-        CastlingMove("e8", "g8", "f8", "h8", MoveType.CastleKingside),
-      )
-      addCastleMove(
-        context,
-        moves,
-        context.castlingRights.blackQueenSide,
-        CastlingMove("e8", "c8", "d8", "a8", MoveType.CastleQueenside),
-      )
-      moves.toList
-
-  private def queensideBSquare(kingToAlg: String): List[String] =
-    kingToAlg match
-      case "c1" => List("b1")
-      case "c8" => List("b8")
-      case _    => List.empty
-
-  private def addCastleMove(
-      context: GameContext,
-      moves: scala.collection.mutable.ListBuffer[Move],
-      castlingRight: Boolean,
-      castlingMove: CastlingMove,
-  ): Unit =
-    if castlingRight then
-      val clearSqs = (List(castlingMove.middleAlg, castlingMove.kingToAlg) ++ queensideBSquare(castlingMove.kingToAlg))
-        .flatMap(Square.fromAlgebraic)
-      if squaresEmpty(context.board, clearSqs) then
-        for
-          kf <- Square.fromAlgebraic(castlingMove.kingFromAlg)
-          km <- Square.fromAlgebraic(castlingMove.middleAlg)
-          kt <- Square.fromAlgebraic(castlingMove.kingToAlg)
-          rf <- Square.fromAlgebraic(castlingMove.rookFromAlg)
-        do
-          val color       = context.turn
-          val kingPresent = context.board.pieceAt(kf).exists(p => p.color == color && p.pieceType == PieceType.King)
-          val rookPresent = context.board.pieceAt(rf).exists(p => p.color == color && p.pieceType == PieceType.Rook)
-          val squaresSafe =
-            !isAttackedBy(context.board, kf, color.opposite) &&
-              !isAttackedBy(context.board, km, color.opposite) &&
-              !isAttackedBy(context.board, kt, color.opposite)
-
-          if kingPresent && rookPresent && squaresSafe then moves += Move(kf, kt, castlingMove.moveType)
-
-  private def squaresEmpty(board: Board, squares: List[Square]): Boolean =
-    squares.forall(sq => board.pieceAt(sq).isEmpty)
-
-  // ── Pawn ───────────────────────────────────────────────────────────
-
-  private def pawnCandidates(
-      context: GameContext,
-      from: Square,
-      color: Color,
-  ): List[Move] =
-    val fwd       = pawnForward(color)
-    val startRank = pawnStartRank(color)
-    val promoRank = pawnPromoRank(color)
-
-    val single = from.offset(0, fwd).filter(to => context.board.pieceAt(to).isEmpty)
-    val double = Option
-      .when(from.rank.ordinal == startRank) {
-        from.offset(0, fwd).flatMap { mid =>
-          Option
-            .when(context.board.pieceAt(mid).isEmpty) {
-              from.offset(0, fwd * 2).filter(to => context.board.pieceAt(to).isEmpty)
-            }
-            .flatten
-        }
-      }
-      .flatten
-
-    val diagonalCaptures = List(-1, 1).flatMap { df =>
-      from.offset(df, fwd).flatMap { to =>
-        context.board.pieceAt(to).filter(_.color != color).map(_ => to)
-      }
-    }
-
-    val epCaptures: List[Move] = context.enPassantSquare.toList.flatMap { epSq =>
-      List(-1, 1).flatMap { df =>
-        from.offset(df, fwd).filter(_ == epSq).map { to =>
-          Move(from, epSq, MoveType.EnPassant)
-        }
-      }
-    }
-
-    def toMoves(dest: Square, isCapture: Boolean): List[Move] =
-      if dest.rank.ordinal == promoRank then
-        List(
-          PromotionPiece.Queen,
-          PromotionPiece.Rook,
-          PromotionPiece.Bishop,
-          PromotionPiece.Knight,
-        ).map(pt => Move(from, dest, MoveType.Promotion(pt)))
-      else List(Move(from, dest, MoveType.Normal(isCapture = isCapture)))
-
-    val stepSquares  = single.toList ++ double.toList
-    val stepMoves    = stepSquares.flatMap(dest => toMoves(dest, isCapture = false))
-    val captureMoves = diagonalCaptures.flatMap(dest => toMoves(dest, isCapture = true))
-    stepMoves ++ captureMoves ++ epCaptures
-
-  // ── Check detection ────────────────────────────────────────────────
-
-  private def kingSquare(board: Board, color: Color): Option[Square] =
-    Square.all.find(sq => board.pieceAt(sq).exists(p => p.color == color && p.pieceType == PieceType.King))
-
-  private def isAttackedBy(board: Board, target: Square, attacker: Color): Boolean =
-    Square.all.exists { sq =>
-      board.pieceAt(sq).fold(false) { p =>
-        p.color == attacker && squareAttacks(board, sq, p, target)
-      }
-    }
-
-  private def squareAttacks(board: Board, from: Square, piece: Piece, target: Square): Boolean =
-    val fwd = pawnForward(piece.color)
-    piece.pieceType match
-      case PieceType.Pawn =>
-        from.offset(-1, fwd).contains(target) || from.offset(1, fwd).contains(target)
-      case PieceType.Knight =>
-        KnightJumps.exists((df, dr) => from.offset(df, dr).contains(target))
-      case PieceType.Bishop => rayReaches(board, from, BishopDirs, target)
-      case PieceType.Rook   => rayReaches(board, from, RookDirs, target)
-      case PieceType.Queen  => rayReaches(board, from, QueenDirs, target)
-      case PieceType.King =>
-        QueenDirs.exists((df, dr) => from.offset(df, dr).contains(target))
-
-  private def rayReaches(board: Board, from: Square, dirs: List[(Int, Int)], target: Square): Boolean =
-    dirs.exists { dir =>
-      @tailrec
-      def loop(sq: Square): Boolean = sq.offset(dir._1, dir._2) match
-        case None                                      => false
-        case Some(next) if next == target              => true
-        case Some(next) if board.pieceAt(next).isEmpty => loop(next)
-        case Some(_)                                   => false
-      loop(from)
-    }
-
-  private def leavesKingInCheck(context: GameContext, move: Move): Boolean =
-    val nextBoard   = context.board.applyMove(move)
-    val nextContext = context.withBoard(nextBoard)
-    isCheck(nextContext)
-
-  // ── Move application ───────────────────────────────────────────────
+  // ─── applyMove (immutable GameContext update — acceptable for real moves) ─
 
   override def applyMove(context: GameContext)(move: Move): GameContext =
     val color = context.turn
@@ -389,6 +507,8 @@ object DefaultRules extends RuleSet:
       .withHalfMoveClock(newClock)
       .withMove(move)
 
+  // ─── Move application helpers ─────────────────────────────────────────────
+
   private def applyCastle(board: Board, color: Color, kingside: Boolean): Board =
     val rank = if color == Color.White then Rank.R1 else Rank.R8
     val (kingFrom, kingTo, rookFrom, rookTo) =
@@ -396,15 +516,10 @@ object DefaultRules extends RuleSet:
       else (Square(File.E, rank), Square(File.C, rank), Square(File.A, rank), Square(File.D, rank))
     val king = board.pieceAt(kingFrom).getOrElse(Piece(color, PieceType.King))
     val rook = board.pieceAt(rookFrom).getOrElse(Piece(color, PieceType.Rook))
-    board
-      .removed(kingFrom)
-      .removed(rookFrom)
-      .updated(kingTo, king)
-      .updated(rookTo, rook)
+    board.removed(kingFrom).removed(rookFrom).updated(kingTo, king).updated(rookTo, rook)
 
   private def applyEnPassant(board: Board, move: Move): Board =
-    val capturedRank   = move.from.rank // the captured pawn is on the same rank as the moving pawn
-    val capturedSquare = Square(move.to.file, capturedRank)
+    val capturedSquare = Square(move.to.file, move.from.rank)
     board.applyMove(move).removed(capturedSquare)
 
   private def applyPromotion(board: Board, move: Move, color: Color, pp: PromotionPiece): Board =
@@ -420,14 +535,10 @@ object DefaultRules extends RuleSet:
     val isKingMove = piece.exists(_.pieceType == PieceType.King)
     val isRookMove = piece.exists(_.pieceType == PieceType.Rook)
 
-    // Helper to check if a square is a rook's starting square
-    val whiteKingsideRook  = Square(File.H, Rank.R1)
-    val whiteQueensideRook = Square(File.A, Rank.R1)
-    val blackKingsideRook  = Square(File.H, Rank.R8)
-    val blackQueensideRook = Square(File.A, Rank.R8)
+    val whiteKingsideRook = Square(File.H, Rank.R1); val whiteQueensideRook = Square(File.A, Rank.R1)
+    val blackKingsideRook = Square(File.H, Rank.R8); val blackQueensideRook = Square(File.A, Rank.R8)
 
     val afterKingMove = if isKingMove then rights.revokeColor(color) else rights
-
     val afterRookMove =
       if !isRookMove then afterKingMove
       else
@@ -438,7 +549,6 @@ object DefaultRules extends RuleSet:
           case `blackQueensideRook` => afterKingMove.revokeQueenSide(Color.Black)
           case _                    => afterKingMove
 
-    // Also revoke if a rook is captured
     move.to match
       case `whiteKingsideRook`  => afterRookMove.revokeKingSide(Color.White)
       case `whiteQueensideRook` => afterRookMove.revokeQueenSide(Color.White)
@@ -447,16 +557,14 @@ object DefaultRules extends RuleSet:
       case _                    => afterRookMove
 
   private def computeEnPassantSquare(board: Board, move: Move): Option[Square] =
-    val piece = board.pieceAt(move.from)
-    val isDoublePawnPush = piece.exists(_.pieceType == PieceType.Pawn) &&
+    val isDoublePawnPush = board.pieceAt(move.from).exists(_.pieceType == PieceType.Pawn) &&
       math.abs(move.to.rank.ordinal - move.from.rank.ordinal) == 2
     if isDoublePawnPush then
-      // EP square is the square the pawn passed through
       val epRankOrd = (move.from.rank.ordinal + move.to.rank.ordinal) / 2
       Some(Square(move.from.file, Rank.values(epRankOrd)))
     else None
 
-  // ── Insufficient material ──────────────────────────────────────────
+  // ─── Insufficient material ────────────────────────────────────────────────
 
   private def squareColor(sq: Square): Int = (sq.file.ordinal + sq.rank.ordinal) % 2
 
@@ -465,7 +573,50 @@ object DefaultRules extends RuleSet:
     nonKings match
       case Nil                                                                                => true
       case List((_, p)) if p.pieceType == PieceType.Bishop || p.pieceType == PieceType.Knight => true
-      case bishops if bishops.forall { case (_, p) => p.pieceType == PieceType.Bishop }       =>
-        // All non-king pieces are bishops: draw only if they all share the same square color
+      case bishops if bishops.forall { case (_, p) => p.pieceType == PieceType.Bishop } =>
         bishops.map { case (sq, _) => squareColor(sq) }.distinct.sizeIs == 1
       case _ => false
+
+  // ─── Threefold repetition ─────────────────────────────────────────────────
+
+  private case class Position(
+      board: Board,
+      turn: Color,
+      castlingRights: CastlingRights,
+      enPassantSquare: Option[Square],
+  )
+
+  private def countPositionOccurrences(context: GameContext, target: Position): Int =
+    try
+      val initialCtx = GameContext(
+        board = context.initialBoard,
+        turn = Color.White,
+        castlingRights = CastlingRights.Initial,
+        enPassantSquare = None,
+        halfMoveClock = 0,
+        moves = List.empty,
+        initialBoard = context.initialBoard,
+      )
+
+      def positionOf(ctx: GameContext): Position =
+        Position(ctx.board, ctx.turn, ctx.castlingRights, ctx.enPassantSquare)
+
+      val initialCount = if positionOf(initialCtx) == target then 1 else 0
+
+      context.moves
+        .foldLeft((initialCtx, initialCount)) { case ((tempCtx, count), move) =>
+          val nextCtx   = applyMove(tempCtx)(move)
+          val nextCount = if positionOf(nextCtx) == target then count + 1 else count
+          (nextCtx, nextCount)
+        }
+        ._2
+    catch case _: Exception => 1
+
+  override def postMoveStatus(context: GameContext): PostMoveStatus =
+    PostMoveStatus(
+      isCheckmate = isCheckmate(context),
+      isStalemate = isStalemate(context),
+      isInsufficientMaterial = isInsufficientMaterial(context),
+      isCheck = isCheck(context),
+      isThreefoldRepetition = isThreefoldRepetition(context),
+    )

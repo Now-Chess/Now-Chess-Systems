@@ -4,9 +4,12 @@ meta {
   seq: 2
 }
 
-http {
-  method: GET
+get {
   url: {{baseUrl}}/api/board/game/{{gameId}}
   body: none
   auth: none
+}
+
+vars:pre-request {
+  gameId: j0nPtcjl
 }

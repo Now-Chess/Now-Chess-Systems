@@ -1,6 +1,7 @@
 package de.nowchess.io.fen
 
 import de.nowchess.api.board.*
+import de.nowchess.api.error.GameError
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.io.GameContextImport
 
@@ -8,18 +9,29 @@ object FenParser extends GameContextImport:
 
   /** Parse a complete FEN string into a GameContext. Returns Left with error message if the format is invalid.
     */
-  def parseFen(fen: String): Either[String, GameContext] =
+  def parseFen(fen: String): Either[GameError, GameContext] =
     val parts = fen.trim.split("\\s+")
-    if parts.length != 6 then Left(s"Invalid FEN: expected 6 space-separated fields, got ${parts.length}")
+    if parts.length != 6 then
+      Left(GameError.ParseError(s"Invalid FEN: expected 6 space-separated fields, got ${parts.length}"))
     else
       for
-        board          <- parseBoard(parts(0)).toRight("Invalid FEN: invalid board position")
-        activeColor    <- parseColor(parts(1)).toRight("Invalid FEN: invalid active color (expected 'w' or 'b')")
-        castlingRights <- parseCastling(parts(2)).toRight("Invalid FEN: invalid castling rights")
-        enPassant      <- parseEnPassant(parts(3)).toRight("Invalid FEN: invalid en passant square")
-        halfMoveClock  <- parts(4).toIntOption.toRight("Invalid FEN: invalid half-move clock (expected integer)")
-        fullMoveNumber <- parts(5).toIntOption.toRight("Invalid FEN: invalid full move number (expected integer)")
-        _              <- Either.cond(halfMoveClock >= 0 && fullMoveNumber >= 1, (), "Invalid FEN: invalid move counts")
+        board <- parseBoard(parts(0)).toRight(GameError.ParseError("Invalid FEN: invalid board position"))
+        activeColor <- parseColor(parts(1)).toRight(
+          GameError.ParseError("Invalid FEN: invalid active color (expected 'w' or 'b')"),
+        )
+        castlingRights <- parseCastling(parts(2)).toRight(GameError.ParseError("Invalid FEN: invalid castling rights"))
+        enPassant <- parseEnPassant(parts(3)).toRight(GameError.ParseError("Invalid FEN: invalid en passant square"))
+        halfMoveClock <- parts(4).toIntOption.toRight(
+          GameError.ParseError("Invalid FEN: invalid half-move clock (expected integer)"),
+        )
+        fullMoveNumber <- parts(5).toIntOption.toRight(
+          GameError.ParseError("Invalid FEN: invalid full move number (expected integer)"),
+        )
+        _ <- Either.cond(
+          halfMoveClock >= 0 && fullMoveNumber >= 1,
+          (),
+          GameError.ParseError("Invalid FEN: invalid move counts"),
+        )
       yield GameContext(
         board = board,
         turn = activeColor,
@@ -29,7 +41,7 @@ object FenParser extends GameContextImport:
         moves = List.empty,
       )
 
-  def importGameContext(input: String): Either[String, GameContext] =
+  def importGameContext(input: String): Either[GameError, GameContext] =
     parseFen(input)
 
   /** Parse active color ("w" or "b"). */

@@ -39,3 +39,15 @@ trait RuleSet:
     * promotion. Updates castling rights, en passant square, half-move clock, turn, and move history.
     */
   def applyMove(context: GameContext)(move: Move): GameContext
+
+  /** Batch status check after a move is applied. Replaces individual isCheckmate/isStalemate/isInsufficientMaterial/
+    * isCheck/isThreefoldRepetition calls with a single round-trip. Override for remote implementations.
+    */
+  def postMoveStatus(context: GameContext): PostMoveStatus =
+    PostMoveStatus(
+      isCheckmate = isCheckmate(context),
+      isStalemate = isStalemate(context),
+      isInsufficientMaterial = isInsufficientMaterial(context),
+      isCheck = isCheck(context),
+      isThreefoldRepetition = isThreefoldRepetition(context),
+    )
