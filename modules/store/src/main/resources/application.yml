@@ -1,7 +1,8 @@
 quarkus:
   application:
     name: nowchess-store
-  http.port: 8085
+  http:
+    port: 8085
   config:
     yaml:
       enabled: true
