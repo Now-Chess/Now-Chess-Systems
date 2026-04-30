@@ -1,0 +1,15 @@
+meta {
+  name: Ban User
+  type: http
+  seq: 11
+}
+
+http {
+  method: POST
+  url: {{accountBaseUrl}}/account/{{userId}}/ban
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminToken}}
+}

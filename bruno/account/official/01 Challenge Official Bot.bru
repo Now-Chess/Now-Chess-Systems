@@ -1,0 +1,22 @@
+meta {
+  name: Challenge Official Bot
+  type: http
+  seq: 1
+}
+
+http {
+  method: POST
+  url: {{accountBaseUrl}}/challenge/official/{{botName}}?difficulty={{difficulty}}&color={{color}}
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+  Accept: application/json
+}
+
+notes {
+  Query Parameters:
+  - difficulty: 1000-2800 (ELO)
+  - color: white | black | random
+}

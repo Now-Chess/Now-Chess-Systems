@@ -1,0 +1,21 @@
+meta {
+  name: Is Check
+  type: http
+  seq: 4
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/rules/is-check
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{internalToken}}
+}
+
+body:json {
+  {}
+}

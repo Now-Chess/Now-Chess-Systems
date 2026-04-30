@@ -1,0 +1,24 @@
+meta {
+  name: Legal Moves
+  type: http
+  seq: 2
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/rules/legal-moves
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{internalToken}}
+}
+
+body:json {
+  {
+    "context": {},
+    "square": "e2"
+  }
+}

@@ -1,0 +1,16 @@
+meta {
+  name: List Bots
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{accountBaseUrl}}/account/bots
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+  Accept: application/json
+}

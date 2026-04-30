@@ -1,0 +1,26 @@
+meta {
+  name: Stream Bot Events
+  type: http
+  seq: 1
+}
+
+http {
+  method: GET
+  url: {{baseUrl}}/bot/stream/events?botId={{botId}}
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{botToken}}
+  Accept: text/event-stream
+}
+
+notes {
+  Server-Sent Events stream.
+  Bot must match token subject (botId).
+
+  Events:
+  - Game start notification
+  - Move requests
+  - Game end notification
+}

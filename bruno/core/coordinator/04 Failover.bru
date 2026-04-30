@@ -1,0 +1,15 @@
+meta {
+  name: Failover
+  type: http
+  seq: 4
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/coordinator/failover/{{instanceId}}
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Export FEN
+  type: http
+  seq: 3
+}
+
+http {
+  method: POST
+  url: {{ioBaseUrl}}/io/export/fen
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{internalToken}}
+}
+
+body:json {
+  {}
+}

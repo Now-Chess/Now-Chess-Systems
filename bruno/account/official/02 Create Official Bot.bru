@@ -1,0 +1,23 @@
+meta {
+  name: Create Official Bot
+  type: http
+  seq: 2
+}
+
+http {
+  method: POST
+  url: {{accountBaseUrl}}/account/official-bots
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "name": "Stockfish-1000"
+  }
+}

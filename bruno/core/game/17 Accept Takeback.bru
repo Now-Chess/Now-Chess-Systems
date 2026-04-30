@@ -1,0 +1,15 @@
+meta {
+  name: Accept Takeback
+  type: http
+  seq: 17
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/board/game/{{gameId}}/takeback/accept
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

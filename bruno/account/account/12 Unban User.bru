@@ -1,0 +1,15 @@
+meta {
+  name: Unban User
+  type: http
+  seq: 12
+}
+
+http {
+  method: POST
+  url: {{accountBaseUrl}}/account/{{userId}}/unban
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminToken}}
+}

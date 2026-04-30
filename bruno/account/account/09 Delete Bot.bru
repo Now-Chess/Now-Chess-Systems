@@ -1,0 +1,15 @@
+meta {
+  name: Delete Bot
+  type: http
+  seq: 9
+}
+
+http {
+  method: DELETE
+  url: {{accountBaseUrl}}/account/bots/{{botId}}
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

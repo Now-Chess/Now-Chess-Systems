@@ -1,0 +1,23 @@
+meta {
+  name: Update Bot Name
+  type: http
+  seq: 7
+}
+
+http {
+  method: PUT
+  url: {{accountBaseUrl}}/account/bots/{{botId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "name": "ChessBot-Updated"
+  }
+}

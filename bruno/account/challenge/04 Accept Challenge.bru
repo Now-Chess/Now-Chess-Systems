@@ -1,0 +1,15 @@
+meta {
+  name: Accept Challenge
+  type: http
+  seq: 4
+}
+
+http {
+  method: POST
+  url: {{accountBaseUrl}}/challenge/{{challengeId}}/accept
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Accept Draw
+  type: http
+  seq: 13
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/board/game/{{gameId}}/draw/accept
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

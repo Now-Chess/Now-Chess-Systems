@@ -1,0 +1,21 @@
+meta {
+  name: Export PGN
+  type: http
+  seq: 4
+}
+
+http {
+  method: POST
+  url: {{ioBaseUrl}}/io/export/pgn
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{internalToken}}
+}
+
+body:json {
+  {}
+}

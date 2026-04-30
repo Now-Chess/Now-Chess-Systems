@@ -1,0 +1,36 @@
+meta {
+  name: NowChess API
+  type: http
+  seq: 1
+}
+
+docs {
+  title: NowChess Microservices API Collection
+  content: |
+    # NowChess API Collection
+
+    Complete API collection for all NowChess microservices.
+
+    ## Services Architecture
+    - **Core** (8080): Game engine, rules validation, format import/export
+    - **Account** (8083): User management, bot accounts, challenges
+    - **Store** (8085): Game persistence and history
+    - **WebSocket** (8084): Real-time game updates
+
+    ## Ingress Routing
+    - /api/account → nowchess-account-active:8083
+    - /ws → nowchess-ws-active:8084
+    - /api/store → nowchess-store-active:8085
+    - /api → nowchess-core-active:8080
+
+    ## Environments
+    - **local**: http://localhost (direct service ports)
+    - **staging**: https://st.nowchess.janis-eccarius.de/api
+    - **prod**: https://nowchess.janis-eccarius.de/api
+
+    ## Security
+    @modules/security/src contains:
+    - InternalAuthFilter: Validates internal service tokens
+    - InternalOnly: Annotation for internal endpoints (rules, io)
+    - JWT validation for authenticated endpoints
+}

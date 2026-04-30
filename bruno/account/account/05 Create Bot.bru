@@ -1,0 +1,23 @@
+meta {
+  name: Create Bot
+  type: http
+  seq: 5
+}
+
+http {
+  method: POST
+  url: {{accountBaseUrl}}/account/bots
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "name": "ChessBot-1"
+  }
+}

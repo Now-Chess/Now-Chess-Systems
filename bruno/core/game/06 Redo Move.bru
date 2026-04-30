@@ -1,0 +1,15 @@
+meta {
+  name: Redo Move
+  type: http
+  seq: 6
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/board/game/{{gameId}}/redo
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

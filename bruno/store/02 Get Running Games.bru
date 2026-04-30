@@ -1,0 +1,21 @@
+meta {
+  name: Get Running Games
+  type: http
+  seq: 2
+}
+
+http {
+  method: GET
+  url: {{storeBaseUrl}}/game/running/{{playerId}}?offset=0&limit=20
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
+
+notes {
+  Optional query parameters:
+  - offset: Skip N records (default 0)
+  - limit: Return N records (default 20)
+}

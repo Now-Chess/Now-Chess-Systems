@@ -1,0 +1,15 @@
+meta {
+  name: Resign Game
+  type: http
+  seq: 7
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/board/game/{{gameId}}/resign
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

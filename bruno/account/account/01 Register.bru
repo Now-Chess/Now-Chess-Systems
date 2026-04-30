@@ -1,0 +1,24 @@
+meta {
+  name: Register
+  type: http
+  seq: 1
+}
+
+http {
+  method: POST
+  url: {{accountBaseUrl}}/account
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "username": "player1",
+    "email": "player1@example.com",
+    "password": "securepassword"
+  }
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Make Bot Move
+  type: http
+  seq: 3
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/bot/game/{{gameId}}/move/{{uci}}
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{botToken}}
+}
+
+notes {
+  Submit move from bot.
+
+  Parameters:
+  - gameId: Game identifier
+  - uci: Move notation (e.g., e2e4)
+}

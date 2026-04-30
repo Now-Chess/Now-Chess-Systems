@@ -1,0 +1,15 @@
+meta {
+  name: Scale Down
+  type: http
+  seq: 6
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/coordinator/scale-down
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}

@@ -1,0 +1,16 @@
+meta {
+  name: List Challenges
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{accountBaseUrl}}/challenge
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+  Accept: application/json
+}

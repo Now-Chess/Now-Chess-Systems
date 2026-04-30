@@ -1,0 +1,26 @@
+meta {
+  name: Create Game
+  type: http
+  seq: 1
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/board/game
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{internalToken}}
+}
+
+body:json {
+  {
+    "white": {"id": "p1", "displayName": "Player 1"},
+    "black": {"id": "p2", "displayName": "Player 2"},
+    "timeControl": {"limitSeconds": 600, "incrementSeconds": 5},
+    "mode": "Open"
+  }
+}

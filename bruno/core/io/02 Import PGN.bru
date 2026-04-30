@@ -1,0 +1,23 @@
+meta {
+  name: Import PGN
+  type: http
+  seq: 2
+}
+
+http {
+  method: POST
+  url: {{ioBaseUrl}}/io/import/pgn
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{internalToken}}
+}
+
+body:json {
+  {
+    "pgn": "[Event \"Test\"]\n1. e4 e5"
+  }
+}

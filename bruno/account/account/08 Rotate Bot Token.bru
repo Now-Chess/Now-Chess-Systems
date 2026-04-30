@@ -1,0 +1,15 @@
+meta {
+  name: Rotate Bot Token
+  type: http
+  seq: 8
+}
+
+http {
+  method: POST
+  url: {{accountBaseUrl}}/account/bots/{{botId}}/rotate-token
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

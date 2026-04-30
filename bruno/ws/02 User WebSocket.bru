@@ -1,0 +1,32 @@
+meta {
+  name: User WebSocket
+  type: http
+  seq: 2
+}
+
+http {
+  method: GET
+  url: {{wsBaseUrl}}/api/user/ws
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+  Connection: Upgrade
+  Upgrade: websocket
+}
+
+notes {
+  WebSocket connection for user notifications.
+
+  Local: ws://localhost:8084/api/user/ws
+  Staging: wss://st.nowchess.janis-eccarius.de/ws/api/user/ws
+  Prod: wss://nowchess.janis-eccarius.de/ws/api/user/ws
+
+  Message Types:
+  - CONNECTED: Connection established
+  - CHALLENGE: Challenge received
+  - GAME_INVITE: Game invitation
+  - NOTIFICATION: General notification
+  - ERROR: Error message
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Is Checkmate
+  type: http
+  seq: 5
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/rules/is-checkmate
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{internalToken}}
+}
+
+body:json {
+  {}
+}

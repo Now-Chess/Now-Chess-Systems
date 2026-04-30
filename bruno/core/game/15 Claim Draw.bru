@@ -1,0 +1,15 @@
+meta {
+  name: Claim Draw
+  type: http
+  seq: 15
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/board/game/{{gameId}}/draw/claim
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

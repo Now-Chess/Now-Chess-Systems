@@ -1,0 +1,23 @@
+meta {
+  name: Decline Challenge
+  type: http
+  seq: 5
+}
+
+http {
+  method: POST
+  url: {{accountBaseUrl}}/challenge/{{challengeId}}/decline
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "reason": "Not interested"
+  }
+}

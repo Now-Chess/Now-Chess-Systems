@@ -1,0 +1,15 @@
+meta {
+  name: Decline Takeback
+  type: http
+  seq: 18
+}
+
+http {
+  method: POST
+  url: {{baseUrl}}/board/game/{{gameId}}/takeback/decline
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
