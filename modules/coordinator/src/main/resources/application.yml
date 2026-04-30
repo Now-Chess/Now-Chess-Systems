@@ -17,7 +17,6 @@ quarkus:
     info-description: Coordination endpoints for instance health, balancing, failover, and scaling
     path: /openapi
   swagger-ui:
-    always-include: true
     path: /swagger-ui
 
 nowchess:
@@ -51,17 +50,3 @@ nowchess:
   quarkus:
     log:
       level: DEBUG
-
-"%staging":
-  quarkus:
-    swagger-ui:
-      always-include: true
-    dev-ui:
-      always-include: true
-    log:
-      level: INFO
-
-"%production":
-  quarkus:
-    log:
-      level: WARN

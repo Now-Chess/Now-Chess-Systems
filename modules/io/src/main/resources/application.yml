@@ -6,29 +6,14 @@ quarkus:
       use-separate-server: false
   application:
     name: nowchess-io
-
-nowchess:
-  internal:
-    secret: ${INTERNAL_SECRET:123abc}
   smallrye-openapi:
     info-title: NowChess IO Service
     info-version: 1.0.0
     info-description: Chess notation import and export — FEN and PGN
     path: /openapi
   swagger-ui:
-    always-include: true
     path: /swagger-ui
 
-"%staging":
-  quarkus:
-    swagger-ui:
-      always-include: true
-    dev-ui:
-      always-include: true
-    log:
-      level: INFO
-
-"%production":
-  quarkus:
-    log:
-      level: WARN
+nowchess:
+  internal:
+    secret: ${INTERNAL_SECRET:123abc}

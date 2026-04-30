@@ -42,16 +42,19 @@ nowchess:
       port: 6379
       prefix: test-store
 
-"%staging":
+"%dev":
   quarkus:
-    swagger-ui:
-      always-include: true
-    dev-ui:
-      always-include: true
-    log:
-      level: INFO
-
-"%production":
-  quarkus:
-    log:
-      level: WARN
+    datasource:
+      db-kind: h2
+      username: sa
+      password: ""
+      jdbc:
+        url: jdbc:h2:mem:nowchess;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    hibernate-orm:
+      database:
+        generation: drop-and-create
+  nowchess:
+    redis:
+      host: localhost
+      port: 6379
+      prefix: dev-store

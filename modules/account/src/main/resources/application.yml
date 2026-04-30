@@ -12,17 +12,16 @@ quarkus:
     info-title: NowChess Account Service
     path: /openapi
   swagger-ui:
-    always-include: true
     path: /swagger-ui
   datasource:
-    db-kind: h2
-    username: sa
-    password: ""
+    db-kind: postgresql
+    username: ${DB_USER:nowchess}
+    password: ${DB_PASSWORD:nowchess}
     jdbc:
-      url: jdbc:h2:mem:nowchess;DB_CLOSE_DELAY=-1
+      url: ${DB_URL:jdbc:postgresql://localhost:5432/nowchess}
   hibernate-orm:
     schema-management:
-      strategy: drop-and-create
+      strategy: update
 
 nowchess:
   redis:
@@ -31,6 +30,18 @@ nowchess:
     prefix: nowchess
   internal:
     secret: 123abc
+
+"%dev":
+  quarkus:
+    datasource:
+      db-kind: h2
+      username: sa
+      password: ""
+      jdbc:
+        url: jdbc:h2:mem:nowchess;DB_CLOSE_DELAY=-1
+    hibernate-orm:
+      schema-management:
+        strategy: drop-and-create
 
 "%deployed":
   quarkus:
@@ -43,6 +54,9 @@ nowchess:
       password: ${DB_PASSWORD}
       jdbc:
         url: ${DB_URL}
+    hibernate-orm:
+      schema-management:
+        strategy: update
   nowchess:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -50,9 +64,6 @@ nowchess:
       prefix: ${REDIS_PREFIX:nowchess}
     internal:
       secret: ${INTERNAL_SECRET}
-    hibernate-orm:
-      schema-management:
-        strategy: update
   mp:
     jwt:
       verify:
@@ -64,16 +75,3 @@ nowchess:
       sign:
         key:
           location: ${JWT_PRIVATE_KEY_PATH:keys/private.pem}
-"%staging":
-  quarkus:
-    swagger-ui:
-      always-include: true
-    dev-ui:
-      always-include: true
-    log:
-      level: INFO
-
-"%production":
-  quarkus:
-    log:
-      level: WARN

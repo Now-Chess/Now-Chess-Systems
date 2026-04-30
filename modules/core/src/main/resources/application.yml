@@ -110,17 +110,3 @@ nowchess:
       stream-heartbeat-interval: 200ms
       redis-heartbeat-interval: 2s
       instance-id: ${HOSTNAME:local}-${quarkus.uuid}
-
-"%staging":
-  quarkus:
-    swagger-ui:
-      always-include: true
-    dev-ui:
-      always-include: true
-    log:
-      level: INFO
-
-"%production":
-  quarkus:
-    log:
-      level: WARN

@@ -39,17 +39,3 @@ nowchess:
         publickey:
           location: ${JWT_PUBLIC_KEY_PATH:keys/public.pem}
         issuer: nowchess
-
-"%staging":
-  quarkus:
-    swagger-ui:
-      always-include: true
-    dev-ui:
-      always-include: true
-    log:
-      level: INFO
-
-"%production":
-  quarkus:
-    log:
-      level: WARN
