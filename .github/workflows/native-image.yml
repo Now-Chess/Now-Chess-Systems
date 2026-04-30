@@ -69,6 +69,17 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
+      - name: Read version from versions.env
+        id: version
+        run: |
+          if [ -f "modules/${{ matrix.module }}/versions.env" ]; then
+            source modules/${{ matrix.module }}/versions.env
+            VERSION="${MAJOR}.${MINOR}.${PATCH}"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=latest" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build native binary
         run: ./gradlew :modules:${{ matrix.module }}:build -Dquarkus.native.enabled=true -Dquarkus.package.jar.enabled=false --no-daemon
 
@@ -88,7 +99,7 @@ jobs:
         with:
           images: ghcr.io/now-chess/now-chess-systems/${{ matrix.module }}
           tags: |
-            type=sha,prefix=,format=short
+            type=raw,value=${{ steps.version.outputs.version }}
             type=raw,value=latest
 
       - name: Build and push
