@@ -31,6 +31,18 @@ nowchess:
   internal:
     secret: 123abc
 
+"%test":
+  quarkus:
+    datasource:
+      db-kind: h2
+      username: sa
+      password: ""
+      jdbc:
+        url: jdbc:h2:mem:nowchess;DB_CLOSE_DELAY=-1
+    hibernate-orm:
+      schema-management:
+        strategy: drop-and-create
+
 "%dev":
   quarkus:
     datasource:
