@@ -81,7 +81,7 @@ jobs:
           fi
 
       - name: Build native binary
-        run: ./gradlew :modules:${{ matrix.module }}:build -Dquarkus.native.enabled=true -Dquarkus.package.jar.enabled=false --no-daemon
+        run: ./gradlew :modules:${{ matrix.module }}:build -x test -Dquarkus.native.enabled=true -Dquarkus.package.jar.enabled=false -Dquarkus.profile=deployed --no-daemon
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
