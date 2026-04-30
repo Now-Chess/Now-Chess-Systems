@@ -9,7 +9,7 @@ quarkus:
 
 nowchess:
   internal:
-    secret: 123abc
+    secret: ${INTERNAL_SECRET:123abc}
   smallrye-openapi:
     info-title: NowChess IO Service
     info-version: 1.0.0
@@ -18,3 +18,17 @@ nowchess:
   swagger-ui:
     always-include: true
     path: /swagger-ui
+
+"%staging":
+  quarkus:
+    swagger-ui:
+      always-include: true
+    dev-ui:
+      always-include: true
+    log:
+      level: INFO
+
+"%production":
+  quarkus:
+    log:
+      level: WARN

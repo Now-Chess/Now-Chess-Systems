@@ -12,12 +12,21 @@ jobs:
     outputs:
       allowed: ${{ steps.check.outputs.allowed }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
       - id: check
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.actor }}" == "TeamCity" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "allowed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "allowed=false" >> "$GITHUB_OUTPUT"
+            COMMIT_AUTHOR=$(git log -1 --format='%an')
+            if [[ "$COMMIT_AUTHOR" == "TeamCity" ]]; then
+              echo "allowed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "allowed=false" >> "$GITHUB_OUTPUT"
+            fi
           fi
 
   build-and-push:

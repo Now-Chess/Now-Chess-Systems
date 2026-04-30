@@ -24,9 +24,8 @@ nowchess:
     host: localhost
     port: 6379
     prefix: nowchess
-
   internal:
-    secret: 123abc
+    secret: ${INTERNAL_SECRET:123abc}
 
   coordinator:
     enabled: ${NOWCHESS_COORDINATOR_ENABLED:false}
@@ -111,3 +110,17 @@ nowchess:
       stream-heartbeat-interval: 200ms
       redis-heartbeat-interval: 2s
       instance-id: ${HOSTNAME:local}-${quarkus.uuid}
+
+"%staging":
+  quarkus:
+    swagger-ui:
+      always-include: true
+    dev-ui:
+      always-include: true
+    log:
+      level: INFO
+
+"%production":
+  quarkus:
+    log:
+      level: WARN

@@ -25,7 +25,8 @@ nowchess:
     host: ${REDIS_HOST:localhost}
     port: ${REDIS_PORT:6379}
     prefix: ${REDIS_PREFIX:nowchess}
-
+  internal:
+    secret: ${INTERNAL_SECRET:123abc}
   coordinator:
     max-games-per-core: 500
     max-deviation-percent: 20
@@ -50,3 +51,17 @@ nowchess:
   quarkus:
     log:
       level: DEBUG
+
+"%staging":
+  quarkus:
+    swagger-ui:
+      always-include: true
+    dev-ui:
+      always-include: true
+    log:
+      level: INFO
+
+"%production":
+  quarkus:
+    log:
+      level: WARN

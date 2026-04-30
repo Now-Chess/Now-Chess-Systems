@@ -37,17 +37,19 @@ nowchess:
     rest-client:
       core-service:
         url: ${CORE_SERVICE_URL}
-  nowchess:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      prefix: ${REDIS_PREFIX:nowchess}
     datasource:
       db-kind: postgresql
       username: ${DB_USER}
       password: ${DB_PASSWORD}
       jdbc:
         url: ${DB_URL}
+  nowchess:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      prefix: ${REDIS_PREFIX:nowchess}
+    internal:
+      secret: ${INTERNAL_SECRET}
     hibernate-orm:
       schema-management:
         strategy: update
@@ -62,3 +64,16 @@ nowchess:
       sign:
         key:
           location: ${JWT_PRIVATE_KEY_PATH:keys/private.pem}
+"%staging":
+  quarkus:
+    swagger-ui:
+      always-include: true
+    dev-ui:
+      always-include: true
+    log:
+      level: INFO
+
+"%production":
+  quarkus:
+    log:
+      level: WARN

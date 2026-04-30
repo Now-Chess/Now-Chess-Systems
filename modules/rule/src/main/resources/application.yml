@@ -9,4 +9,18 @@ quarkus:
 
 nowchess:
   internal:
-    secret: 123abc
+    secret: ${INTERNAL_SECRET:123abc}
+
+"%staging":
+  quarkus:
+    swagger-ui:
+      always-include: true
+    dev-ui:
+      always-include: true
+    log:
+      level: INFO
+
+"%production":
+  quarkus:
+    log:
+      level: WARN

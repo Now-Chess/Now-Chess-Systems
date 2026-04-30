@@ -22,3 +22,17 @@ nowchess:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       prefix: ${REDIS_PREFIX:nowchess}
+
+"%staging":
+  quarkus:
+    swagger-ui:
+      always-include: true
+    dev-ui:
+      always-include: true
+    log:
+      level: INFO
+
+"%production":
+  quarkus:
+    log:
+      level: WARN
