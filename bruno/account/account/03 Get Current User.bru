@@ -7,7 +7,12 @@ meta {
 get {
   url: {{accountBaseUrl}}/account/me
   body: none
-  auth: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }
 
 headers {

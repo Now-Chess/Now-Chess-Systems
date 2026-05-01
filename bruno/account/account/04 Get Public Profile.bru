@@ -4,10 +4,15 @@ meta {
   seq: 4
 }
 
-http {
-  method: GET
+get {
   url: {{accountBaseUrl}}/account/{{username}}
-  auth: none
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }
 
 headers {

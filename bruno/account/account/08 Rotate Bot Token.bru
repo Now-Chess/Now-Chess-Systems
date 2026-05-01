@@ -4,10 +4,15 @@ meta {
   seq: 8
 }
 
-http {
-  method: POST
+post {
   url: {{accountBaseUrl}}/account/bots/{{botId}}/rotate-token
-  auth: none
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }
 
 headers {

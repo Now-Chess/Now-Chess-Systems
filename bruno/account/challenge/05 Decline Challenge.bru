@@ -4,11 +4,15 @@ meta {
   seq: 5
 }
 
-http {
-  method: POST
+post {
   url: {{accountBaseUrl}}/challenge/{{challengeId}}/decline
   body: json
-  auth: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }
 
 headers {

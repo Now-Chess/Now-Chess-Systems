@@ -4,10 +4,15 @@ meta {
   seq: 12
 }
 
-http {
-  method: POST
+post {
   url: {{accountBaseUrl}}/account/{{userId}}/unban
-  auth: none
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }
 
 headers {

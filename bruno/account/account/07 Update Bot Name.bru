@@ -4,11 +4,15 @@ meta {
   seq: 7
 }
 
-http {
-  method: PUT
+put {
   url: {{accountBaseUrl}}/account/bots/{{botId}}
   body: json
-  auth: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }
 
 headers {

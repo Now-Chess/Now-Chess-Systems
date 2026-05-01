@@ -4,9 +4,13 @@ meta {
   seq: 2
 }
 
-http {
-  method: POST
+post {
   url: {{baseUrl}}/api/board/game/{{gameId}}/draw/accept
   body: none
-  auth: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }

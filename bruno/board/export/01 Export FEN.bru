@@ -4,9 +4,13 @@ meta {
   seq: 1
 }
 
-http {
-  method: GET
+get {
   url: {{baseUrl}}/api/board/game/{{gameId}}/export/fen
   body: none
-  auth: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }

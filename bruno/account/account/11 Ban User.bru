@@ -4,10 +4,15 @@ meta {
   seq: 11
 }
 
-http {
-  method: POST
+post {
   url: {{accountBaseUrl}}/account/{{userId}}/ban
-  auth: none
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }
 
 headers {

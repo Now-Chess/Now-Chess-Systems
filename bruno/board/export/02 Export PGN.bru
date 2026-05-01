@@ -4,9 +4,13 @@ meta {
   seq: 2
 }
 
-http {
-  method: GET
+get {
   url: {{baseUrl}}/api/board/game/{{gameId}}/export/pgn
   body: none
-  auth: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }

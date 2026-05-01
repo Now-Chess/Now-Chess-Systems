@@ -4,10 +4,15 @@ meta {
   seq: 1
 }
 
-http {
-  method: POST
+post {
   url: {{accountBaseUrl}}/challenge/official/{{botName}}?difficulty={{difficulty}}&color={{color}}
-  auth: none
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }
 
 headers {
@@ -15,7 +20,7 @@ headers {
   Accept: application/json
 }
 
-notes {
+docs {
   Query Parameters:
   - difficulty: 1000-2800 (ELO)
   - color: white | black | random

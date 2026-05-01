@@ -1,4 +1,4 @@
 # Middleware
 
 ## custom
-- generate — `modules/bot/python/src/generate.py`
+- generate — `modules/official-bots/python/src/generate.py`

@@ -4,10 +4,15 @@ meta {
   seq: 10
 }
 
-http {
-  method: GET
+get {
   url: {{accountBaseUrl}}/account/official-bots
-  auth: none
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }
 
 headers {

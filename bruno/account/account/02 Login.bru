@@ -4,11 +4,15 @@ meta {
   seq: 2
 }
 
-http {
-  method: POST
+post {
   url: {{accountBaseUrl}}/account/login
   body: json
-  auth: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }
 
 headers {

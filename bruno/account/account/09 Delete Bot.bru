@@ -4,10 +4,15 @@ meta {
   seq: 9
 }
 
-http {
-  method: DELETE
+delete {
   url: {{accountBaseUrl}}/account/bots/{{botId}}
-  auth: none
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }
 
 headers {

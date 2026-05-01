@@ -4,10 +4,15 @@ meta {
   seq: 6
 }
 
-http {
-  method: POST
+post {
   url: {{accountBaseUrl}}/challenge/{{challengeId}}/cancel
-  auth: none
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }
 
 headers {

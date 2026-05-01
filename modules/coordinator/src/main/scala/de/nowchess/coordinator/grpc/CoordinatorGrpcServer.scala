@@ -34,16 +34,18 @@ class CoordinatorGrpcServer extends CoordinatorServiceGrpc.CoordinatorServiceImp
 
       override def onNext(frame: HeartbeatFrame): Unit =
         lastInstanceId = frame.getInstanceId
-        try
-          instanceRegistry.updateInstanceFromRedis(frame.getInstanceId)
-          log.debugf(
-            "Received heartbeat from %s with %d subscriptions",
-            frame.getInstanceId,
-            frame.getSubscriptionCount,
+        instanceRegistry
+          .updateInstanceFromRedis(frame.getInstanceId)
+          .subscribe()
+          .`with`(
+            _ =>
+              log.debugf(
+                "Received heartbeat from %s with %d subscriptions",
+                frame.getInstanceId,
+                frame.getSubscriptionCount,
+              ),
+            ex => log.warnf(ex, "Failed to process heartbeat from %s", frame.getInstanceId),
           )
-        catch
-          case ex: Exception =>
-            log.warnf(ex, "Failed to process heartbeat from %s", frame.getInstanceId)
 
       override def onError(t: Throwable): Unit =
         log.warnf(t, "Heartbeat stream error for instance %s", lastInstanceId)

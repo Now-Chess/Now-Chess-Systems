@@ -2,4 +2,4 @@
 
 ## Environment Variables
 
-- `STOCKFISH_PATH` **required** — modules/bot/python/nnue.py
+- `STOCKFISH_PATH` **required** — modules/official-bots/python/nnue.py
