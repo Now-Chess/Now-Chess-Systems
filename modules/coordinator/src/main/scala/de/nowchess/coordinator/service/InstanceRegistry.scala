@@ -15,7 +15,7 @@ class InstanceRegistry:
   // scalafix:off DisableSyntax.var
   @Inject
   private var redis: ReactiveRedisDataSource = uninitialized
-  private var redisPrefix                     = "nowchess"
+  private var redisPrefix                    = "nowchess"
   // scalafix:on DisableSyntax.var
 
   private val mapper    = ObjectMapper()
@@ -32,16 +32,19 @@ class InstanceRegistry:
 
   def updateInstanceFromRedis(instanceId: String): Uni[Unit] =
     val key = s"$redisPrefix:instances:$instanceId"
-    redis.value(classOf[String])
+    redis
+      .value(classOf[String])
       .get(key)
-      .onItem().transformToUni { value =>
+      .onItem()
+      .transformToUni { value =>
         try
           val metadata = mapper.readValue(value, classOf[InstanceMetadata])
           instances.put(instanceId, metadata)
           Uni.createFrom().item(())
         catch case _: Exception => Uni.createFrom().item(())
       }
-      .onFailure().recoverWithItem(())
+      .onFailure()
+      .recoverWithItem(())
 
   def markInstanceDead(instanceId: String): Unit =
     instances.computeIfPresent(instanceId, (_, inst) => inst.copy(state = "DEAD"))
