@@ -1,0 +1,32 @@
+meta {
+  name: Failover
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{coordinatorBaseUrl}}/api/coordinator/failover/{{instanceId}}
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+vars:pre-request {
+  instanceId: core-instance-1
+}
+
+docs {
+  Triggers manual failover for a specific core instance.
+  Marks it DEAD and migrates its game subscriptions to healthy instances.
+  Runs asynchronously — response does not wait for completion.
+
+  Requires port-forward: kubectl port-forward svc/nowchess-coordinator 8086:8086 -n <namespace>
+
+  Path param: instanceId — from /instances response (instanceId field)
+
+  Response: {"status": "failover_started", "instanceId": "<id>"}
+}

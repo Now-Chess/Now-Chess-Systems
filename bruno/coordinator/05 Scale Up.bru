@@ -1,0 +1,28 @@
+meta {
+  name: Scale Up
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{coordinatorBaseUrl}}/api/coordinator/scale-up
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Triggers manual scale-up of core replicas via Kubernetes rollout.
+  Requires auto-scale-enabled=true and a reachable k8s API.
+  Respects scale-max-replicas (default: 10).
+
+  Requires port-forward: kubectl port-forward svc/nowchess-coordinator 8086:8086 -n <namespace>
+
+  Auto-scale triggers when avg load exceeds scale-up-threshold (default: 0.8).
+
+  Response: {"status": "scale_up_started"}
+}

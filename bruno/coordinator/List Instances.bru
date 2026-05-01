@@ -1,0 +1,31 @@
+meta {
+  name: List Instances
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{coordinatorBaseUrl}}/api/coordinator/instances
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+    Returns all known core instances from the in-memory registry.
+    Registry is populated via gRPC heartbeats from core instances.
+  
+    Response: InstanceMetadata[]
+      instanceId:        string   — unique instance ID
+      hostname:          string
+      httpPort:          int
+      grpcPort:          int
+      subscriptionCount: int      — number of active game subscriptions
+      localCacheSize:    int
+      lastHeartbeat:     string   — ISO-8601 timestamp
+      state:             string   — "HEALTHY" | "DEAD"
+}

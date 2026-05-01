@@ -1,0 +1,23 @@
+meta {
+  name: User WebSocket
+  type: ws
+  seq: 2
+}
+
+ws {
+  url: {{wsBaseUrl}}/api/user/ws
+  body: ws
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:ws {
+  name: message 1
+  type: json
+  content: '''
+    {}
+  '''
+}

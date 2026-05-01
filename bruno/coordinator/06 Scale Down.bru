@@ -1,0 +1,28 @@
+meta {
+  name: Scale Down
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{coordinatorBaseUrl}}/api/coordinator/scale-down
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Triggers manual scale-down of core replicas via Kubernetes rollout.
+  Requires auto-scale-enabled=true and a reachable k8s API.
+  Respects scale-min-replicas (default: 2).
+
+  Requires port-forward: kubectl port-forward svc/nowchess-coordinator 8086:8086 -n <namespace>
+
+  Auto-scale triggers when avg load drops below scale-down-threshold (default: 0.3).
+
+  Response: {"status": "scale_down_started"}
+}

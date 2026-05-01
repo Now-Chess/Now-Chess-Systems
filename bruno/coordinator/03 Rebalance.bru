@@ -1,0 +1,29 @@
+meta {
+  name: Rebalance
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{coordinatorBaseUrl}}/api/coordinator/rebalance
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Triggers a manual rebalance of game subscriptions across core instances.
+  Runs asynchronously — response does not wait for completion.
+
+  Requires port-forward: kubectl port-forward svc/nowchess-coordinator 8086:8086 -n <namespace>
+
+  Auto-rebalance runs every 30s (rebalance-interval), min 60s between runs
+  (rebalance-min-interval). Triggers when load deviation exceeds 20%
+  (max-deviation-percent).
+
+  Response: {"status": "rebalance_started"}
+}

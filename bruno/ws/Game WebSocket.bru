@@ -1,0 +1,23 @@
+meta {
+  name: Game WebSocket
+  type: ws
+  seq: 1
+}
+
+ws {
+  url: {{wsBaseUrl}}/api/board/game/{{gameId}}/ws
+  body: ws
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:ws {
+  name: message 1
+  type: json
+  content: '''
+    {}
+  '''
+}

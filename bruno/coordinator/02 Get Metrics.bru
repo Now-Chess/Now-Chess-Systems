@@ -1,0 +1,32 @@
+meta {
+  name: Get Metrics
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{coordinatorBaseUrl}}/api/coordinator/metrics
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Aggregate load metrics computed from the instance registry.
+
+  Requires port-forward: kubectl port-forward svc/nowchess-coordinator 8086:8086 -n <namespace>
+
+  Response: MetricsDto
+    totalInstances:    int
+    healthyInstances:  int
+    deadInstances:     int
+    totalGames:        int     — sum of subscriptionCount across all instances
+    avgGamesPerCore:   double
+    maxGamesPerCore:   int
+    minGamesPerCore:   int
+    instances:         InstanceMetadata[]
+}
