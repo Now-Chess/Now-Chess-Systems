@@ -53,22 +53,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up GraalVM
-        uses: graalvm/setup-graalvm@v1
-        with:
-          java-version: '21'
-          distribution: 'graalvm-community'
-          native-image-job-reports: 'true'
-
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: gradle-${{ runner.os }}-
-
       - name: Read version from versions.env
         id: version
         run: |
@@ -80,13 +64,46 @@ jobs:
             echo "version=latest" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Check if image exists in GHCR
+        id: image-check
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://ghcr.io/v2/now-chess/now-chess-systems/${{ matrix.module }}/manifests/${{ steps.version.outputs.version }}")
+          if [[ "$STATUS" == "200" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up GraalVM
+        if: steps.image-check.outputs.exists == 'false'
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '21'
+          distribution: 'graalvm-community'
+          native-image-job-reports: 'true'
+
+      - name: Cache Gradle packages
+        if: steps.image-check.outputs.exists == 'false'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
       - name: Build native binary
+        if: steps.image-check.outputs.exists == 'false'
         run: ./gradlew :modules:${{ matrix.module }}:build -x test -Dquarkus.native.enabled=true -Dquarkus.package.jar.enabled=false -Dquarkus.profile=deployed --no-daemon
 
       - name: Set up Docker Buildx
+        if: steps.image-check.outputs.exists == 'false'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
+        if: steps.image-check.outputs.exists == 'false'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -94,6 +111,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
+        if: steps.image-check.outputs.exists == 'false'
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -103,6 +121,7 @@ jobs:
             type=raw,value=latest
 
       - name: Build and push
+        if: steps.image-check.outputs.exists == 'false'
         uses: docker/build-push-action@v6
         with:
           context: .
