@@ -9,7 +9,6 @@ quarkus:
     server:
       port: 9086
   rest-client:
-    connection-timeout: 5000
     read-timeout: 10000
   smallrye-openapi:
     info-title: NowChess Coordinator Service

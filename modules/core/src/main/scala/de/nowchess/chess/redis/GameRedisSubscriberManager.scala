@@ -16,6 +16,7 @@ import jakarta.annotation.PreDestroy
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.inject.Instance
 import jakarta.inject.Inject
+import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
 import scala.util.Try
 import java.util.concurrent.ConcurrentHashMap
@@ -23,6 +24,8 @@ import java.util.function.Consumer
 
 @ApplicationScoped
 class GameRedisSubscriberManager:
+
+  private val log = Logger.getLogger(classOf[GameRedisSubscriberManager])
 
   // scalafix:off DisableSyntax.var
   @Inject var redis: RedisDataSource                                       = uninitialized
@@ -65,11 +68,12 @@ class GameRedisSubscriberManager:
       )
       s2cObservers.put(gameId, obs)
       registry.get(gameId).foreach(_.engine.subscribe(obs))
+      log.debugf("Subscribed to game %s", gameId)
 
       heartbeatServiceOpt.foreach(_.addGameSubscription(gameId))
     catch
       case e: Exception =>
-        System.err.println(s"Warning: Redis subscription failed for game $gameId: ${e.getMessage}")
+        log.warnf(e, "Redis subscription failed for game %s", gameId)
         ()
 
   def unsubscribeGame(gameId: String): Unit =
@@ -81,6 +85,7 @@ class GameRedisSubscriberManager:
     }
 
     heartbeatServiceOpt.foreach(_.removeGameSubscription(gameId))
+    log.debugf("Unsubscribed from game %s", gameId)
 
   private def handleC2sMessage(gameId: String, msg: String): Unit =
     parseC2sMessage(msg) match
@@ -97,6 +102,7 @@ class GameRedisSubscriberManager:
     }
 
   private def handleMove(gameId: String, uci: String, playerId: Option[String]): Unit =
+    log.debugf("Processing move %s for game %s by player %s", uci, gameId, playerId.getOrElse("anonymous"))
     registry.get(gameId).foreach { entry =>
       entry.mode match
         case GameMode.Open => entry.engine.processUserInput(uci)
@@ -127,6 +133,7 @@ class GameRedisSubscriberManager:
 
   def batchResubscribeGames(gameIds: java.util.List[String]): Int =
     gameIds.forEach(subscribeGame)
+    log.infof("Batch resubscribed %d games", gameIds.size())
     gameIds.size()
 
   def unsubscribeGames(gameIds: java.util.List[String]): Int =
@@ -135,12 +142,14 @@ class GameRedisSubscriberManager:
 
   def evictGames(gameIds: java.util.List[String]): Int =
     gameIds.forEach(unsubscribeGame)
+    log.infof("Evicting %d games", gameIds.size())
     gameIds.size()
 
   def drainInstance(): Int =
     val gameIds = new java.util.ArrayList(c2sListeners.keySet())
     val count   = gameIds.size()
     gameIds.forEach(unsubscribeGame)
+    log.infof("Draining instance, unsubscribing %d games", count)
     count
 
   @PreDestroy

@@ -17,6 +17,7 @@ import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import org.eclipse.microprofile.rest.client.inject.RestClient
 import scala.compiletime.uninitialized
+import org.jboss.logging.Logger
 import scala.util.Try
 import java.nio.charset.StandardCharsets
 import java.security.{MessageDigest, SecureRandom}
@@ -35,6 +36,7 @@ class RedisGameRegistry extends GameRegistry:
   @Inject @RestClient var storeClient: StoreServiceClient = uninitialized
   // scalafix:on
 
+  private val log          = Logger.getLogger(classOf[RedisGameRegistry])
   private val localEngines = ConcurrentHashMap[String, GameEntry]()
   private val rng          = new SecureRandom()
 
@@ -48,6 +50,12 @@ class RedisGameRegistry extends GameRegistry:
     localEngines.put(entry.gameId, entry)
     val combined = ioClient.exportCombined(entry.engine.context)
     redis.value(classOf[String]).setex(cacheKey(entry.gameId), 1800L, toJson(entry, combined.fen, combined.pgn))
+    log.infof(
+      "Stored game %s in registry (white=%s black=%s)",
+      entry.gameId,
+      entry.white.displayName,
+      entry.black.displayName,
+    )
 
   def get(gameId: String): Option[GameEntry] =
     Option(localEngines.get(gameId)) match
@@ -71,9 +79,15 @@ class RedisGameRegistry extends GameRegistry:
 
   private def fromRedis(gameId: String): Option[GameEntry] =
     readRedisDto(gameId)
-      .flatMap(dto => Try(reconstruct(dto)).toOption)
+      .flatMap { dto =>
+        Try(reconstruct(dto)).toOption.orElse {
+          log.warnf("Failed to reconstruct game %s from Redis", gameId)
+          None
+        }
+      }
       .map { entry =>
         localEngines.put(gameId, entry)
+        log.infof("Loaded game %s from Redis cache", gameId)
         entry
       }
 
@@ -102,12 +116,15 @@ class RedisGameRegistry extends GameRegistry:
         pendingDrawOffer = Option(record.pendingDrawOffer),
       )
       (dto, reconstruct(dto))
-    }.toOption
-      .map { case (dto, entry) =>
+    } match
+      case scala.util.Success((dto, entry)) =>
+        log.infof("Loaded game %s from store service", gameId)
         localEngines.put(gameId, entry)
         redis.value(classOf[String]).setex(cacheKey(gameId), 1800L, objectMapper.writeValueAsString(dto))
-        entry
-      }
+        Some(entry)
+      case scala.util.Failure(ex) =>
+        log.warnf(ex, "Failed to load game %s from store service", gameId)
+        None
 
   private def reconstruct(dto: GameCacheDto): GameEntry =
     val ctx = if dto.pgn.nonEmpty then ioClient.importPgn(dto.pgn) else GameContext.initial

@@ -7,6 +7,7 @@ import de.nowchess.api.rules.{PostMoveStatus, RuleSet}
 import de.nowchess.core.proto.*
 import io.quarkus.grpc.GrpcClient
 import jakarta.enterprise.context.ApplicationScoped
+import org.jboss.logging.Logger
 
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
@@ -14,28 +15,59 @@ import scala.jdk.CollectionConverters.*
 @ApplicationScoped
 class RuleSetGrpcAdapter extends RuleSet:
 
+  private val log = Logger.getLogger(classOf[RuleSetGrpcAdapter])
+
   // scalafix:off DisableSyntax.var
   @GrpcClient("rule-grpc")
   var stub: RuleServiceGrpc.RuleServiceBlockingStub = uninitialized
   // scalafix:on DisableSyntax.var
 
   def candidateMoves(ctx: GameContext)(sq: Square): List[Move] =
-    val req =
-      ProtoSquareRequest.newBuilder().setContext(CoreProtoMapper.toProtoGameContext(ctx)).setSquare(sq.toString).build()
-    stub.candidateMoves(req).getMovesList.asScala.flatMap(CoreProtoMapper.fromProtoMove).toList
+    try
+      val req =
+        ProtoSquareRequest
+          .newBuilder()
+          .setContext(CoreProtoMapper.toProtoGameContext(ctx))
+          .setSquare(sq.toString)
+          .build()
+      stub.candidateMoves(req).getMovesList.asScala.flatMap(CoreProtoMapper.fromProtoMove).toList
+    catch
+      case ex: Exception =>
+        log.warnf(ex, "Rule gRPC candidateMoves failed")
+        // scalafix:off DisableSyntax.throw
+        throw ex
+      // scalafix:on DisableSyntax.throw
 
   def legalMoves(ctx: GameContext)(sq: Square): List[Move] =
-    val req =
-      ProtoSquareRequest.newBuilder().setContext(CoreProtoMapper.toProtoGameContext(ctx)).setSquare(sq.toString).build()
-    stub.legalMoves(req).getMovesList.asScala.flatMap(CoreProtoMapper.fromProtoMove).toList
+    try
+      val req =
+        ProtoSquareRequest
+          .newBuilder()
+          .setContext(CoreProtoMapper.toProtoGameContext(ctx))
+          .setSquare(sq.toString)
+          .build()
+      stub.legalMoves(req).getMovesList.asScala.flatMap(CoreProtoMapper.fromProtoMove).toList
+    catch
+      case ex: Exception =>
+        log.warnf(ex, "Rule gRPC legalMoves failed")
+        // scalafix:off DisableSyntax.throw
+        throw ex
+      // scalafix:on DisableSyntax.throw
 
   def allLegalMoves(ctx: GameContext): List[Move] =
-    stub
-      .allLegalMoves(CoreProtoMapper.toProtoGameContext(ctx))
-      .getMovesList
-      .asScala
-      .flatMap(CoreProtoMapper.fromProtoMove)
-      .toList
+    try
+      stub
+        .allLegalMoves(CoreProtoMapper.toProtoGameContext(ctx))
+        .getMovesList
+        .asScala
+        .flatMap(CoreProtoMapper.fromProtoMove)
+        .toList
+    catch
+      case ex: Exception =>
+        log.warnf(ex, "Rule gRPC allLegalMoves failed")
+        // scalafix:off DisableSyntax.throw
+        throw ex
+      // scalafix:on DisableSyntax.throw
 
   def isCheck(ctx: GameContext): Boolean =
     stub.isCheck(CoreProtoMapper.toProtoGameContext(ctx)).getValue
@@ -56,19 +88,33 @@ class RuleSetGrpcAdapter extends RuleSet:
     stub.isThreefoldRepetition(CoreProtoMapper.toProtoGameContext(ctx)).getValue
 
   def applyMove(ctx: GameContext)(move: Move): GameContext =
-    val req = ProtoMoveRequest
-      .newBuilder()
-      .setContext(CoreProtoMapper.toProtoGameContext(ctx))
-      .setMove(CoreProtoMapper.toProtoMove(move))
-      .build()
-    CoreProtoMapper.fromProtoGameContext(stub.applyMove(req))
+    try
+      val req = ProtoMoveRequest
+        .newBuilder()
+        .setContext(CoreProtoMapper.toProtoGameContext(ctx))
+        .setMove(CoreProtoMapper.toProtoMove(move))
+        .build()
+      CoreProtoMapper.fromProtoGameContext(stub.applyMove(req))
+    catch
+      case ex: Exception =>
+        log.warnf(ex, "Rule gRPC applyMove failed")
+        // scalafix:off DisableSyntax.throw
+        throw ex
+      // scalafix:on DisableSyntax.throw
 
   override def postMoveStatus(ctx: GameContext): PostMoveStatus =
-    val p = stub.postMoveStatus(CoreProtoMapper.toProtoGameContext(ctx))
-    PostMoveStatus(
-      p.getIsCheckmate,
-      p.getIsStalemate,
-      p.getIsInsufficientMaterial,
-      p.getIsCheck,
-      p.getIsThreefoldRepetition,
-    )
+    try
+      val p = stub.postMoveStatus(CoreProtoMapper.toProtoGameContext(ctx))
+      PostMoveStatus(
+        p.getIsCheckmate,
+        p.getIsStalemate,
+        p.getIsInsufficientMaterial,
+        p.getIsCheck,
+        p.getIsThreefoldRepetition,
+      )
+    catch
+      case ex: Exception =>
+        log.warnf(ex, "Rule gRPC postMoveStatus failed")
+        // scalafix:off DisableSyntax.throw
+        throw ex
+      // scalafix:on DisableSyntax.throw

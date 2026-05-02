@@ -30,6 +30,7 @@ import jakarta.inject.Inject
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.{MediaType, Response}
 import org.eclipse.microprofile.jwt.JsonWebToken
+import org.jboss.logging.Logger
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.compiletime.uninitialized
@@ -37,6 +38,8 @@ import scala.compiletime.uninitialized
 @Path("/api/board/game")
 @ApplicationScoped
 class GameResource:
+
+  private val log = Logger.getLogger(classOf[GameResource])
 
   // scalafix:off DisableSyntax.var
   @Inject
@@ -165,7 +168,13 @@ class GameResource:
     val entry = newEntry(GameContext.initial, white, black, tc, mode)
     registry.store(entry)
     subscriberManager.subscribeGame(entry.gameId)
-    println(s"Created game ${entry.gameId}")
+    log.infof(
+      "Game %s created — white=%s black=%s mode=%s",
+      entry.gameId,
+      white.displayName,
+      black.displayName,
+      mode.toString,
+    )
     created(GameDtoMapper.toGameFullDto(entry, ioClient))
 
   @GET
@@ -182,6 +191,7 @@ class GameResource:
     val entry = registry.get(gameId).getOrElse(throw GameNotFoundException(gameId))
     assertGameNotOver(entry)
     val color = colorOf(entry)
+    log.infof("Game %s — resign by %s", gameId, color.label)
     entry.engine.resign(color)
     registry.update(entry.copy(resigned = true))
     ok(OkResponseDto())
@@ -194,6 +204,7 @@ class GameResource:
     val entry = registry.get(gameId).getOrElse(throw GameNotFoundException(gameId))
     assertGameNotOver(entry)
     assertIsCurrentPlayer(entry)
+    log.debugf("Game %s — move %s by %s", gameId, uci, colorOf(entry).label)
     if Parser.parseMove(uci).isEmpty then
       throw BadRequestException("INVALID_UCI", s"Invalid UCI notation: $uci", Some("uci"))
     applyMoveInput(entry.engine, uci).foreach(err => throw BadRequestException("INVALID_MOVE", err, Some("uci")))
@@ -284,6 +295,7 @@ class GameResource:
     val entry = newEntry(ctx, white, black, tc)
     registry.store(entry)
     subscriberManager.subscribeGame(entry.gameId)
+    log.infof("Imported FEN game %s", entry.gameId)
     created(GameDtoMapper.toGameFullDto(entry, ioClient))
 
   @POST
@@ -295,6 +307,7 @@ class GameResource:
     val entry = newEntry(ctx, DefaultWhite, DefaultBlack)
     registry.store(entry)
     subscriberManager.subscribeGame(entry.gameId)
+    log.infof("Imported PGN game %s", entry.gameId)
     created(GameDtoMapper.toGameFullDto(entry, ioClient))
 
   @GET

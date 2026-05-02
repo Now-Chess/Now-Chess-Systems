@@ -10,6 +10,7 @@ import jakarta.inject.Inject
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.{MediaType, Response}
 import org.eclipse.microprofile.jwt.JsonWebToken
+import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
 import java.util.function.Consumer
 
@@ -17,6 +18,8 @@ import java.util.function.Consumer
 @ApplicationScoped
 @RolesAllowed(Array("**"))
 class BotEventResource:
+
+  private val log = Logger.getLogger(classOf[BotEventResource])
 
   // scalafix:off DisableSyntax.var
   @Inject var registry: BotRegistry    = uninitialized
@@ -32,8 +35,10 @@ class BotEventResource:
     val tokenType = Option(jwt.getClaim[AnyRef]("type")).map(_.toString).getOrElse("")
     val subject   = Option(jwt.getSubject).getOrElse("")
     if tokenType != "bot" || subject != botId then
+      log.warnf("Unauthorized bot stream access — tokenType=%s subject=%s botId=%s", tokenType, subject, botId)
       Multi.createFrom().failure(new ForbiddenException("Not authorized for this bot"))
     else
+      log.infof("Bot %s connected to event stream", botId)
       Multi.createFrom().emitter[String] { emitter =>
         registry.register(botId, emitter)
         emitter.onTermination(() => registry.unregister(botId))
@@ -58,6 +63,7 @@ class BotEventResource:
       @PathParam("uci") uci: String,
   ): Response =
     val playerId = Option(jwt.getSubject).getOrElse("")
-    val moveMsg  = s"""{"type":"MOVE","uci":"$uci","playerId":"$playerId"}"""
+    log.debugf("Bot move %s in game %s by player %s", uci, gameId, playerId)
+    val moveMsg = s"""{"type":"MOVE","uci":"$uci","playerId":"$playerId"}"""
     redis.pubsub(classOf[String]).publish(s"${redisConfig.prefix}:game:$gameId:c2s", moveMsg)
     Response.ok().build()

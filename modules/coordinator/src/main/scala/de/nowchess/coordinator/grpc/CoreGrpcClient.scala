@@ -16,10 +16,18 @@ class CoreGrpcClient:
   private val channels = ConcurrentHashMap[String, ManagedChannel]()
 
   private def getChannel(host: String, port: Int): ManagedChannel =
-    channels.computeIfAbsent(s"$host:$port", _ => ManagedChannelBuilder.forAddress(host, port).usePlaintext().build())
+    channels.computeIfAbsent(
+      s"$host:$port",
+      _ =>
+        log.infof("Opening gRPC channel to %s:%d", host, port)
+        ManagedChannelBuilder.forAddress(host, port).usePlaintext().build(),
+    )
 
   private def evictStaleChannel(host: String, port: Int): Unit =
-    Option(channels.remove(s"$host:$port")).foreach(_.shutdownNow())
+    Option(channels.remove(s"$host:$port")).foreach { ch =>
+      log.infof("Evicting stale gRPC channel to %s:%d", host, port)
+      ch.shutdownNow()
+    }
 
   @PreDestroy
   def shutdown(): Unit =
@@ -33,7 +41,9 @@ class CoreGrpcClient:
     try
       val stub    = CoordinatorServiceGrpc.newBlockingStub(getChannel(host, port))
       val request = BatchResubscribeRequest.newBuilder().addAllGameIds(gameIds.asJava).build()
-      stub.batchResubscribeGames(request).getSubscribedCount
+      val count   = stub.batchResubscribeGames(request).getSubscribedCount
+      log.debugf("batchResubscribeGames %s:%d — subscribed %d games", host, port, count)
+      count
     catch
       case ex: Exception =>
         log.warnf(ex, "batchResubscribeGames RPC failed for %s:%d", host, port)
@@ -44,7 +54,9 @@ class CoreGrpcClient:
     try
       val stub    = CoordinatorServiceGrpc.newBlockingStub(getChannel(host, port))
       val request = UnsubscribeGamesRequest.newBuilder().addAllGameIds(gameIds.asJava).build()
-      stub.unsubscribeGames(request).getUnsubscribedCount
+      val count   = stub.unsubscribeGames(request).getUnsubscribedCount
+      log.debugf("unsubscribeGames %s:%d — unsubscribed %d games", host, port, count)
+      count
     catch
       case ex: Exception =>
         log.warnf(ex, "unsubscribeGames RPC failed for %s:%d", host, port)
@@ -55,7 +67,9 @@ class CoreGrpcClient:
     try
       val stub    = CoordinatorServiceGrpc.newBlockingStub(getChannel(host, port))
       val request = EvictGamesRequest.newBuilder().addAllGameIds(gameIds.asJava).build()
-      stub.evictGames(request).getEvictedCount
+      val count   = stub.evictGames(request).getEvictedCount
+      log.debugf("evictGames %s:%d — evicted %d games", host, port, count)
+      count
     catch
       case ex: Exception =>
         log.warnf(ex, "evictGames RPC failed for %s:%d", host, port)

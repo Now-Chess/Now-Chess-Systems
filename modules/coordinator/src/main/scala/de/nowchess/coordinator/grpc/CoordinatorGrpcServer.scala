@@ -27,13 +27,24 @@ class CoordinatorGrpcServer extends CoordinatorServiceGrpc.CoordinatorServiceImp
   override def heartbeatStream(
       responseObserver: StreamObserver[CoordinatorCommand],
   ): StreamObserver[HeartbeatFrame] =
+    log.info("New heartbeat stream connection established")
     new StreamObserver[HeartbeatFrame]:
       // scalafix:off DisableSyntax.var
       private var lastInstanceId = ""
+      private var firstFrameSeen = false
       // scalafix:on DisableSyntax.var
 
       override def onNext(frame: HeartbeatFrame): Unit =
         lastInstanceId = frame.getInstanceId
+        if !firstFrameSeen then
+          firstFrameSeen = true
+          log.infof(
+            "First heartbeat from instance %s (host=%s http=%d grpc=%d)",
+            frame.getInstanceId,
+            frame.getHostname,
+            frame.getHttpPort,
+            frame.getGrpcPort,
+          )
         instanceRegistry
           .updateInstanceFromRedis(frame.getInstanceId)
           .subscribe()

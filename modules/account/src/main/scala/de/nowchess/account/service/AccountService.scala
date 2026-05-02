@@ -9,6 +9,7 @@ import io.smallrye.jwt.build.Jwt
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
+import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
 
 import java.time.Instant
@@ -16,6 +17,8 @@ import java.util.UUID
 
 @ApplicationScoped
 class AccountService:
+
+  private val log = Logger.getLogger(classOf[AccountService])
 
   // scalafix:off DisableSyntax.var
   @Inject
@@ -30,6 +33,7 @@ class AccountService:
 
   @Transactional
   def register(req: RegisterRequest): Either[AccountError, UserAccount] =
+    log.infof("Registering user %s", req.username)
     if userAccountRepository.findByUsername(req.username).isDefined then Left(AccountError.UsernameTaken(req.username))
     else if userAccountRepository.findByEmail(req.email).isDefined then
       Left(AccountError.EmailAlreadyRegistered(req.email))
@@ -40,15 +44,23 @@ class AccountService:
       account.passwordHash = BcryptUtil.bcryptHash(req.password)
       account.createdAt = Instant.now()
       userAccountRepository.persist(account)
+      log.infof("User %s registered successfully", req.username)
       Right(account)
 
   def login(req: LoginRequest): Either[AccountError, String] =
     userAccountRepository.findByUsername(req.username) match
-      case None => Left(AccountError.InvalidCredentials)
+      case None =>
+        log.warnf("Login failed for unknown user %s", req.username)
+        Left(AccountError.InvalidCredentials)
       case Some(account) =>
-        if !BcryptUtil.matches(req.password, account.passwordHash) then Left(AccountError.InvalidCredentials)
-        else if account.banned then Left(AccountError.UserBanned)
+        if !BcryptUtil.matches(req.password, account.passwordHash) then
+          log.warnf("Login failed — invalid credentials for %s", req.username)
+          Left(AccountError.InvalidCredentials)
+        else if account.banned then
+          log.warnf("Login rejected — user %s is banned", req.username)
+          Left(AccountError.UserBanned)
         else
+          log.infof("User %s logged in successfully", req.username)
           Right(
             Jwt
               .issuer("nowchess")
@@ -65,6 +77,7 @@ class AccountService:
 
   @Transactional
   def createBotAccount(ownerId: UUID, botName: String): Either[AccountError, BotAccount] =
+    log.infof("Creating bot account %s for owner %s", botName, ownerId.toString)
     userAccountRepository.findById(ownerId) match
       case None => Left(AccountError.UserNotFound)
       case Some(owner) =>
@@ -77,6 +90,7 @@ class AccountService:
           bot.token = generateBotToken(bot.id)
           bot.createdAt = Instant.now()
           botAccountRepository.persist(bot)
+          log.infof("Bot account %s created for owner %s", botName, ownerId.toString)
           Right(bot)
 
   def getBotAccounts(ownerId: UUID): List[BotAccount] =
@@ -93,6 +107,7 @@ class AccountService:
       case None => Left(AccountError.BotNotFound)
       case Some(_) =>
         botAccountRepository.delete(botId)
+        log.infof("Deleting bot account %s", botId.toString)
         Right(())
 
   @Transactional
@@ -146,6 +161,7 @@ class AccountService:
 
   @Transactional
   def banUser(userId: UUID): Either[AccountError, UserAccount] =
+    log.infof("Banning user %s", userId.toString)
     userAccountRepository.findById(userId) match
       case None => Left(AccountError.UserNotFound)
       case Some(user) =>
@@ -156,6 +172,7 @@ class AccountService:
 
   @Transactional
   def unbanUser(userId: UUID): Either[AccountError, UserAccount] =
+    log.infof("Unbanning user %s", userId.toString)
     userAccountRepository.findById(userId) match
       case None => Left(AccountError.UserNotFound)
       case Some(user) =>
