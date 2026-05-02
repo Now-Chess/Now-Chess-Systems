@@ -24,6 +24,9 @@ class InstanceHeartbeatService:
   @Inject
   private var redis: RedisDataSource = uninitialized
 
+  @Inject
+  private var mapper: ObjectMapper = uninitialized
+
   @GrpcClient("coordinator-grpc")
   private var channel: Channel = uninitialized
 
@@ -38,7 +41,6 @@ class InstanceHeartbeatService:
 
   private var coordinatorStub: CoordinatorServiceStub = uninitialized
   private val log                                     = Logger.getLogger(classOf[InstanceHeartbeatService])
-  private val mapper                                  = ObjectMapper()
   private var instanceId                              = ""
   private var redisPrefix                             = "nowchess"
   private var streamObserver: Option[StreamObserver[HeartbeatFrame]] = None
