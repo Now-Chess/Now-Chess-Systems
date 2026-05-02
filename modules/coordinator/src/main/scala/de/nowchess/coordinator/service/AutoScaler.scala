@@ -34,13 +34,11 @@ class AutoScaler:
   private val argoKind       = "Rollout"
 
   // scalafix:off DisableSyntax.asInstanceOf
-  // scalafix:off DisableSyntax.isInstanceOf
   private def rolloutSpec(rollout: GenericKubernetesResource): Option[java.util.Map[String, AnyRef]] =
-    Option(rollout.get("spec")).collect {
-      case m if m.isInstanceOf[java.util.Map[?, ?]] => m.asInstanceOf[java.util.Map[String, AnyRef]]
+    Option(rollout.get[AnyRef]("spec")).collect {
+      case m: java.util.Map[?, ?] => m.asInstanceOf[java.util.Map[String, AnyRef]]
     }
   // scalafix:on DisableSyntax.asInstanceOf
-  // scalafix:on DisableSyntax.isInstanceOf
 
   def checkAndScale: Unit =
     if config.autoScaleEnabled then
