@@ -30,6 +30,9 @@ class AutoScaler:
     if kubeClientInstance.isUnsatisfied then None
     else Some(kubeClientInstance.get())
 
+  private val argoApiVersion = "argoproj.io/v1alpha1"
+  private val argoKind       = "Rollout"
+
   // scalafix:off DisableSyntax.asInstanceOf
   // scalafix:off DisableSyntax.isInstanceOf
   private def rolloutSpec(rollout: GenericKubernetesResource): Option[java.util.Map[String, AnyRef]] =
@@ -61,7 +64,7 @@ class AutoScaler:
         try
           Option(
             kube
-              .resources(classOf[GenericKubernetesResource])
+              .genericKubernetesResources(argoApiVersion, argoKind)
               .inNamespace(config.k8sNamespace)
               .withName(config.k8sRolloutName)
               .get(),
@@ -102,7 +105,7 @@ class AutoScaler:
         try
           Option(
             kube
-              .resources(classOf[GenericKubernetesResource])
+              .genericKubernetesResources(argoApiVersion, argoKind)
               .inNamespace(config.k8sNamespace)
               .withName(config.k8sRolloutName)
               .get(),
