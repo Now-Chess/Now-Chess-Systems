@@ -5,6 +5,7 @@ quarkus:
     name: nowchess-core
   redis:
     hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
+    max-pool-wait-time: 500ms
   grpc:
     clients:
       rule-grpc:

@@ -8,6 +8,7 @@ import io.quarkus.runtime.ShutdownEvent
 import io.quarkus.grpc.GrpcClient
 import org.eclipse.microprofile.config.inject.ConfigProperty
 import io.quarkus.redis.datasource.RedisDataSource
+import io.quarkus.redis.datasource.ReactiveRedisDataSource
 import scala.compiletime.uninitialized
 import java.util.concurrent.{Executors, TimeUnit}
 import java.net.InetAddress
@@ -23,6 +24,9 @@ class InstanceHeartbeatService:
   // scalafix:off DisableSyntax.var
   @Inject
   private var redis: RedisDataSource = uninitialized
+
+  @Inject
+  private var reactiveRedis: ReactiveRedisDataSource = uninitialized
 
   @Inject
   private var mapper: ObjectMapper = uninitialized
@@ -182,10 +186,14 @@ class InstanceHeartbeatService:
       )
 
       val json = mapper.writeValueAsString(metadata)
-      redis.value(classOf[String]).setex(key, 5L, json)
+      reactiveRedis.value(classOf[String]).setex(key, 5L, json)
+        .subscribe().`with`(
+          _ => (),
+          (ex: Throwable) => log.warnf(ex, "Failed to refresh Redis heartbeat"),
+        )
     catch
       case ex: Exception =>
-        log.warnf(ex, "Failed to refresh Redis heartbeat")
+        log.warnf(ex, "Failed to serialize Redis heartbeat metadata")
 
   private def getHostname: String =
     try InetAddress.getLocalHost.getHostName
