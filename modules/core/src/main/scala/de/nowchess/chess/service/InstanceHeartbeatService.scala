@@ -186,8 +186,11 @@ class InstanceHeartbeatService:
       )
 
       val json = mapper.writeValueAsString(metadata)
-      reactiveRedis.value(classOf[String]).setex(key, 5L, json)
-        .subscribe().`with`(
+      reactiveRedis
+        .value(classOf[String])
+        .setex(key, 5L, json)
+        .subscribe()
+        .`with`(
           _ => (),
           (ex: Throwable) => log.warnf(ex, "Failed to refresh Redis heartbeat"),
         )
