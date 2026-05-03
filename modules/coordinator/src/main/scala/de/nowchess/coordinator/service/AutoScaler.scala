@@ -35,8 +35,8 @@ class AutoScaler:
 
   // scalafix:off DisableSyntax.asInstanceOf
   private def rolloutSpec(rollout: GenericKubernetesResource): Option[java.util.Map[String, AnyRef]] =
-    Option(rollout.get[AnyRef]("spec")).collect {
-      case m: java.util.Map[?, ?] => m.asInstanceOf[java.util.Map[String, AnyRef]]
+    Option(rollout.get[AnyRef]("spec")).collect { case m: java.util.Map[?, ?] =>
+      m.asInstanceOf[java.util.Map[String, AnyRef]]
     }
   // scalafix:on DisableSyntax.asInstanceOf
 
