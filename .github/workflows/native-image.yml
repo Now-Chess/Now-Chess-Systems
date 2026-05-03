@@ -19,12 +19,20 @@ jobs:
       - id: check
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "Triggered manually — allowing build"
             echo "allowed=true" >> "$GITHUB_OUTPUT"
           else
             COMMIT_AUTHOR=$(git log -1 --format='%an')
+            COMMIT_SHA=$(git log -1 --format='%H')
+            COMMIT_MSG=$(git log -1 --format='%s')
+            echo "Commit: ${COMMIT_SHA}"
+            echo "Author: ${COMMIT_AUTHOR}"
+            echo "Message: ${COMMIT_MSG}"
             if [[ "$COMMIT_AUTHOR" == "TeamCity" ]]; then
+              echo "Author is TeamCity — allowing build"
               echo "allowed=true" >> "$GITHUB_OUTPUT"
             else
+              echo "Author is not TeamCity — skipping build"
               echo "allowed=false" >> "$GITHUB_OUTPUT"
             fi
           fi
@@ -59,8 +67,10 @@ jobs:
           if [ -f "modules/${{ matrix.module }}/versions.env" ]; then
             source modules/${{ matrix.module }}/versions.env
             VERSION="${MAJOR}.${MINOR}.${PATCH}"
+            echo "[${{ matrix.module }}] Version: ${VERSION}"
             echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           else
+            echo "[${{ matrix.module }}] No versions.env found — using 'latest'"
             echo "version=latest" >> "$GITHUB_OUTPUT"
           fi
 
@@ -69,19 +79,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Exchange the GitHub token for a GHCR registry JWT
-          TOKEN=$(curl -s \
-            -u "${{ github.actor }}:${GH_TOKEN}" \
-            "https://ghcr.io/token?scope=repository:now-chess/now-chess-systems/${{ matrix.module }}:pull&service=ghcr.io" \
-            | jq -r .token)
-
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Authorization: Bearer ${TOKEN}" \
-            "https://ghcr.io/v2/now-chess/now-chess-systems/${{ matrix.module }}/manifests/${{ steps.version.outputs.version }}")
-
-          if [[ "$STATUS" == "200" ]]; then
+          PACKAGE="now-chess-systems%2F${{ matrix.module }}"
+          VERSION="${{ steps.version.outputs.version }}"
+          EXISTING_TAGS=$(gh api "orgs/now-chess/packages/container/${PACKAGE}/versions" \
+            --jq '.[].metadata.container.tags[]' 2>/dev/null || echo "")
+          echo "[${{ matrix.module }}] Existing tags: $(echo "${EXISTING_TAGS}" | tr '\n' ' ' | xargs)"
+          if echo "${EXISTING_TAGS}" | grep -qx "${VERSION}"; then
+            echo "[${{ matrix.module }}] Image ${VERSION} already exists — skipping build"
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
+            echo "[${{ matrix.module }}] Image ${VERSION} not found — will build"
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 

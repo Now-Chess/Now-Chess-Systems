@@ -23,5 +23,5 @@ class InternalAuthFilter extends ContainerRequestFilter:
   override def filter(ctx: ContainerRequestContext): Unit =
     if authEnabled then
       val header = Option(ctx.getHeaderString("X-Internal-Secret"))
-      if header.isEmpty || header.get.equals(secret) then
+      if header.isEmpty || (!header.get.equals(secret)) then
         ctx.abortWith(Response.status(Response.Status.UNAUTHORIZED).build())
