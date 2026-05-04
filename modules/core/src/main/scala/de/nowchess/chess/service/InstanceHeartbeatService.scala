@@ -11,6 +11,7 @@ import io.quarkus.redis.datasource.RedisDataSource
 import io.quarkus.redis.datasource.ReactiveRedisDataSource
 import scala.compiletime.uninitialized
 import java.util.concurrent.{Executors, TimeUnit}
+import java.util.concurrent.atomic.AtomicBoolean
 import java.net.InetAddress
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.jboss.logging.Logger
@@ -55,6 +56,7 @@ class InstanceHeartbeatService:
   private var serviceActive                                          = false
   private var shuttingDown                                           = false
   // scalafix:on DisableSyntax.var
+  private val redisHeartbeatPending = new AtomicBoolean(false)
 
   def onStart(@Observes event: StartupEvent): Unit =
     if coordinatorEnabled then
@@ -171,6 +173,7 @@ class InstanceHeartbeatService:
     }
 
   private def refreshRedisHeartbeat(): Unit =
+    if !redisHeartbeatPending.compareAndSet(false, true) then return
     try
       val key = s"$redisPrefix:instances:$instanceId"
 
@@ -191,11 +194,14 @@ class InstanceHeartbeatService:
         .setex(key, 5L, json)
         .subscribe()
         .`with`(
-          _ => (),
-          (ex: Throwable) => log.warnf(ex, "Failed to refresh Redis heartbeat"),
+          _ => redisHeartbeatPending.set(false),
+          (ex: Throwable) =>
+            redisHeartbeatPending.set(false)
+            log.warnf(ex, "Failed to refresh Redis heartbeat"),
         )
     catch
       case ex: Exception =>
+        redisHeartbeatPending.set(false)
         log.warnf(ex, "Failed to serialize Redis heartbeat metadata")
 
   private def getHostname: String =
