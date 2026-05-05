@@ -295,7 +295,10 @@
   - function unsubscribe
   - _...1 more_
 - `modules/core/src/main/scala/de/nowchess/chess/redis/C2sMessage.scala` — class C2sMessage
-- `modules/core/src/main/scala/de/nowchess/chess/redis/GameRedisPublisher.scala` — class GameRedisPublisher, function onGameEvent
+- `modules/core/src/main/scala/de/nowchess/chess/redis/GameRedisPublisher.scala`
+  - class GameRedisPublisher
+  - class GameRedisPublisher
+  - function onGameEvent
 - `modules/core/src/main/scala/de/nowchess/chess/redis/GameRedisSubscriberManager.scala`
   - class GameRedisSubscriberManager
   - function subscribeGame

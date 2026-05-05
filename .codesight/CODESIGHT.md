@@ -351,7 +351,10 @@
   - function unsubscribe
   - _...1 more_
 - `modules/core/src/main/scala/de/nowchess/chess/redis/C2sMessage.scala` — class C2sMessage
-- `modules/core/src/main/scala/de/nowchess/chess/redis/GameRedisPublisher.scala` — class GameRedisPublisher, function onGameEvent
+- `modules/core/src/main/scala/de/nowchess/chess/redis/GameRedisPublisher.scala`
+  - class GameRedisPublisher
+  - class GameRedisPublisher
+  - function onGameEvent
 - `modules/core/src/main/scala/de/nowchess/chess/redis/GameRedisSubscriberManager.scala`
   - class GameRedisSubscriberManager
   - function subscribeGame
@@ -657,7 +660,7 @@
 - `modules/core/src/main/scala/de/nowchess/chess/observer/Observer.scala` — imported by **9** files
 - `modules/account/src/main/scala/de/nowchess/account/config/RedisConfig.scala` — imported by **8** files
 - `modules/api/src/main/scala/de/nowchess/api/io/GameContextImport.scala` — imported by **8** files
-- `modules/core/src/main/scala/de/nowchess/chess/grpc/IoGrpcClientWrapper.scala` — imported by **7** files
+- `modules/core/src/main/scala/de/nowchess/chess/grpc/IoGrpcClientWrapper.scala` — imported by **8** files
 - `modules/api/src/main/scala/de/nowchess/api/player/PlayerInfo.scala` — imported by **6** files
 - `modules/api/src/main/scala/de/nowchess/api/game/GameMode.scala` — imported by **6** files
 

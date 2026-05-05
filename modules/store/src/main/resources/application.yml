@@ -8,6 +8,8 @@ quarkus:
       enabled: true
   redis:
     hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
+    max-pool-size: 64
+    max-pool-waiting: 128
   datasource:
     db-kind: postgresql
     username: ${DB_USER:nowchess}

@@ -5,6 +5,8 @@ quarkus:
     port: 8086
   redis:
     hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
+    max-pool-size: 64
+    max-pool-waiting: 128
   grpc:
     server:
       port: 9086

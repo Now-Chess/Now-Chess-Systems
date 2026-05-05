@@ -9,7 +9,9 @@ quarkus:
       artifact-id: security
   redis:
     hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
-    max-pool-wait-time: 500ms
+    max-pool-wait-time: 30s
+    max-pool-size: 64
+    max-pool-waiting: 128
   grpc:
     clients:
       rule-grpc:
