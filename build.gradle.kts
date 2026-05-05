@@ -3,6 +3,7 @@ plugins {
     id("org.scoverage") version "8.1" apply false
     id("com.diffplug.spotless") version "8.4.0" apply false
     id("io.github.cosmicsilence.scalafix") version "0.2.6" apply false
+    id("me.champeau.jmh") version "0.7.2" apply false
 }
 
 group = "de.nowchess"
@@ -99,7 +100,8 @@ val versions = mapOf(
     "SCALA_PARSER_COMBINATORS" to "2.4.0",
     "FASTPARSE"             to "3.0.2",
     "JACKSON"               to "2.17.2",
-    "JACKSON_SCALA"         to "2.17.2"
+    "JACKSON_SCALA"         to "2.17.2",
+    "JMH"                   to "1.37"
 )
 extra["VERSIONS"] = versions
 

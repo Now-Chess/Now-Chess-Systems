@@ -26,4 +26,5 @@ include(
     "modules:ws",
     "modules:store",
     "modules:coordinator",
+    "modules:benchmarks",
 )
