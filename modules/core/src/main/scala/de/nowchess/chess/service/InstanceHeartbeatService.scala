@@ -173,36 +173,36 @@ class InstanceHeartbeatService:
     }
 
   private def refreshRedisHeartbeat(): Unit =
-    if !redisHeartbeatPending.compareAndSet(false, true) then return
-    try
-      val key = s"$redisPrefix:instances:$instanceId"
+    if redisHeartbeatPending.compareAndSet(false, true) then
+      try
+        val key = s"$redisPrefix:instances:$instanceId"
 
-      val metadata = Map(
-        "instanceId"        -> instanceId,
-        "hostname"          -> getHostname,
-        "httpPort"          -> httpPort,
-        "grpcPort"          -> grpcPort,
-        "subscriptionCount" -> subscriptionCount,
-        "localCacheSize"    -> localCacheSize,
-        "lastHeartbeat"     -> java.time.Instant.now().toString,
-        "state"             -> "HEALTHY",
-      )
-
-      val json = mapper.writeValueAsString(metadata)
-      reactiveRedis
-        .value(classOf[String])
-        .setex(key, 5L, json)
-        .subscribe()
-        .`with`(
-          _ => redisHeartbeatPending.set(false),
-          (ex: Throwable) =>
-            redisHeartbeatPending.set(false)
-            log.warnf(ex, "Failed to refresh Redis heartbeat"),
+        val metadata = Map(
+          "instanceId"        -> instanceId,
+          "hostname"          -> getHostname,
+          "httpPort"          -> httpPort,
+          "grpcPort"          -> grpcPort,
+          "subscriptionCount" -> subscriptionCount,
+          "localCacheSize"    -> localCacheSize,
+          "lastHeartbeat"     -> java.time.Instant.now().toString,
+          "state"             -> "HEALTHY",
         )
-    catch
-      case ex: Exception =>
-        redisHeartbeatPending.set(false)
-        log.warnf(ex, "Failed to serialize Redis heartbeat metadata")
+
+        val json = mapper.writeValueAsString(metadata)
+        reactiveRedis
+          .value(classOf[String])
+          .setex(key, 5L, json)
+          .subscribe()
+          .`with`(
+            _ => redisHeartbeatPending.set(false),
+            (ex: Throwable) =>
+              redisHeartbeatPending.set(false)
+              log.warnf(ex, "Failed to refresh Redis heartbeat"),
+          )
+      catch
+        case ex: Exception =>
+          redisHeartbeatPending.set(false)
+          log.warnf(ex, "Failed to serialize Redis heartbeat metadata")
 
   private def getHostname: String =
     try InetAddress.getLocalHost.getHostName
