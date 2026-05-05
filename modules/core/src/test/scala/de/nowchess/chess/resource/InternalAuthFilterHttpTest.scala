@@ -15,8 +15,10 @@ import java.util.Map as JMap
 class InternalAuthEnabledProfile extends QuarkusTestProfile:
   override def getConfigOverrides(): JMap[String, String] =
     JMap.of(
-      "nowchess.internal.auth.enabled", "true",
-      "nowchess.internal.secret", "test-secret-123",
+      "nowchess.internal.auth.enabled",
+      "true",
+      "nowchess.internal.secret",
+      "test-secret-123",
     )
 
 @QuarkusTest
@@ -36,32 +38,35 @@ class InternalAuthFilterHttpTest:
   @Test
   @DisplayName("POST /api/board/game without secret returns 401")
   def rejectNoSecret(): Unit =
-    RestAssured.`given`()
+    RestAssured
+      .`given`()
       .contentType(MediaType.APPLICATION_JSON)
       .body("{}")
-    .when()
+      .when()
       .post("/api/board/game")
-    .`then`()
+      .`then`()
       .statusCode(401)
 
   @Test
   @DisplayName("POST /api/board/game with wrong secret returns 401")
   def rejectWrongSecret(): Unit =
-    RestAssured.`given`()
+    RestAssured
+      .`given`()
       .contentType(MediaType.APPLICATION_JSON)
       .header("X-Internal-Secret", "wrong-secret")
       .body("{}")
-    .when()
+      .when()
       .post("/api/board/game")
-    .`then`()
+      .`then`()
       .statusCode(401)
 
   @Test
   @DisplayName("GET /api/board/game/{id} without secret returns 404 not 401")
   def nonInternalEndpointNotBlocked(): Unit =
-    RestAssured.`given`()
-    .when()
+    RestAssured
+      .`given`()
+      .when()
       .get("/api/board/game/nonexistent")
-    .`then`()
+      .`then`()
       .statusCode(404)
 // scalafix:on
