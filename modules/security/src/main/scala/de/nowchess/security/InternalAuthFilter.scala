@@ -1,6 +1,6 @@
 package de.nowchess.security
 
-import jakarta.inject.Singleton
+import jakarta.enterprise.context.ApplicationScoped
 import jakarta.ws.rs.container.{ContainerRequestContext, ContainerRequestFilter}
 import jakarta.ws.rs.core.Response
 import jakarta.ws.rs.ext.Provider
@@ -9,7 +9,7 @@ import scala.compiletime.uninitialized
 
 @Provider
 @InternalOnly
-@Singleton
+@ApplicationScoped
 class InternalAuthFilter extends ContainerRequestFilter:
 
   @ConfigProperty(name = "nowchess.internal.secret", defaultValue = "")

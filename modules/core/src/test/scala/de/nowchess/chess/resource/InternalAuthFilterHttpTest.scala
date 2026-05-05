@@ -41,7 +41,7 @@ class InternalAuthFilterHttpTest:
       .body("{}")
     .when()
       .post("/api/board/game")
-    .then()
+    .`then`()
       .statusCode(401)
 
   @Test
@@ -53,7 +53,7 @@ class InternalAuthFilterHttpTest:
       .body("{}")
     .when()
       .post("/api/board/game")
-    .then()
+    .`then`()
       .statusCode(401)
 
   @Test
@@ -62,6 +62,6 @@ class InternalAuthFilterHttpTest:
     RestAssured.`given`()
     .when()
       .get("/api/board/game/nonexistent")
-    .then()
+    .`then`()
       .statusCode(404)
 // scalafix:on

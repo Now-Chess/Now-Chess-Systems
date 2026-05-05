@@ -3,6 +3,10 @@ quarkus:
     port: 8080
   application:
     name: nowchess-core
+  index-dependency:
+    security:
+      group-id: de.nowchess
+      artifact-id: security
   redis:
     hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
     max-pool-wait-time: 500ms
