@@ -18,7 +18,10 @@ class InternalClientHeadersFactory extends DefaultClientHeadersFactoryImpl {
   var authEnabled: Boolean = uninitialized
   // scalafix:on DisableSyntax.var
 
-  override def update(incomingHeaders: MultivaluedMap[String, String], clientOutgoingHeaders: MultivaluedMap[String, String]): MultivaluedMap[String, String] = {
+  override def update(
+      incomingHeaders: MultivaluedMap[String, String],
+      clientOutgoingHeaders: MultivaluedMap[String, String],
+  ): MultivaluedMap[String, String] = {
     val default = super.update(incomingHeaders, clientOutgoingHeaders)
     default.putSingle("X-Internal-Secret", secret)
     default
