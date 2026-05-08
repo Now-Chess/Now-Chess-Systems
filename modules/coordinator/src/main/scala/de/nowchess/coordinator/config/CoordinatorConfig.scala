@@ -21,6 +21,9 @@ trait CoordinatorConfig:
   @WithName("heartbeat-ttl")
   def heartbeatTtl: Duration
 
+  @WithName("instance-dead-timeout")
+  def instanceDeadTimeout: Duration
+
   @WithName("stream-heartbeat-interval")
   def streamHeartbeatInterval: Duration
 

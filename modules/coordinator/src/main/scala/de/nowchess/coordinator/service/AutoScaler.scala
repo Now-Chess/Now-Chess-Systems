@@ -50,8 +50,7 @@ class AutoScaler:
           val avgLoad = instances.map(_.subscriptionCount).sum.toDouble / instances.size
 
           if avgLoad > config.scaleUpThreshold * config.maxGamesPerCore then scaleUp()
-          else if avgLoad < config.scaleDownThreshold * config.maxGamesPerCore && instances.size > config.scaleMinReplicas
-          then scaleDown()
+          else if avgLoad < config.scaleDownThreshold * config.maxGamesPerCore then scaleDown()
 
   def scaleUp(): Unit =
     log.info("Scaling up Argo Rollout")

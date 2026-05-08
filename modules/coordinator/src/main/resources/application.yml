@@ -33,6 +33,7 @@ nowchess:
     rebalance-interval: 30s
     rebalance-min-interval: 60s
     heartbeat-ttl: 5s
+    instance-dead-timeout: 60s
     stream-heartbeat-interval: PT0.2S
     cache-eviction-interval: 10m
     game-idle-threshold: 45m
