@@ -39,6 +39,8 @@ class HealthMonitor:
     redisPrefix = prefix
 
   def checkInstanceHealth: Unit =
+    val evicted = instanceRegistry.evictStaleInstances(config.heartbeatTtl)
+    if evicted.nonEmpty then log.warnf("Evicted %d stale instances: %s", evicted.size, evicted.mkString(", "))
     val instances = instanceRegistry.getAllInstances
     instances.foreach { inst =>
       val isHealthy = checkHealth(inst.instanceId)

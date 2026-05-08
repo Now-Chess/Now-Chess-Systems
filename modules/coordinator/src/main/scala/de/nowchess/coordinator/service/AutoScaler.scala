@@ -74,11 +74,11 @@ class AutoScaler:
                   val maxReplicas     = config.scaleMaxReplicas
 
                   if currentReplicas < maxReplicas then
-                    spec.put("replicas", String.valueOf(currentReplicas + 1))
+                    spec.put("replicas", Integer.valueOf(currentReplicas + 1))
                     kube
-                      .resources(classOf[GenericKubernetesResource])
+                      .genericKubernetesResources(argoApiVersion, argoKind)
                       .inNamespace(config.k8sNamespace)
-                      .withName(config.k8sRolloutName)
+                      .resource(rollout)
                       .update()
                     log.infof(
                       "Scaled up %s from %d to %d replicas",
@@ -115,11 +115,11 @@ class AutoScaler:
                   val minReplicas     = config.scaleMinReplicas
 
                   if currentReplicas > minReplicas then
-                    spec.put("replicas", String.valueOf(currentReplicas - 1))
+                    spec.put("replicas", Integer.valueOf(currentReplicas - 1))
                     kube
-                      .resources(classOf[GenericKubernetesResource])
+                      .genericKubernetesResources(argoApiVersion, argoKind)
                       .inNamespace(config.k8sNamespace)
-                      .withName(config.k8sRolloutName)
+                      .resource(rollout)
                       .update()
                     log.infof(
                       "Scaled down %s from %d to %d replicas",

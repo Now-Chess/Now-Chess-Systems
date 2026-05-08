@@ -8,6 +8,7 @@ import scala.compiletime.uninitialized
 import com.fasterxml.jackson.databind.ObjectMapper
 import de.nowchess.coordinator.dto.InstanceMetadata
 import java.util.concurrent.ConcurrentHashMap
+import java.time.{Duration, Instant}
 import io.smallrye.mutiny.Uni
 import org.jboss.logging.Logger
 
@@ -68,3 +69,20 @@ class InstanceRegistry:
   def removeInstance(instanceId: String): Unit =
     instances.remove(instanceId)
     log.infof("Instance %s removed from registry", instanceId)
+
+  def evictStaleInstances(maxAge: Duration): List[String] =
+    val cutoff = Instant.now().minus(maxAge)
+    val stale = instances.asScala
+      .collect { case (id, inst) =>
+        try
+          if Instant.parse(inst.lastHeartbeat).isBefore(cutoff) then Some(id)
+          else None
+        catch case _: Exception => None
+      }
+      .flatten
+      .toList
+    stale.foreach { id =>
+      instances.remove(id)
+      log.warnf("Evicted stale instance %s (heartbeat older than %s)", id, maxAge)
+    }
+    stale
