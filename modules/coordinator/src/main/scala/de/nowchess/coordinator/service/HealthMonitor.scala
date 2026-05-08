@@ -111,9 +111,8 @@ class HealthMonitor:
                   log.warnf("Pod %s not ready, marking instance %s dead", pod.getMetadata.getName, inst.instanceId)
                   instanceRegistry.markInstanceDead(inst.instanceId)
               case None =>
-                if inst.state == "HEALTHY" then
-                  log.warnf("No pod found for instance %s, marking dead", inst.instanceId)
-                  instanceRegistry.markInstanceDead(inst.instanceId)
+                log.warnf("No pod found for instance %s, evicting from registry", inst.instanceId)
+                instanceRegistry.removeInstance(inst.instanceId)
           }
         catch
           case ex: Exception =>
