@@ -28,6 +28,16 @@ nowchess:
   internal:
     secret: ${INTERNAL_SECRET:123abc}
 
+"%deployed":
+  quarkus:
+    log:
+      console:
+        json: true
+    otel:
+      exporter:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
+
 "%test":
   quarkus:
     datasource:

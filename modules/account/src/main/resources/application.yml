@@ -57,6 +57,13 @@ nowchess:
 
 "%deployed":
   quarkus:
+    log:
+      console:
+        json: true
+    otel:
+      exporter:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
     rest-client:
       core-service:
         url: ${CORE_SERVICE_URL}
