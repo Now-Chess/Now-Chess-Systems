@@ -54,6 +54,7 @@ dependencies {
     implementation("io.quarkus:quarkus-hibernate-orm-panache")
     implementation("io.quarkus:quarkus-jdbc-postgresql")
     implementation("io.quarkus:quarkus-smallrye-health")
+    implementation("io.quarkus:quarkus-logging-json")
     implementation("io.quarkus:quarkus-micrometer")
     implementation("io.quarkus:quarkus-micrometer-registry-prometheus")
     implementation("io.quarkus:quarkus-opentelemetry")
