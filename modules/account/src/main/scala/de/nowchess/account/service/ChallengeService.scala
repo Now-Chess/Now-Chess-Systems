@@ -118,7 +118,11 @@ class ChallengeService:
     result.foreach(_ => meterRegistry.counter("nowchess.challenges.declined").increment())
     result
 
-  private def declineChallenge(challengeId: UUID, userId: UUID, req: DeclineRequest): Either[ChallengeError, Challenge] =
+  private def declineChallenge(
+      challengeId: UUID,
+      userId: UUID,
+      req: DeclineRequest,
+  ): Either[ChallengeError, Challenge] =
     for
       challenge <- challengeRepository.findById(challengeId).toRight(ChallengeError.ChallengeNotFound)
       _         <- Either.cond(challenge.status == ChallengeStatus.Created, (), ChallengeError.ChallengeNotActive)

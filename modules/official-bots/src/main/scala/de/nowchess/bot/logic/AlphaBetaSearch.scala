@@ -15,7 +15,7 @@ final class AlphaBetaSearch(
     tt: TranspositionTable = TranspositionTable(),
     weights: Evaluation,
     numThreads: Int = Runtime.getRuntime.availableProcessors,
-    meterRegistry: MeterRegistry = null,
+    meterRegistry: Option[MeterRegistry] = None,
 ):
 
   private val INF                  = Int.MaxValue / 2
@@ -108,9 +108,10 @@ final class AlphaBetaSearch(
     result
 
   private def recordSearchMetrics(depthReached: Int): Unit =
-    if meterRegistry != null then
-      meterRegistry.summary("nowchess.bot.search.nodes").record(nodeCount.get().toDouble)
-      meterRegistry.summary("nowchess.bot.search.depth").record(depthReached.toDouble)
+    meterRegistry.foreach { mr =>
+      mr.summary("nowchess.bot.search.nodes").record(nodeCount.get().toDouble)
+      mr.summary("nowchess.bot.search.depth").record(depthReached.toDouble)
+    }
 
   private def isOutOfTime: Boolean =
     System.currentTimeMillis - timeStartMs.get >= timeLimitMs.get

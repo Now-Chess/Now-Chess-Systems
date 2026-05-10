@@ -61,7 +61,7 @@ class AccountService:
   def login(req: LoginRequest): Either[AccountError, String] =
     val result = authenticateUser(req)
     result match
-      case Right(_)    => meterRegistry.counter("nowchess.auth.logins", "result", "success").increment()
+      case Right(_) => meterRegistry.counter("nowchess.auth.logins", "result", "success").increment()
       case Left(error) =>
         meterRegistry.counter("nowchess.auth.logins", "result", "failure").increment()
         meterRegistry.counter("nowchess.auth.login.failures", "reason", loginFailureReason(error)).increment()

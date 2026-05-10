@@ -19,11 +19,11 @@ import java.util.function.Consumer
 class OfficialBotService:
 
   // scalafix:off DisableSyntax.var
-  @Inject var redis: RedisDataSource         = uninitialized
-  @Inject var redisConfig: RedisConfig       = uninitialized
-  @Inject var objectMapper: ObjectMapper     = uninitialized
-  @Inject var botController: BotController   = uninitialized
-  @Inject var meterRegistry: MeterRegistry   = uninitialized
+  @Inject var redis: RedisDataSource       = uninitialized
+  @Inject var redisConfig: RedisConfig     = uninitialized
+  @Inject var objectMapper: ObjectMapper   = uninitialized
+  @Inject var botController: BotController = uninitialized
+  @Inject var meterRegistry: MeterRegistry = uninitialized
   // scalafix:on DisableSyntax.var
 
   private val terminalStatuses =

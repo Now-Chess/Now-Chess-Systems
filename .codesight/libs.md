@@ -179,7 +179,7 @@
   - function rebalanceInterval
   - function rebalanceMinInterval
   - function heartbeatTtl
-  - _...11 more_
+  - _...12 more_
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/config/JacksonConfig.scala` — class JacksonConfig, function customize
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/config/NativeReflectionConfig.scala` — class NativeReflectionConfig
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/grpc/CoordinatorGrpcServer.scala` — class CoordinatorGrpcServer
@@ -199,6 +199,7 @@
   - _...1 more_
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/AutoScaler.scala`
   - class AutoScaler
+  - function initMetrics
   - function checkAndScale
   - function scaleUp
   - function scaleDown
@@ -217,12 +218,12 @@
   - function watchK8sPods
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/InstanceRegistry.scala`
   - class InstanceRegistry
+  - function initMetrics
   - function setRedisPrefix
   - function getInstance
   - function getAllInstances
   - function updateInstanceFromRedis
-  - function markInstanceDead
-  - _...1 more_
+  - _...3 more_
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/LoadBalancer.scala`
   - class LoadBalancer
   - function setRedisPrefix
@@ -263,7 +264,7 @@
   - function context
   - function pendingDrawOfferBy
   - function currentClockState
-  - _...21 more_
+  - _...22 more_
 - `modules/core/src/main/scala/de/nowchess/chess/exception/ApiException.scala`
   - class ApiException
   - class GameNotFoundException
@@ -315,6 +316,7 @@
   - function generateId
 - `modules/core/src/main/scala/de/nowchess/chess/registry/RedisGameRegistry.scala`
   - class RedisGameRegistry
+  - function initMetrics
   - function generateId
   - function store
   - function get
@@ -532,6 +534,7 @@
   - _...6 more_
 - `modules/rule/src/main/scala/de/nowchess/rules/sets/DefaultRules.scala` — class DefaultRules, function positionOf
 - `modules/security/src/main/scala/de/nowchess/security/InternalAuthFilter.scala` — class InternalAuthFilter
+- `modules/security/src/main/scala/de/nowchess/security/InternalClientHeadersFactory.scala` — class InternalClientHeadersFactory
 - `modules/security/src/main/scala/de/nowchess/security/InternalGrpcAuthInterceptor.scala` — class InternalGrpcAuthInterceptor
 - `modules/security/src/main/scala/de/nowchess/security/InternalGrpcSecretClientInterceptor.scala` — class InternalGrpcSecretClientInterceptor
 - `modules/security/src/main/scala/de/nowchess/security/InternalSecretClientFilter.scala` — class InternalSecretClientFilter
