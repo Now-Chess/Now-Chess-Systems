@@ -369,7 +369,7 @@ class GameEngine(
       case GameResult.Draw(_) => "draw.insufficient"
       case _                  => "timeout"
     Option(gamesCompletedCounter(tag)).foreach(_.increment())
-    activeGamesCount.decrementAndGet()
+    GameEngine.activeGamesCount.decrementAndGet()
     notifyObservers(TimeFlagEvent(currentContext, flagged))
 
   private def scheduleExpiryCheck(cs: ClockState): Unit =
@@ -406,7 +406,7 @@ class GameEngine(
 
   private def executeMove(move: Move): Unit =
     Option(movesDurationTimer) match
-      case Some(timer) => timer.record(() => executeMoveBody(move))
+      case Some(timer) => timer.record((() => executeMoveBody(move)): Runnable)
       case None        => executeMoveBody(move)
     Option(movesProcessedCounter).foreach(_.increment())
 

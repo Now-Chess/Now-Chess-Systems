@@ -33,7 +33,7 @@ class GameWritebackService:
 
   @Transactional
   def writeBack(event: GameWritebackEventDto): Unit =
-    writebackTimer.record(() => doWriteBack(event))
+    writebackTimer.record((() => doWriteBack(event)): Runnable)
 
   private def doWriteBack(event: GameWritebackEventDto): Unit =
     repository.findByGameId(event.gameId) match

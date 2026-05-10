@@ -88,8 +88,8 @@ class OfficialBotService:
     botController.getBot(botName).orElse(botController.getBot(level.toString.toLowerCase)).foreach { bot =>
       FenParser.parseFen(fen).toOption.foreach { context =>
         val timer   = meterRegistry.timer("nowchess.bot.move.duration", "bot", botName)
-        val moveOpt = timer.recordCallable(() => bot(context))
-        moveOpt.flatten.foreach { move =>
+        val moveOpt = timer.recordCallable[Option[Move]](() => bot(context))
+        moveOpt.foreach { move =>
           meterRegistry.counter("nowchess.bot.moves.computed", "bot", botName).increment()
           val uci      = toUci(move)
           val c2sTopic = s"${redisConfig.prefix}:game:$gameId:c2s"

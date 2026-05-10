@@ -42,9 +42,7 @@ class CacheEvictionManager:
     redisPrefix = prefix
 
   def evictStaleGames: Unit =
-    meterRegistry.timer("nowchess.coordinator.cache.eviction.duration").record { () =>
-      runEviction()
-    }
+    meterRegistry.timer("nowchess.coordinator.cache.eviction.duration").record((() => runEviction()): Runnable)
 
   private def runEviction(): Unit =
     log.info("Starting cache eviction scan")
