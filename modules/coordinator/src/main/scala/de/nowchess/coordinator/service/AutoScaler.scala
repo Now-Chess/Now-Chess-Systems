@@ -1,13 +1,16 @@
 package de.nowchess.coordinator.service
 
+import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.inject.Instance
 import jakarta.inject.Inject
 import de.nowchess.coordinator.config.CoordinatorConfig
 import io.fabric8.kubernetes.api.model.GenericKubernetesResource
 import io.fabric8.kubernetes.client.KubernetesClient
+import io.micrometer.core.instrument.{Gauge, MeterRegistry}
 import org.jboss.logging.Logger
 
+import java.util.concurrent.atomic.AtomicReference
 import scala.compiletime.uninitialized
 
 @ApplicationScoped
@@ -21,10 +24,14 @@ class AutoScaler:
 
   @Inject
   private var instanceRegistry: InstanceRegistry = uninitialized
+
+  @Inject
+  private var meterRegistry: MeterRegistry = uninitialized
   // scalafix:on DisableSyntax.var
 
   private val log           = Logger.getLogger(classOf[AutoScaler])
   private val lastScaleTime = new java.util.concurrent.atomic.AtomicLong(0L)
+  private val avgLoadRef    = new AtomicReference[Double](0.0)
 
   private def kubeClientOpt: Option[KubernetesClient] =
     if kubeClientInstance.isUnsatisfied then None
@@ -32,6 +39,13 @@ class AutoScaler:
 
   private val argoApiVersion = "argoproj.io/v1alpha1"
   private val argoKind       = "Rollout"
+
+  @PostConstruct
+  def initMetrics(): Unit =
+    Gauge
+      .builder("nowchess.coordinator.load.average", avgLoadRef, _.get())
+      .register(meterRegistry)
+    ()
 
   // scalafix:off DisableSyntax.asInstanceOf
   private def rolloutSpec(rollout: GenericKubernetesResource): Option[java.util.Map[String, AnyRef]] =
@@ -48,6 +62,7 @@ class AutoScaler:
         val instances = instanceRegistry.getAllInstances.filter(_.state == "HEALTHY")
         if instances.nonEmpty then
           val avgLoad = instances.map(_.subscriptionCount).sum.toDouble / instances.size
+          avgLoadRef.set(avgLoad)
 
           if avgLoad > config.scaleUpThreshold * config.maxGamesPerCore then scaleUp()
           else if avgLoad < config.scaleDownThreshold * config.maxGamesPerCore then scaleDown()
@@ -79,6 +94,7 @@ class AutoScaler:
                       .inNamespace(config.k8sNamespace)
                       .resource(rollout)
                       .update()
+                    meterRegistry.counter("nowchess.coordinator.scale.events", "direction", "up").increment()
                     log.infof(
                       "Scaled up %s from %d to %d replicas",
                       config.k8sRolloutName,
@@ -91,6 +107,7 @@ class AutoScaler:
           }
         catch
           case ex: Exception =>
+            meterRegistry.counter("nowchess.coordinator.scale.failures", "direction", "up").increment()
             log.warnf(ex, "Failed to scale up %s", config.k8sRolloutName)
 
   def scaleDown(): Unit =
@@ -120,6 +137,7 @@ class AutoScaler:
                       .inNamespace(config.k8sNamespace)
                       .resource(rollout)
                       .update()
+                    meterRegistry.counter("nowchess.coordinator.scale.events", "direction", "down").increment()
                     log.infof(
                       "Scaled down %s from %d to %d replicas",
                       config.k8sRolloutName,
@@ -132,4 +150,5 @@ class AutoScaler:
           }
         catch
           case ex: Exception =>
+            meterRegistry.counter("nowchess.coordinator.scale.failures", "direction", "down").increment()
             log.warnf(ex, "Failed to scale down %s", config.k8sRolloutName)

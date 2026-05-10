@@ -4,6 +4,7 @@ import de.nowchess.account.domain.{BotAccount, OfficialBotAccount, UserAccount}
 import de.nowchess.account.dto.{LoginRequest, RegisterRequest}
 import de.nowchess.account.error.AccountError
 import de.nowchess.account.repository.{BotAccountRepository, OfficialBotAccountRepository, UserAccountRepository}
+import io.micrometer.core.instrument.MeterRegistry
 import io.quarkus.elytron.security.common.BcryptUtil
 import io.smallrye.jwt.build.Jwt
 import jakarta.enterprise.context.ApplicationScoped
@@ -29,11 +30,21 @@ class AccountService:
 
   @Inject
   var officialBotAccountRepository: OfficialBotAccountRepository = uninitialized
+
+  @Inject
+  var meterRegistry: MeterRegistry = uninitialized
   // scalafix:on
 
   @Transactional
   def register(req: RegisterRequest): Either[AccountError, UserAccount] =
     log.infof("Registering user %s", req.username)
+    val result = registerAccount(req)
+    result match
+      case Right(_) => meterRegistry.counter("nowchess.users.registrations", "result", "success").increment()
+      case Left(_)  => meterRegistry.counter("nowchess.users.registrations", "result", "failure").increment()
+    result
+
+  private def registerAccount(req: RegisterRequest): Either[AccountError, UserAccount] =
     if userAccountRepository.findByUsername(req.username).isDefined then Left(AccountError.UsernameTaken(req.username))
     else if userAccountRepository.findByEmail(req.email).isDefined then
       Left(AccountError.EmailAlreadyRegistered(req.email))
@@ -48,6 +59,15 @@ class AccountService:
       Right(account)
 
   def login(req: LoginRequest): Either[AccountError, String] =
+    val result = authenticateUser(req)
+    result match
+      case Right(_)    => meterRegistry.counter("nowchess.auth.logins", "result", "success").increment()
+      case Left(error) =>
+        meterRegistry.counter("nowchess.auth.logins", "result", "failure").increment()
+        meterRegistry.counter("nowchess.auth.login.failures", "reason", loginFailureReason(error)).increment()
+    result
+
+  private def authenticateUser(req: LoginRequest): Either[AccountError, String] =
     userAccountRepository.findByUsername(req.username) match
       case None =>
         log.warnf("Login failed for unknown user %s", req.username)
@@ -68,6 +88,17 @@ class AccountService:
               .claim("username", account.username)
               .sign(),
           )
+
+  private def loginFailureReason(error: AccountError): String = error match
+    case AccountError.InvalidCredentials        => "invalid_credentials"
+    case AccountError.UserBanned                => "user_banned"
+    case AccountError.UsernameTaken(_)          => "username_taken"
+    case AccountError.EmailAlreadyRegistered(_) => "email_registered"
+    case AccountError.UserNotFound              => "user_not_found"
+    case AccountError.BotNotFound               => "bot_not_found"
+    case AccountError.BotLimitExceeded          => "bot_limit_exceeded"
+    case AccountError.NotAuthorized             => "not_authorized"
+    case AccountError.BotBanned                 => "bot_banned"
 
   def findByUsername(username: String): Option[UserAccount] =
     userAccountRepository.findByUsername(username)

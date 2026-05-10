@@ -18,6 +18,7 @@ import de.nowchess.account.dto.{
 }
 import de.nowchess.account.error.ChallengeError
 import de.nowchess.account.repository.{ChallengeRepository, UserAccountRepository}
+import io.micrometer.core.instrument.MeterRegistry
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
@@ -48,10 +49,22 @@ class ChallengeService:
 
   @Inject
   var eventPublisher: EventPublisher = uninitialized
+
+  @Inject
+  var meterRegistry: MeterRegistry = uninitialized
   // scalafix:on
 
   @Transactional
   def create(challengerId: UUID, destUsername: String, req: ChallengeRequest): Either[ChallengeError, Challenge] =
+    val result = createChallenge(challengerId, destUsername, req)
+    result.foreach(_ => meterRegistry.counter("nowchess.challenges.created").increment())
+    result
+
+  private def createChallenge(
+      challengerId: UUID,
+      destUsername: String,
+      req: ChallengeRequest,
+  ): Either[ChallengeError, Challenge] =
     for
       destUser <- userAccountRepository.findByUsername(destUsername).toRight(ChallengeError.UserNotFound(destUsername))
       challenger <- userAccountRepository.findById(challengerId).toRight(ChallengeError.ChallengerNotFound)
@@ -80,6 +93,11 @@ class ChallengeService:
 
   @Transactional
   def accept(challengeId: UUID, userId: UUID): Either[ChallengeError, Challenge] =
+    val result = acceptChallenge(challengeId, userId)
+    result.foreach(_ => meterRegistry.counter("nowchess.challenges.accepted").increment())
+    result
+
+  private def acceptChallenge(challengeId: UUID, userId: UUID): Either[ChallengeError, Challenge] =
     for
       challenge <- challengeRepository.findById(challengeId).toRight(ChallengeError.ChallengeNotFound)
       _         <- Either.cond(challenge.status == ChallengeStatus.Created, (), ChallengeError.ChallengeNotActive)
@@ -96,6 +114,11 @@ class ChallengeService:
 
   @Transactional
   def decline(challengeId: UUID, userId: UUID, req: DeclineRequest): Either[ChallengeError, Challenge] =
+    val result = declineChallenge(challengeId, userId, req)
+    result.foreach(_ => meterRegistry.counter("nowchess.challenges.declined").increment())
+    result
+
+  private def declineChallenge(challengeId: UUID, userId: UUID, req: DeclineRequest): Either[ChallengeError, Challenge] =
     for
       challenge <- challengeRepository.findById(challengeId).toRight(ChallengeError.ChallengeNotFound)
       _         <- Either.cond(challenge.status == ChallengeStatus.Created, (), ChallengeError.ChallengeNotActive)
@@ -109,6 +132,11 @@ class ChallengeService:
 
   @Transactional
   def cancel(challengeId: UUID, userId: UUID): Either[ChallengeError, Challenge] =
+    val result = cancelChallenge(challengeId, userId)
+    result.foreach(_ => meterRegistry.counter("nowchess.challenges.cancelled").increment())
+    result
+
+  private def cancelChallenge(challengeId: UUID, userId: UUID): Either[ChallengeError, Challenge] =
     for
       challenge <- challengeRepository.findById(challengeId).toRight(ChallengeError.ChallengeNotFound)
       _         <- Either.cond(challenge.status == ChallengeStatus.Created, (), ChallengeError.ChallengeNotActive)

@@ -1,5 +1,6 @@
 package de.nowchess.coordinator.service
 
+import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import io.quarkus.redis.datasource.ReactiveRedisDataSource
@@ -9,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import de.nowchess.coordinator.dto.InstanceMetadata
 import java.util.concurrent.ConcurrentHashMap
 import java.time.{Duration, Instant}
+import io.micrometer.core.instrument.{Gauge, MeterRegistry}
 import io.smallrye.mutiny.Uni
 import org.jboss.logging.Logger
 
@@ -18,11 +20,21 @@ class InstanceRegistry:
   @Inject
   private var redis: ReactiveRedisDataSource = uninitialized
   private var redisPrefix                    = "nowchess"
+
+  @Inject
+  private var meterRegistry: MeterRegistry = uninitialized
   // scalafix:on DisableSyntax.var
 
   private val log       = Logger.getLogger(classOf[InstanceRegistry])
   private val mapper    = ObjectMapper()
   private val instances = ConcurrentHashMap[String, InstanceMetadata]()
+
+  @PostConstruct
+  def initMetrics(): Unit =
+    Gauge
+      .builder("nowchess.coordinator.instances.active", instances, m => m.size().toDouble)
+      .register(meterRegistry)
+    ()
 
   def setRedisPrefix(prefix: String): Unit =
     redisPrefix = prefix
@@ -45,6 +57,7 @@ class InstanceRegistry:
           val isNew    = !instances.containsKey(instanceId)
           instances.put(instanceId, metadata)
           if isNew then
+            meterRegistry.counter("nowchess.coordinator.instances.joined").increment()
             log.infof("Instance %s joined registry (subscriptions=%d)", instanceId, metadata.subscriptionCount)
           else
             log.debugf(
@@ -68,6 +81,7 @@ class InstanceRegistry:
 
   def removeInstance(instanceId: String): Unit =
     instances.remove(instanceId)
+    meterRegistry.counter("nowchess.coordinator.instances.removed").increment()
     log.infof("Instance %s removed from registry", instanceId)
 
   def evictStaleInstances(maxAge: Duration): List[String] =
@@ -83,6 +97,7 @@ class InstanceRegistry:
       .toList
     stale.foreach { id =>
       instances.remove(id)
+      meterRegistry.counter("nowchess.coordinator.instances.evicted").increment()
       log.warnf("Evicted stale instance %s (heartbeat older than %s)", id, maxAge)
     }
     stale

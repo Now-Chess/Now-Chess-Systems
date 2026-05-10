@@ -19,6 +19,8 @@ import de.nowchess.coordinator.proto.{CoordinatorServiceGrpc, *}
 import de.nowchess.coordinator.proto.CoordinatorServiceGrpc.CoordinatorServiceStub
 import io.grpc.stub.StreamObserver
 import io.grpc.Channel
+import io.micrometer.core.instrument.{Gauge, MeterRegistry}
+import java.util.concurrent.atomic.AtomicInteger
 
 @ApplicationScoped
 class InstanceHeartbeatService:
@@ -31,6 +33,9 @@ class InstanceHeartbeatService:
 
   @Inject
   private var mapper: ObjectMapper = uninitialized
+
+  @Inject
+  private var meterRegistry: MeterRegistry = uninitialized
 
   @GrpcClient("coordinator-grpc")
   private var channel: Channel = uninitialized
@@ -51,14 +56,15 @@ class InstanceHeartbeatService:
   private var streamObserver: Option[StreamObserver[HeartbeatFrame]] = None
   private var heartbeatExecutor                                      = Executors.newScheduledThreadPool(1)
   private var redisHeartbeatExecutor                                 = Executors.newScheduledThreadPool(1)
-  private var subscriptionCount                                      = 0
   private var localCacheSize                                         = 0
   private var serviceActive                                          = false
   private var shuttingDown                                           = false
   // scalafix:on DisableSyntax.var
   private val redisHeartbeatPending = new AtomicBoolean(false)
+  private val subscriptionCount     = new AtomicInteger(0)
 
   def onStart(@Observes event: StartupEvent): Unit =
+    Gauge.builder("nowchess.instance.subscriptions", subscriptionCount, _.get().toDouble).register(meterRegistry)
     if coordinatorEnabled then
       try
         shuttingDown = false
@@ -90,7 +96,7 @@ class InstanceHeartbeatService:
     redisPrefix = prefix
 
   def setSubscriptionCount(count: Int): Unit =
-    subscriptionCount = count
+    subscriptionCount.set(count)
 
   def setLocalCacheSize(count: Int): Unit =
     localCacheSize = count
@@ -99,13 +105,13 @@ class InstanceHeartbeatService:
     if coordinatorEnabled then
       val setKey = s"$redisPrefix:instance:$instanceId:games"
       redis.set(classOf[String]).sadd(setKey, gameId)
-      subscriptionCount += 1
+      subscriptionCount.incrementAndGet()
 
   def removeGameSubscription(gameId: String): Unit =
     if coordinatorEnabled then
       val setKey = s"$redisPrefix:instance:$instanceId:games"
       redis.set(classOf[String]).srem(setKey, gameId)
-      subscriptionCount = Math.max(0, subscriptionCount - 1)
+      subscriptionCount.updateAndGet(c => Math.max(0, c - 1))
 
   private def generateInstanceId(): Unit =
     val hostname =
@@ -162,13 +168,14 @@ class InstanceHeartbeatService:
           .setHostname(getHostname)
           .setHttpPort(httpPort)
           .setGrpcPort(grpcPort)
-          .setSubscriptionCount(subscriptionCount)
+          .setSubscriptionCount(subscriptionCount.get())
           .setLocalCacheSize(localCacheSize)
           .setTimestampMillis(System.currentTimeMillis())
           .build()
         observer.onNext(frame)
       catch
         case ex: Exception =>
+          meterRegistry.counter("nowchess.heartbeat.failures").increment()
           log.warnf(ex, "Failed to send heartbeat frame")
     }
 
@@ -182,7 +189,7 @@ class InstanceHeartbeatService:
           "hostname"          -> getHostname,
           "httpPort"          -> httpPort,
           "grpcPort"          -> grpcPort,
-          "subscriptionCount" -> subscriptionCount,
+          "subscriptionCount" -> subscriptionCount.get(),
           "localCacheSize"    -> localCacheSize,
           "lastHeartbeat"     -> java.time.Instant.now().toString,
           "state"             -> "HEALTHY",

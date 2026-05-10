@@ -17,10 +17,12 @@ import de.nowchess.chess.observer.*
 import de.nowchess.api.error.GameError
 import de.nowchess.api.game.WinReason.{Checkmate, Resignation}
 import de.nowchess.api.io.{GameContextExport, GameContextImport}
-import de.nowchess.api.rules.RuleSet
+import de.nowchess.api.rules.{PostMoveStatus, RuleSet}
 
+import io.micrometer.core.instrument.{Counter, MeterRegistry, Timer}
 import java.time.Instant
 import java.util.concurrent.{Executors, ScheduledExecutorService, ScheduledFuture, TimeUnit}
+import java.util.concurrent.atomic.AtomicInteger
 
 /** Pure game engine that manages game state and notifies observers of state changes. All rule queries delegate to the
   * injected RuleSet. All user interactions go through Commands; state changes are broadcast via GameEvents.
@@ -33,6 +35,7 @@ class GameEngine(
     initialDrawOffer: Option[Color] = None,
     initialRedoStack: List[Move] = Nil,
     initialTakebackRequest: Option[Color] = None,
+    private val meterRegistry: Option[MeterRegistry] = None,
 ) extends Observable:
   // Ensure that initialBoard is set correctly for threefold repetition detection
   private val contextWithInitialBoard =
@@ -56,6 +59,17 @@ class GameEngine(
   private var isRedoing: Boolean = false
   @SuppressWarnings(Array("DisableSyntax.var"))
   private var pendingTakebackRequest: Option[Color] = initialTakebackRequest
+
+  meterRegistry.foreach { reg =>
+    GameEngine.activeGamesCount.incrementAndGet()
+    reg.counter("nowchess.games.started").increment()
+  }
+  private def gamesCompletedCounter(result: String): Counter =
+    meterRegistry.map(_.counter("nowchess.games.completed", "result", result)).orNull
+  private def movesProcessedCounter: Counter =
+    meterRegistry.map(_.counter("nowchess.moves.processed")).orNull
+  private def movesDurationTimer: Timer =
+    meterRegistry.map(_.timer("nowchess.moves.duration")).orNull
 
   // Start scheduler immediately for live clocks so passive expiry fires without waiting for a move.
   clockState.foreach(scheduleExpiryCheck)
@@ -165,6 +179,8 @@ class GameEngine(
       pendingTakebackRequest = None
       stopClock()
       redoStack = Nil
+      Option(gamesCompletedCounter("resignation")).foreach(_.increment())
+      GameEngine.activeGamesCount.decrementAndGet()
       notifyObservers(ResignEvent(currentContext, color))
   }
 
@@ -197,6 +213,8 @@ class GameEngine(
           pendingTakebackRequest = None
           stopClock()
           redoStack = Nil
+          Option(gamesCompletedCounter("draw.agreement")).foreach(_.increment())
+          GameEngine.activeGamesCount.decrementAndGet()
           notifyObservers(DrawEvent(currentContext, DrawReason.Agreement))
   }
 
@@ -223,11 +241,15 @@ class GameEngine(
       currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.FiftyMoveRule)))
       stopClock()
       redoStack = Nil
+      Option(gamesCompletedCounter("draw.fifty_move")).foreach(_.increment())
+      GameEngine.activeGamesCount.decrementAndGet()
       notifyObservers(DrawEvent(currentContext, DrawReason.FiftyMoveRule))
     else if ruleSet.isThreefoldRepetition(currentContext) then
       currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.ThreefoldRepetition)))
       stopClock()
       redoStack = Nil
+      Option(gamesCompletedCounter("draw.threefold")).foreach(_.increment())
+      GameEngine.activeGamesCount.decrementAndGet()
       notifyObservers(DrawEvent(currentContext, DrawReason.ThreefoldRepetition))
     else notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.DrawCannotBeClaimed))
   }
@@ -311,8 +333,17 @@ class GameEngine(
       currentContext = currentContext.withResult(Some(GameResult.Draw(reason)))
       stopClock()
       redoStack = Nil
+      Option(gamesCompletedCounter(drawReasonTag(reason))).foreach(_.increment())
+      GameEngine.activeGamesCount.decrementAndGet()
       notifyObservers(DrawEvent(currentContext, reason))
   }
+
+  private def drawReasonTag(reason: DrawReason): String = reason match
+    case DrawReason.Agreement            => "draw.agreement"
+    case DrawReason.FiftyMoveRule        => "draw.fifty_move"
+    case DrawReason.ThreefoldRepetition  => "draw.threefold"
+    case DrawReason.Stalemate            => "draw.stalemate"
+    case DrawReason.InsufficientMaterial => "draw.insufficient"
 
   /** Inject clock state directly (for testing). */
   private[engine] def injectClockState(cs: Option[ClockState]): Unit = synchronized { clockState = cs }
@@ -334,6 +365,11 @@ class GameEngine(
     pendingDrawOffer = None
     pendingTakebackRequest = None
     redoStack = Nil
+    val tag = result match
+      case GameResult.Draw(_) => "draw.insufficient"
+      case _                  => "timeout"
+    Option(gamesCompletedCounter(tag)).foreach(_.increment())
+    activeGamesCount.decrementAndGet()
     notifyObservers(TimeFlagEvent(currentContext, flagged))
 
   private def scheduleExpiryCheck(cs: ClockState): Unit =
@@ -369,6 +405,12 @@ class GameEngine(
   // ──── Private helpers ────
 
   private def executeMove(move: Move): Unit =
+    Option(movesDurationTimer) match
+      case Some(timer) => timer.record(() => executeMoveBody(move))
+      case None        => executeMoveBody(move)
+    Option(movesProcessedCounter).foreach(_.increment())
+
+  private def executeMoveBody(move: Move): Unit =
     if !isRedoing then
       redoStack = Nil
       pendingTakebackRequest = None
@@ -391,27 +433,35 @@ class GameEngine(
     )
 
     val status = ruleSet.postMoveStatus(currentContext)
-    if currentContext.result.isEmpty then
-      if status.isCheckmate then
-        val winner = currentContext.turn.opposite
-        currentContext = currentContext.withResult(Some(GameResult.Win(winner, Checkmate)))
-        cancelScheduled()
-        notifyObservers(CheckmateEvent(currentContext, winner))
-        redoStack = Nil
-      else if status.isStalemate then
-        currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.Stalemate)))
-        cancelScheduled()
-        notifyObservers(DrawEvent(currentContext, DrawReason.Stalemate))
-        redoStack = Nil
-      else if status.isInsufficientMaterial then
-        currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.InsufficientMaterial)))
-        cancelScheduled()
-        notifyObservers(DrawEvent(currentContext, DrawReason.InsufficientMaterial))
-        redoStack = Nil
-      else if status.isCheck then notifyObservers(CheckDetectedEvent(currentContext))
+    if currentContext.result.isEmpty then applyPostMoveStatus(status)
 
     if currentContext.halfMoveClock >= 100 then notifyObservers(FiftyMoveRuleAvailableEvent(currentContext))
     if status.isThreefoldRepetition then notifyObservers(ThreefoldRepetitionAvailableEvent(currentContext))
+
+  private def applyPostMoveStatus(status: PostMoveStatus): Unit =
+    if status.isCheckmate then
+      val winner = currentContext.turn.opposite
+      currentContext = currentContext.withResult(Some(GameResult.Win(winner, Checkmate)))
+      cancelScheduled()
+      Option(gamesCompletedCounter("checkmate")).foreach(_.increment())
+      GameEngine.activeGamesCount.decrementAndGet()
+      notifyObservers(CheckmateEvent(currentContext, winner))
+      redoStack = Nil
+    else if status.isStalemate then
+      currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.Stalemate)))
+      cancelScheduled()
+      Option(gamesCompletedCounter("draw.stalemate")).foreach(_.increment())
+      GameEngine.activeGamesCount.decrementAndGet()
+      notifyObservers(DrawEvent(currentContext, DrawReason.Stalemate))
+      redoStack = Nil
+    else if status.isInsufficientMaterial then
+      currentContext = currentContext.withResult(Some(GameResult.Draw(DrawReason.InsufficientMaterial)))
+      cancelScheduled()
+      Option(gamesCompletedCounter("draw.insufficient")).foreach(_.increment())
+      GameEngine.activeGamesCount.decrementAndGet()
+      notifyObservers(DrawEvent(currentContext, DrawReason.InsufficientMaterial))
+      redoStack = Nil
+    else if status.isCheck then notifyObservers(CheckDetectedEvent(currentContext))
 
   private def translateMoveToNotation(move: Move, boardBefore: Board): String =
     move.moveType match
@@ -526,3 +576,6 @@ class GameEngine(
           pendingTakebackRequest = None
           notifyObservers(TakebackDeclinedEvent(currentContext, color))
   }
+
+object GameEngine:
+  val activeGamesCount: AtomicInteger = new AtomicInteger(0)

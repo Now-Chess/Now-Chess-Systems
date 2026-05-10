@@ -7,6 +7,7 @@ import de.nowchess.bot.ai.Evaluation
 import de.nowchess.bot.util.ZobristHash
 import de.nowchess.api.rules.RuleSet
 import de.nowchess.rules.sets.DefaultRules
+import io.micrometer.core.instrument.MeterRegistry
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 
 final class AlphaBetaSearch(
@@ -14,6 +15,7 @@ final class AlphaBetaSearch(
     tt: TranspositionTable = TranspositionTable(),
     weights: Evaluation,
     numThreads: Int = Runtime.getRuntime.availableProcessors,
+    meterRegistry: MeterRegistry = null,
 ):
 
   private val INF                  = Int.MaxValue / 2
@@ -85,8 +87,8 @@ final class AlphaBetaSearch(
     val rootHash = ZobristHash.hash(context)
 
     @scala.annotation.tailrec
-    def loop(bestSoFar: Option[Move], prevScore: Int, depth: Int): Option[Move] =
-      if isOutOfTime then bestSoFar
+    def loop(bestSoFar: Option[Move], prevScore: Int, depth: Int, lastDepth: Int): (Option[Move], Int) =
+      if isOutOfTime then (bestSoFar, lastDepth)
       else
         val (alpha, beta) =
           if depth == 1 then (-INF, INF) else (prevScore - ASPIRATION_DELTA, prevScore + ASPIRATION_DELTA)
@@ -99,9 +101,16 @@ final class AlphaBetaSearch(
           rootHash,
           excludedRootMoves,
         )
-        loop(move.orElse(bestSoFar), score, depth + 1)
+        loop(move.orElse(bestSoFar), score, depth + 1, depth)
 
-    loop(None, 0, 1)
+    val (result, depthReached) = loop(None, 0, 1, 0)
+    recordSearchMetrics(depthReached)
+    result
+
+  private def recordSearchMetrics(depthReached: Int): Unit =
+    if meterRegistry != null then
+      meterRegistry.summary("nowchess.bot.search.nodes").record(nodeCount.get().toDouble)
+      meterRegistry.summary("nowchess.bot.search.depth").record(depthReached.toDouble)
 
   private def isOutOfTime: Boolean =
     System.currentTimeMillis - timeStartMs.get >= timeLimitMs.get

@@ -12,7 +12,9 @@ import de.nowchess.chess.grpc.RuleSetGrpcAdapter
 import de.nowchess.chess.config.RedisConfig
 import de.nowchess.chess.grpc.IoGrpcClientWrapper
 import de.nowchess.chess.resource.GameDtoMapper
+import io.micrometer.core.instrument.{Gauge, MeterRegistry}
 import io.quarkus.redis.datasource.RedisDataSource
+import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import org.eclipse.microprofile.rest.client.inject.RestClient
@@ -34,11 +36,19 @@ class RedisGameRegistry extends GameRegistry:
   @Inject var ioClient: IoGrpcClientWrapper               = uninitialized
   @Inject var ruleSetAdapter: RuleSetGrpcAdapter          = uninitialized
   @Inject @RestClient var storeClient: StoreServiceClient = uninitialized
+  @Inject var meterRegistry: MeterRegistry                = uninitialized
   // scalafix:on
 
   private val log          = Logger.getLogger(classOf[RedisGameRegistry])
   private val localEngines = ConcurrentHashMap[String, GameEntry]()
   private val rng          = new SecureRandom()
+
+  @PostConstruct
+  def initMetrics(): Unit =
+    Gauge
+      .builder("nowchess.games.active", GameEngine.activeGamesCount, _.get().toDouble)
+      .register(meterRegistry)
+    ()
 
   private def cacheKey(gameId: String) = s"${redisConfig.prefix}:game:entry:$gameId"
 
@@ -58,14 +68,17 @@ class RedisGameRegistry extends GameRegistry:
     )
 
   def get(gameId: String): Option[GameEntry] =
-    Option(localEngines.get(gameId)) match
+    val result = Option(localEngines.get(gameId)) match
       case Some(localEntry) =>
+        meterRegistry.counter("nowchess.games.cache.hits", "source", "local").increment()
         readRedisDto(gameId).flatMap(dto => Try(reconstruct(dto)).toOption) match
           case Some(redisEntry) if !sameSnapshot(localEntry, redisEntry) =>
             localEngines.put(gameId, redisEntry)
             Some(redisEntry)
           case _ => Some(localEntry)
       case None => fromRedis(gameId).orElse(fromDb(gameId))
+    if result.isEmpty then meterRegistry.counter("nowchess.games.cache.misses").increment()
+    result
 
   def update(entry: GameEntry): Unit =
     localEngines.put(entry.gameId, entry)
@@ -86,6 +99,7 @@ class RedisGameRegistry extends GameRegistry:
         }
       }
       .map { entry =>
+        meterRegistry.counter("nowchess.games.cache.hits", "source", "redis").increment()
         localEngines.put(gameId, entry)
         log.infof("Loaded game %s from Redis cache", gameId)
         entry
@@ -118,6 +132,7 @@ class RedisGameRegistry extends GameRegistry:
       (dto, reconstruct(dto))
     } match
       case scala.util.Success((dto, entry)) =>
+        meterRegistry.counter("nowchess.games.cache.hits", "source", "db").increment()
         log.infof("Loaded game %s from store service", gameId)
         localEngines.put(gameId, entry)
         redis.value(classOf[String]).setex(cacheKey(gameId), 1800L, objectMapper.writeValueAsString(dto))

@@ -6,6 +6,7 @@ import jakarta.inject.Inject
 import de.nowchess.coordinator.config.CoordinatorConfig
 import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.api.model.Pod
+import io.micrometer.core.instrument.MeterRegistry
 import io.quarkus.redis.datasource.RedisDataSource
 import scala.jdk.CollectionConverters.*
 import org.jboss.logging.Logger
@@ -27,6 +28,9 @@ class HealthMonitor:
   @Inject
   private var redis: RedisDataSource = uninitialized
 
+  @Inject
+  private var meterRegistry: MeterRegistry = uninitialized
+
   private val log         = Logger.getLogger(classOf[HealthMonitor])
   private var redisPrefix = "nowchess"
   // scalafix:on DisableSyntax.var
@@ -39,6 +43,7 @@ class HealthMonitor:
     redisPrefix = prefix
 
   def checkInstanceHealth: Unit =
+    meterRegistry.counter("nowchess.coordinator.health.checks").increment()
     val evicted = instanceRegistry.evictStaleInstances(config.instanceDeadTimeout)
     if evicted.nonEmpty then log.warnf("Evicted %d stale instances: %s", evicted.size, evicted.mkString(", "))
     val instances = instanceRegistry.getAllInstances
@@ -108,6 +113,7 @@ class HealthMonitor:
               case Some(pod) =>
                 val isReady = isPodReady(pod)
                 if !isReady && inst.state == "HEALTHY" then
+                  meterRegistry.counter("nowchess.coordinator.pods.unhealthy").increment()
                   log.warnf("Pod %s not ready, marking instance %s dead", pod.getMetadata.getName, inst.instanceId)
                   instanceRegistry.markInstanceDead(inst.instanceId)
               case None =>

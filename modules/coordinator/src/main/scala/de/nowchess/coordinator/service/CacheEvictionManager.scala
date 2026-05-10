@@ -5,6 +5,7 @@ import jakarta.inject.Inject
 import io.quarkus.redis.datasource.RedisDataSource
 import de.nowchess.coordinator.config.CoordinatorConfig
 import com.fasterxml.jackson.databind.ObjectMapper
+import io.micrometer.core.instrument.MeterRegistry
 import scala.jdk.CollectionConverters.*
 import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
@@ -30,6 +31,9 @@ class CacheEvictionManager:
   @Inject
   private var objectMapper: ObjectMapper = uninitialized
 
+  @Inject
+  private var meterRegistry: MeterRegistry = uninitialized
+
   private val log         = Logger.getLogger(classOf[CacheEvictionManager])
   private var redisPrefix = "nowchess"
   // scalafix:on DisableSyntax.var
@@ -38,8 +42,12 @@ class CacheEvictionManager:
     redisPrefix = prefix
 
   def evictStaleGames: Unit =
-    log.info("Starting cache eviction scan")
+    meterRegistry.timer("nowchess.coordinator.cache.eviction.duration").record { () =>
+      runEviction()
+    }
 
+  private def runEviction(): Unit =
+    log.info("Starting cache eviction scan")
     val pattern         = s"$redisPrefix:game:entry:*"
     val keys            = redis.key(classOf[String]).keys(pattern)
     val now             = System.currentTimeMillis()
@@ -56,6 +64,7 @@ class CacheEvictionManager:
               try
                 coreGrpcClient.evictGames(instance.hostname, instance.grpcPort, List(gameId))
                 redis.key(classOf[String]).del(key)
+                meterRegistry.counter("nowchess.coordinator.cache.evictions").increment()
                 log.infof("Evicted idle game %s from %s", gameId, instance.instanceId)
                 count + 1
               catch

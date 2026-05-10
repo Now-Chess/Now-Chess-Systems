@@ -6,6 +6,7 @@ import de.nowchess.bot.BotController
 import de.nowchess.bot.BotDifficulty
 import de.nowchess.bot.config.RedisConfig
 import de.nowchess.io.fen.FenParser
+import io.micrometer.core.instrument.MeterRegistry
 import io.quarkus.redis.datasource.RedisDataSource
 import io.quarkus.runtime.StartupEvent
 import jakarta.enterprise.context.ApplicationScoped
@@ -18,10 +19,11 @@ import java.util.function.Consumer
 class OfficialBotService:
 
   // scalafix:off DisableSyntax.var
-  @Inject var redis: RedisDataSource       = uninitialized
-  @Inject var redisConfig: RedisConfig     = uninitialized
-  @Inject var objectMapper: ObjectMapper   = uninitialized
-  @Inject var botController: BotController = uninitialized
+  @Inject var redis: RedisDataSource         = uninitialized
+  @Inject var redisConfig: RedisConfig       = uninitialized
+  @Inject var objectMapper: ObjectMapper     = uninitialized
+  @Inject var botController: BotController   = uninitialized
+  @Inject var meterRegistry: MeterRegistry   = uninitialized
   // scalafix:on DisableSyntax.var
 
   private val terminalStatuses =
@@ -85,7 +87,10 @@ class OfficialBotService:
     val level = DifficultyMapper.fromElo(difficulty).getOrElse(BotDifficulty.Medium)
     botController.getBot(botName).orElse(botController.getBot(level.toString.toLowerCase)).foreach { bot =>
       FenParser.parseFen(fen).toOption.foreach { context =>
-        bot(context).foreach { move =>
+        val timer   = meterRegistry.timer("nowchess.bot.move.duration", "bot", botName)
+        val moveOpt = timer.recordCallable(() => bot(context))
+        moveOpt.flatten.foreach { move =>
+          meterRegistry.counter("nowchess.bot.moves.computed", "bot", botName).increment()
           val uci      = toUci(move)
           val c2sTopic = s"${redisConfig.prefix}:game:$gameId:c2s"
           val moveMsg  = s"""{"type":"MOVE","uci":"$uci","playerId":"$botAccountId"}"""

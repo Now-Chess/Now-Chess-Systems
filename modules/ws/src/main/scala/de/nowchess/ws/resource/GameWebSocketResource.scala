@@ -1,6 +1,7 @@
 package de.nowchess.ws.resource
 
 import de.nowchess.ws.config.RedisConfig
+import io.micrometer.core.instrument.{Counter, Gauge, MeterRegistry}
 import io.quarkus.redis.datasource.RedisDataSource
 import io.quarkus.redis.datasource.pubsub.PubSubCommands
 import io.quarkus.websockets.next.*
@@ -26,9 +27,26 @@ class GameWebSocketResource:
 
   @Inject
   var jwtParser: JWTParser = uninitialized
+
+  @Inject
+  var meterRegistry: MeterRegistry = uninitialized
   // scalafix:on DisableSyntax.var
 
   private val connections = new ConcurrentHashMap[String, ConnectionMeta]()
+
+  private lazy val connectionsOpened: Counter =
+    meterRegistry.counter("nowchess.ws.connections.opened")
+
+  private lazy val connectionsClosed: Counter =
+    meterRegistry.counter("nowchess.ws.connections.closed")
+
+  private lazy val messagesReceived: Counter =
+    meterRegistry.counter("nowchess.ws.messages.received")
+
+  private lazy val activeGauge: Unit =
+    Gauge
+      .builder("nowchess.ws.connections.active", connections, _.size().toDouble)
+      .register(meterRegistry)
 
   private def s2cTopic(gameId: String): String =
     s"${redisConfig.prefix}:game:$gameId:s2c"
@@ -38,22 +56,19 @@ class GameWebSocketResource:
 
   @OnOpen
   def onOpen(connection: WebSocketConnection, handshake: HandshakeRequest): Unit =
-    val gameId = connection.pathParam("gameId")
-    val playerId = Option(handshake.header("Authorization"))
-      .filter(_.nonEmpty)
-      .flatMap(token => Try(jwtParser.parse(token)).toOption)
-      .map(_.getSubject)
+    activeGauge
+    val gameId   = connection.pathParam("gameId")
+    val playerId = resolvePlayerId(handshake)
     log.infof("Game WebSocket opened — gameId=%s playerId=%s", gameId, playerId.getOrElse("anonymous"))
     val handler: Consumer[String] = msg => connection.sendText(msg).subscribe().`with`(_ => (), _ => ())
     val subscriber                = redis.pubsub(classOf[String]).subscribe(s2cTopic(gameId), handler)
     connections.put(connection.id(), ConnectionMeta(gameId, subscriber, playerId))
-    val connectedMsg = playerId match
-      case Some(pid) => s"""{"type":"CONNECTED","gameId":"$gameId","playerId":"$pid"}"""
-      case None      => s"""{"type":"CONNECTED","gameId":"$gameId"}"""
-    redis.pubsub(classOf[String]).publish(c2sTopic(gameId), connectedMsg)
+    connectionsOpened.increment()
+    publishConnected(gameId, playerId)
 
   @OnTextMessage
   def onTextMessage(connection: WebSocketConnection, message: String): Unit =
+    messagesReceived.increment()
     Option(connections.get(connection.id())).foreach { meta =>
       val enriched = meta.playerId match
         case Some(pid) => injectPlayerId(message, pid)
@@ -66,7 +81,20 @@ class GameWebSocketResource:
     Option(connections.remove(connection.id())).foreach { meta =>
       log.infof("Game WebSocket closed — gameId=%s", meta.gameId)
       meta.subscriber.unsubscribe(s2cTopic(meta.gameId))
+      connectionsClosed.increment()
     }
+
+  private def resolvePlayerId(handshake: HandshakeRequest): Option[String] =
+    Option(handshake.header("Authorization"))
+      .filter(_.nonEmpty)
+      .flatMap(token => Try(jwtParser.parse(token)).toOption)
+      .map(_.getSubject)
+
+  private def publishConnected(gameId: String, playerId: Option[String]): Unit =
+    val connectedMsg = playerId match
+      case Some(pid) => s"""{"type":"CONNECTED","gameId":"$gameId","playerId":"$pid"}"""
+      case None      => s"""{"type":"CONNECTED","gameId":"$gameId"}"""
+    redis.pubsub(classOf[String]).publish(c2sTopic(gameId), connectedMsg)
 
   private def injectPlayerId(msg: String, pid: String): String =
     val trimmed = msg.trim
