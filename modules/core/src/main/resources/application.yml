@@ -73,6 +73,14 @@ nowchess:
         url: http://localhost:8085
 
 "%deployed":
+  quarkus:
+    log:
+      console:
+        json: true
+    otel:
+      exporter:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
   mp:
     jwt:
       verify:
