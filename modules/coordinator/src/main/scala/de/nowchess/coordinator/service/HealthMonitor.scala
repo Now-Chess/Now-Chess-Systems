@@ -1,5 +1,6 @@
 package de.nowchess.coordinator.service
 
+import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.inject.Instance
 import jakarta.inject.Inject
@@ -42,16 +43,24 @@ class HealthMonitor:
   def setRedisPrefix(prefix: String): Unit =
     redisPrefix = prefix
 
+  @PostConstruct
+  def initializeMetrics(): Unit =
+    meterRegistry.counter("nowchess.coordinator.health.checks").increment(0)
+    meterRegistry.counter("nowchess.coordinator.pods.unhealthy").increment(0)
+
   def checkInstanceHealth: Unit =
     meterRegistry.counter("nowchess.coordinator.health.checks").increment()
     val evicted = instanceRegistry.evictStaleInstances(config.instanceDeadTimeout)
-    if evicted.nonEmpty then log.warnf("Evicted %d stale instances: %s", evicted.size, evicted.mkString(", "))
+    if evicted.nonEmpty then
+      log.warnf("Evicted %d stale instances: %s", evicted.size, evicted.mkString(", "))
+      evicted.foreach(deleteK8sPod)
     val instances = instanceRegistry.getAllInstances
     instances.foreach { inst =>
       val isHealthy = checkHealth(inst.instanceId)
       if !isHealthy && inst.state == "HEALTHY" then
         log.warnf("Instance %s marked unhealthy", inst.instanceId)
         instanceRegistry.markInstanceDead(inst.instanceId)
+        deleteK8sPod(inst.instanceId)
     }
 
   private def checkHealth(instanceId: String): Boolean =
@@ -116,6 +125,7 @@ class HealthMonitor:
                   meterRegistry.counter("nowchess.coordinator.pods.unhealthy").increment()
                   log.warnf("Pod %s not ready, marking instance %s dead", pod.getMetadata.getName, inst.instanceId)
                   instanceRegistry.markInstanceDead(inst.instanceId)
+                  deleteK8sPod(inst.instanceId)
               case None =>
                 log.warnf("No pod found for instance %s, evicting from registry", inst.instanceId)
                 instanceRegistry.removeInstance(inst.instanceId)
@@ -128,3 +138,29 @@ class HealthMonitor:
     Option(pod.getStatus)
       .flatMap(s => Option(s.getConditions))
       .exists(_.asScala.exists(cond => cond.getType == "Ready" && cond.getStatus == "True"))
+
+  private def deleteK8sPod(instanceId: String): Unit =
+    kubeClientOpt match
+      case None =>
+        log.debugf("Kubernetes client not available, skipping pod deletion for %s", instanceId)
+      case Some(kube) =>
+        try
+          val pods = kube
+            .pods()
+            .inNamespace(config.k8sNamespace)
+            .withLabel(config.k8sRolloutLabelSelector)
+            .list()
+            .getItems
+            .asScala
+
+          pods.find(pod => pod.getMetadata.getName.contains(instanceId)) match
+            case Some(pod) =>
+              val podName = pod.getMetadata.getName
+              kube.pods().inNamespace(config.k8sNamespace).withName(podName).delete()
+              meterRegistry.counter("nowchess.coordinator.pods.deleted").increment()
+              log.infof("Deleted pod %s for dead instance %s", podName, instanceId)
+            case None =>
+              log.debugf("No pod found for instance %s, skipping deletion", instanceId)
+        catch
+          case ex: Exception =>
+            log.warnf(ex, "Failed to delete pod for instance %s", instanceId)

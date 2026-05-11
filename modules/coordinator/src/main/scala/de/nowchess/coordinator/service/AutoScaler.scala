@@ -45,6 +45,10 @@ class AutoScaler:
     Gauge
       .builder("nowchess.coordinator.load.average", avgLoadRef, _.get())
       .register(meterRegistry)
+    meterRegistry.counter("nowchess.coordinator.scale.events", "direction", "up").increment(0)
+    meterRegistry.counter("nowchess.coordinator.scale.events", "direction", "down").increment(0)
+    meterRegistry.counter("nowchess.coordinator.scale.failures", "direction", "up").increment(0)
+    meterRegistry.counter("nowchess.coordinator.scale.failures", "direction", "down").increment(0)
     ()
 
   // scalafix:off DisableSyntax.asInstanceOf

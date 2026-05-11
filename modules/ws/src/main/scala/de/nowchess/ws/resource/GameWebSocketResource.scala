@@ -6,6 +6,7 @@ import io.quarkus.redis.datasource.RedisDataSource
 import io.quarkus.redis.datasource.pubsub.PubSubCommands
 import io.quarkus.websockets.next.*
 import io.smallrye.jwt.auth.principal.JWTParser
+import jakarta.annotation.PostConstruct
 import jakarta.inject.Inject
 import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
@@ -33,6 +34,13 @@ class GameWebSocketResource:
   // scalafix:on DisableSyntax.var
 
   private val connections = new ConcurrentHashMap[String, ConnectionMeta]()
+
+  @PostConstruct
+  def initializeMetrics(): Unit =
+    _ = connectionsOpened
+    _ = connectionsClosed
+    _ = messagesReceived
+    _ = activeGauge
 
   private lazy val connectionsOpened: Counter =
     meterRegistry.counter("nowchess.ws.connections.opened")

@@ -4,6 +4,7 @@ import de.nowchess.api.dto.GameWritebackEventDto
 import de.nowchess.store.domain.GameRecord
 import de.nowchess.store.repository.GameRecordRepository
 import io.micrometer.core.instrument.{Counter, MeterRegistry, Timer}
+import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
@@ -20,7 +21,14 @@ class GameWritebackService:
 
   @Inject
   var meterRegistry: MeterRegistry = uninitialized
-  // scalafix:on DisableSyntax.var
+  // scalafix:on
+
+  @PostConstruct
+  def initializeMetrics(): Unit =
+    meterRegistry.timer("nowchess.store.writeback.duration").record(0L, java.util.concurrent.TimeUnit.MILLISECONDS)
+    meterRegistry.counter("nowchess.store.writeback.skipped").increment(0)
+    meterRegistry.counter("nowchess.store.games.written", "operation", "create").increment(0)
+    meterRegistry.counter("nowchess.store.games.written", "operation", "update").increment(0)
 
   private lazy val writebackTimer: Timer =
     meterRegistry.timer("nowchess.store.writeback.duration")

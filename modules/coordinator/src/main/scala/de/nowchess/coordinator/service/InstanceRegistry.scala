@@ -34,6 +34,9 @@ class InstanceRegistry:
     Gauge
       .builder("nowchess.coordinator.instances.active", instances, m => m.size().toDouble)
       .register(meterRegistry)
+    meterRegistry.counter("nowchess.coordinator.instances.joined").increment(0)
+    meterRegistry.counter("nowchess.coordinator.instances.removed").increment(0)
+    meterRegistry.counter("nowchess.coordinator.instances.evicted").increment(0)
     ()
 
   def setRedisPrefix(prefix: String): Unit =

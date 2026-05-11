@@ -1,5 +1,6 @@
 package de.nowchess.coordinator.service
 
+import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import io.quarkus.redis.datasource.RedisDataSource
@@ -11,6 +12,7 @@ import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
 import scala.util.Try
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 import de.nowchess.coordinator.grpc.CoreGrpcClient
 
 @ApplicationScoped
@@ -40,6 +42,11 @@ class CacheEvictionManager:
 
   def setRedisPrefix(prefix: String): Unit =
     redisPrefix = prefix
+
+  @PostConstruct
+  def initializeMetrics(): Unit =
+    meterRegistry.timer("nowchess.coordinator.cache.eviction.duration").record(0L, TimeUnit.MILLISECONDS)
+    meterRegistry.counter("nowchess.coordinator.cache.evictions").increment(0)
 
   def evictStaleGames: Unit =
     meterRegistry.timer("nowchess.coordinator.cache.eviction.duration").record((() => runEviction()): Runnable)

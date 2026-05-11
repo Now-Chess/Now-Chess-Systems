@@ -19,6 +19,7 @@ import de.nowchess.account.dto.{
 import de.nowchess.account.error.ChallengeError
 import de.nowchess.account.repository.{ChallengeRepository, UserAccountRepository}
 import io.micrometer.core.instrument.MeterRegistry
+import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
@@ -53,6 +54,12 @@ class ChallengeService:
   @Inject
   var meterRegistry: MeterRegistry = uninitialized
   // scalafix:on
+
+  @PostConstruct
+  def initializeMetrics(): Unit =
+    meterRegistry.counter("nowchess.challenges.created").increment(0)
+    meterRegistry.counter("nowchess.challenges.accepted").increment(0)
+    meterRegistry.counter("nowchess.challenges.declined").increment(0)
 
   @Transactional
   def create(challengerId: UUID, destUsername: String, req: ChallengeRequest): Either[ChallengeError, Challenge] =

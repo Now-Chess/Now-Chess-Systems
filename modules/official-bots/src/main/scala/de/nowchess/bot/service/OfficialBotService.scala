@@ -9,11 +9,13 @@ import de.nowchess.io.fen.FenParser
 import io.micrometer.core.instrument.MeterRegistry
 import io.quarkus.redis.datasource.RedisDataSource
 import io.quarkus.runtime.StartupEvent
+import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.event.Observes
 import jakarta.inject.Inject
 import scala.compiletime.uninitialized
 import java.util.function.Consumer
+import java.util.concurrent.TimeUnit
 
 @ApplicationScoped
 class OfficialBotService:
@@ -28,6 +30,13 @@ class OfficialBotService:
 
   private val terminalStatuses =
     Set("checkmate", "resign", "timeout", "stalemate", "insufficientMaterial", "draw")
+
+  @PostConstruct
+  def initializeMetrics(): Unit =
+    BotController.listBots.foreach { bot =>
+      meterRegistry.timer("nowchess.bot.move.duration", "bot", bot).record(0L, TimeUnit.MILLISECONDS)
+      meterRegistry.counter("nowchess.bot.moves.computed", "bot", bot).increment(0)
+    }
 
   def onStart(@Observes event: StartupEvent): Unit =
     BotController.listBots.foreach(subscribeToEventChannel)

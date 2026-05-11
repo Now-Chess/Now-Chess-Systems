@@ -7,6 +7,7 @@ import de.nowchess.account.repository.{BotAccountRepository, OfficialBotAccountR
 import io.micrometer.core.instrument.MeterRegistry
 import io.quarkus.elytron.security.common.BcryptUtil
 import io.smallrye.jwt.build.Jwt
+import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
@@ -34,6 +35,13 @@ class AccountService:
   @Inject
   var meterRegistry: MeterRegistry = uninitialized
   // scalafix:on
+
+  @PostConstruct
+  def initializeMetrics(): Unit =
+    meterRegistry.counter("nowchess.users.registrations", "result", "success").increment(0)
+    meterRegistry.counter("nowchess.users.registrations", "result", "failure").increment(0)
+    meterRegistry.counter("nowchess.auth.logins", "result", "success").increment(0)
+    meterRegistry.counter("nowchess.auth.logins", "result", "failure").increment(0)
 
   @Transactional
   def register(req: RegisterRequest): Either[AccountError, UserAccount] =

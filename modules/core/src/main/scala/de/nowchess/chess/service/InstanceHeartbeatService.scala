@@ -65,6 +65,7 @@ class InstanceHeartbeatService:
 
   def onStart(@Observes event: StartupEvent): Unit =
     Gauge.builder("nowchess.instance.subscriptions", subscriptionCount, _.get().toDouble).register(meterRegistry)
+    meterRegistry.counter("nowchess.heartbeat.failures").increment(0)
     if coordinatorEnabled then
       try
         shuttingDown = false

@@ -48,6 +48,21 @@ class RedisGameRegistry extends GameRegistry:
     Gauge
       .builder("nowchess.games.active", GameEngine.activeGamesCount, _.get().toDouble)
       .register(meterRegistry)
+    meterRegistry.counter("nowchess.games.cache.hits", "source", "local").increment(0)
+    meterRegistry.counter("nowchess.games.cache.hits", "source", "redis").increment(0)
+    meterRegistry.counter("nowchess.games.cache.hits", "source", "db").increment(0)
+    meterRegistry.counter("nowchess.games.cache.misses").increment(0)
+    meterRegistry.counter("nowchess.games.started").increment(0)
+    meterRegistry.counter("nowchess.games.completed", "result", "checkmate").increment(0)
+    meterRegistry.counter("nowchess.games.completed", "result", "draw.agreement").increment(0)
+    meterRegistry.counter("nowchess.games.completed", "result", "draw.fifty_move").increment(0)
+    meterRegistry.counter("nowchess.games.completed", "result", "draw.threefold").increment(0)
+    meterRegistry.counter("nowchess.games.completed", "result", "draw.stalemate").increment(0)
+    meterRegistry.counter("nowchess.games.completed", "result", "draw.insufficient").increment(0)
+    meterRegistry.counter("nowchess.games.completed", "result", "resignation").increment(0)
+    meterRegistry.counter("nowchess.games.completed", "result", "timeout").increment(0)
+    meterRegistry.counter("nowchess.moves.processed").increment(0)
+    meterRegistry.timer("nowchess.moves.duration").record(0L, java.util.concurrent.TimeUnit.MILLISECONDS)
     ()
 
   private def cacheKey(gameId: String) = s"${redisConfig.prefix}:game:entry:$gameId"
