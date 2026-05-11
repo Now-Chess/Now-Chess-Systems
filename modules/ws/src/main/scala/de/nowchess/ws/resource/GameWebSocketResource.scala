@@ -36,11 +36,12 @@ class GameWebSocketResource:
   private val connections = new ConcurrentHashMap[String, ConnectionMeta]()
 
   @PostConstruct
-  def initializeMetrics(): Unit =
-    _ = connectionsOpened
-    _ = connectionsClosed
-    _ = messagesReceived
-    _ = activeGauge
+  def initializeMetrics(): Unit = {
+    connectionsOpened
+    connectionsClosed
+    messagesReceived
+    activeGauge
+  }
 
   private lazy val connectionsOpened: Counter =
     meterRegistry.counter("nowchess.ws.connections.opened")
