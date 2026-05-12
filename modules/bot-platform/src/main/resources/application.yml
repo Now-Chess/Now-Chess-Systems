@@ -1,13 +1,6 @@
 quarkus:
   http:
     port: 8087
-    auth:
-      permission:
-        metrics:
-          paths:
-            - /q/metrics
-            - /q/health/*
-          policy: permit
   application:
     name: nowchess-bot-platform
   redis:
