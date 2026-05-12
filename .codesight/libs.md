@@ -73,20 +73,20 @@
 - `modules/account/src/main/scala/de/nowchess/account/resource/OfficialChallengeResource.scala` — class OfficialChallengeResource, function challengeWithDifficulty
 - `modules/account/src/main/scala/de/nowchess/account/service/AccountService.scala`
   - class AccountService
+  - function initializeMetrics
   - function register
   - function login
   - function findByUsername
   - function findById
-  - function createBotAccount
-  - _...10 more_
+  - _...11 more_
 - `modules/account/src/main/scala/de/nowchess/account/service/ChallengeService.scala`
   - class ChallengeService
+  - function initializeMetrics
   - function create
   - function accept
   - function decline
   - function cancel
-  - function findById
-  - _...2 more_
+  - _...3 more_
 - `modules/account/src/main/scala/de/nowchess/account/service/EventPublisher.scala`
   - class EventPublisher
   - function publishGameStart
@@ -206,6 +206,7 @@
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/CacheEvictionManager.scala`
   - class CacheEvictionManager
   - function setRedisPrefix
+  - function initializeMetrics
   - function evictStaleGames
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/FailoverService.scala`
   - class FailoverService
@@ -214,6 +215,7 @@
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/HealthMonitor.scala`
   - class HealthMonitor
   - function setRedisPrefix
+  - function initializeMetrics
   - function checkInstanceHealth
   - function watchK8sPods
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/InstanceRegistry.scala`
@@ -513,7 +515,10 @@
   - function clear
 - `modules/official-bots/src/main/scala/de/nowchess/bot/resource/OfficialBotChallengeResource.scala` — class OfficialBotChallengeResource, function challengeWithDifficulty
 - `modules/official-bots/src/main/scala/de/nowchess/bot/service/DifficultyMapper.scala` — class DifficultyMapper, function fromElo
-- `modules/official-bots/src/main/scala/de/nowchess/bot/service/OfficialBotService.scala` — class OfficialBotService, function onStart
+- `modules/official-bots/src/main/scala/de/nowchess/bot/service/OfficialBotService.scala`
+  - class OfficialBotService
+  - function initializeMetrics
+  - function onStart
 - `modules/official-bots/src/main/scala/de/nowchess/bot/util/PolyglotBook.scala` — function probe, function select
 - `modules/official-bots/src/main/scala/de/nowchess/bot/util/PolyglotHash.scala` — class PolyglotHash, function hash
 - `modules/official-bots/src/main/scala/de/nowchess/bot/util/ZobristHash.scala`
@@ -555,12 +560,16 @@
   - function getGame
   - function getRunning
   - function getHistory
-- `modules/store/src/main/scala/de/nowchess/store/service/GameWritebackService.scala` — class GameWritebackService, function writeBack
+- `modules/store/src/main/scala/de/nowchess/store/service/GameWritebackService.scala`
+  - class GameWritebackService
+  - function initializeMetrics
+  - function writeBack
 - `modules/ws/src/main/scala/de/nowchess/ws/config/JacksonConfig.scala` — class JacksonConfig, function customize
 - `modules/ws/src/main/scala/de/nowchess/ws/config/NativeReflectionConfig.scala` — class NativeReflectionConfig
 - `modules/ws/src/main/scala/de/nowchess/ws/config/RedisConfig.scala` — class RedisConfig
 - `modules/ws/src/main/scala/de/nowchess/ws/resource/GameWebSocketResource.scala`
   - class GameWebSocketResource
+  - function initializeMetrics
   - function onOpen
   - function onTextMessage
   - function onClose

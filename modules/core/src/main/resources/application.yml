@@ -74,6 +74,8 @@ nowchess:
 
 "%deployed":
   quarkus:
+    http:
+      root-path: /api
     log:
       console:
         json: true
