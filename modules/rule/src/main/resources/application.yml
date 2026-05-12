@@ -1,6 +1,11 @@
 quarkus:
   http:
     port: 8082
+    auth:
+      permission:
+        metrics:
+          paths: /q/metrics,/q/health/*
+          policy: permit
   grpc:
     server:
       use-separate-server: false
