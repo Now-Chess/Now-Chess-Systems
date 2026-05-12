@@ -4,7 +4,9 @@ quarkus:
     auth:
       permission:
         metrics:
-          paths: /q/metrics,/q/health/*
+          paths:
+            - /q/metrics
+            - /q/health/*
           policy: permit
   grpc:
     server:
