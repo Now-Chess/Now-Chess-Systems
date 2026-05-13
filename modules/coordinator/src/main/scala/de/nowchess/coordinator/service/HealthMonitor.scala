@@ -139,9 +139,10 @@ class HealthMonitor:
                   case _ => ()
 
               override def onClose(cause: WatcherException): Unit =
-                if cause != null then
-                  log.warnf(cause, "Pod watch closed, restarting")
+                Option(cause).foreach { ex =>
+                  log.warnf(ex, "Pod watch closed, restarting")
                   startPodWatch()
+                }
             )
           log.info("Pod watch started")
         catch

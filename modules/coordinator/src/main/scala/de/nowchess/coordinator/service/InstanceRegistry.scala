@@ -51,14 +51,15 @@ class InstanceRegistry:
     keys.asScala.foreach { key =>
       val instanceId = key.stripPrefix(s"$redisPrefix:instances:")
       val json       = syncRedis.value(classOf[String]).get(key)
-      if json != null then
+      Option(json).foreach { jsonStr =>
         try
-          val metadata = mapper.readValue(json, classOf[InstanceMetadata])
+          val metadata = mapper.readValue(jsonStr, classOf[InstanceMetadata])
           instances.put(instanceId, metadata)
           log.infof("Startup: loaded instance %s from Redis", instanceId)
         catch
           case ex: Exception =>
             log.warnf(ex, "Startup: failed to parse instance %s", instanceId)
+      }
     }
 
   def getInstance(instanceId: String): Option[InstanceMetadata] =
