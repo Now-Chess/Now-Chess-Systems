@@ -125,10 +125,8 @@ class InstanceRegistry:
       val inst = Option(instances.remove(id))
       meterRegistry.counter("nowchess.coordinator.instances.evicted").increment()
       inst.foreach { i =>
-        if i.state == "DEAD" then
-          log.warnf("Evicted dead instance %s", id)
-        else
-          log.warnf("Evicted stale instance %s (heartbeat older than %s)", id, maxAge)
+        if i.state == "DEAD" then log.warnf("Evicted dead instance %s", id)
+        else log.warnf("Evicted stale instance %s (heartbeat older than %s)", id, maxAge)
       }
     }
     stale
