@@ -45,8 +45,8 @@ class AutoScaler:
     if kubeClientInstance.isUnsatisfied then None
     else Some(kubeClientInstance.get())
 
-  private val argoApiVersion = "argoproj.io/v1alpha1"
-  private val argoKind       = "Rollout"
+  private val argoApiVersion    = "argoproj.io/v1alpha1"
+  private val argoKind          = "Rollout"
   private val metricsApiVersion = "metrics.k8s.io/v1beta1"
 
   @PostConstruct
@@ -75,10 +75,12 @@ class AutoScaler:
   private def isResourceConstrained(instanceId: String): Boolean =
     kubeClientOpt.fold(false) { kube =>
       try
-        val pods = kube.pods().inNamespace(config.k8sNamespace).withLabel(config.k8sRolloutLabelSelector).list().getItems.asScala
+        val pods =
+          kube.pods().inNamespace(config.k8sNamespace).withLabel(config.k8sRolloutLabelSelector).list().getItems.asScala
         pods.find(_.getMetadata.getName.contains(instanceId)).exists { pod =>
           try
-            val metricsRes = kube.genericKubernetesResources(metricsApiVersion, "PodMetrics")
+            val metricsRes = kube
+              .genericKubernetesResources(metricsApiVersion, "PodMetrics")
               .inNamespace(config.k8sNamespace)
               .withName(pod.getMetadata.getName)
               .get()
@@ -92,11 +94,12 @@ class AutoScaler:
               .flatMap(u => Option(u.get("cpu")))
               .map(_.toString)
               .exists { cpuStr =>
-                val cpuMillis = if cpuStr.endsWith("m") then cpuStr.dropRight(1).toLongOption.getOrElse(0L) else cpuStr.toLongOption.map(_ * 1000).getOrElse(0L)
+                val cpuMillis =
+                  if cpuStr.endsWith("m") then cpuStr.dropRight(1).toLongOption.getOrElse(0L)
+                  else cpuStr.toLongOption.map(_ * 1000).getOrElse(0L)
                 cpuMillis > 800
               }
-          catch
-            case _: Exception => false
+          catch case _: Exception => false
         }
       catch
         case ex: Exception =>
@@ -117,7 +120,8 @@ class AutoScaler:
           val hasHighCpuOrMemory = instances.exists(inst => isResourceConstrained(inst.instanceId))
 
           if avgLoad > config.scaleUpThreshold * config.maxGamesPerCore || hasHighCpuOrMemory then scaleUp()
-          else if avgLoad < config.scaleDownThreshold * config.maxGamesPerCore && instances.size > config.scaleMinReplicas then scaleDown()
+          else if avgLoad < config.scaleDownThreshold * config.maxGamesPerCore && instances.size > config.scaleMinReplicas
+          then scaleDown()
 
   def scaleUp(): Unit =
     log.info("Scaling up Argo Rollout")
