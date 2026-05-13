@@ -133,8 +133,7 @@ class HealthMonitor:
                 action match
                   case Watcher.Action.DELETED =>
                     handlePodGone(pod)
-                  case Watcher.Action.MODIFIED
-                      if Option(pod.getMetadata.getDeletionTimestamp).isDefined =>
+                  case Watcher.Action.MODIFIED if Option(pod.getMetadata.getDeletionTimestamp).isDefined =>
                     handlePodTerminating(pod)
                   case _ => ()
 
@@ -142,11 +141,10 @@ class HealthMonitor:
                 Option(cause).foreach { ex =>
                   log.warnf(ex, "Pod watch closed, restarting")
                   startPodWatch()
-                }
+                },
             )
           log.info("Pod watch started")
-        catch
-          case ex: Exception => log.warnf(ex, "Failed to start pod watch")
+        catch case ex: Exception => log.warnf(ex, "Failed to start pod watch")
 
   private def isPodReady(pod: Pod): Boolean =
     Option(pod.getStatus)

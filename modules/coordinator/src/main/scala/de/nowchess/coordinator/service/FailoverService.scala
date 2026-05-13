@@ -122,14 +122,17 @@ class FailoverService:
     log.infof("Cleaned up games set for instance %s", instanceId)
 
   private def waitForHealthyInstanceAsync(): Uni[InstanceMetadata] =
-    Uni.createFrom().deferred(() =>
-      instanceRegistry.getAllInstances
-        .filter(_.state == "HEALTHY")
-        .sortBy(_.subscriptionCount)
-        .headOption match
+    Uni
+      .createFrom()
+      .deferred(() =>
+        instanceRegistry.getAllInstances
+          .filter(_.state == "HEALTHY")
+          .sortBy(_.subscriptionCount)
+          .headOption match
           case Some(inst) => Uni.createFrom().item(inst)
-          case None       => Uni.createFrom().failure(new RuntimeException("no healthy instance"))
-    ).onFailure()
+          case None       => Uni.createFrom().failure(new RuntimeException("no healthy instance")),
+      )
+      .onFailure()
       .retry()
       .withBackOff(Duration.ofMillis(500))
       .expireIn(config.failoverWaitTimeout.toMillis)

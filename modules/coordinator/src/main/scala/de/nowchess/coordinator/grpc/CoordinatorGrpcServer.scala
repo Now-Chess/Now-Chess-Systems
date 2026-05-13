@@ -127,7 +127,8 @@ class CoordinatorGrpcServer extends CoordinatorServiceGrpc.CoordinatorServiceImp
         _ =>
           val response = DrainInstanceResponse.newBuilder().setGamesMigrated(gamesBefore).build()
           responseObserver.onNext(response)
-          responseObserver.onCompleted(),
+          responseObserver.onCompleted()
+        ,
         ex =>
           log.warnf(ex, "Drain failed for %s", instanceId)
           responseObserver.onError(ex),
