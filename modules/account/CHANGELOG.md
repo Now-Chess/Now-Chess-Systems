@@ -224,3 +224,32 @@
 
 * Revert "feat: add authentication permissions for metrics endpoints in application.yml" ([a298417](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/a298417b9e4d68dc73bbf40be63d9484536e9f83))
 * Revert "refactor: update metrics paths formatting in application.yml for clarity" ([3870566](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/38705663498d5f47c40dafe2f26198589ede8656))
+##  (2026-05-13)
+
+### Features
+
+* add authentication permissions for metrics endpoints in application.yml ([04edd4d](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/04edd4d6fd8a63196c36f6d67992832febc9bebb))
+* add initialization metrics for various services ([d438e97](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/d438e97f32bdde0bfc63c1b4a8cc810cdd093166))
+* add OpenTelemetry trace configuration with parentbased sampler ([3904d5a](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/3904d5ad8ad4930ddee65287a7bfab785a6148f5))
+* **config:** add H2 database configuration for testing environment ([39c9e49](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/39c9e492cef2515368c074da9406f95e9c0c9e64))
+* **config:** update application.yml for PostgreSQL and remove staging/production configurations ([2404e61](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/2404e6164c3b50ffccbea5238d636060d6abe4d6))
+* **config:** update application.yml for staging and production environments ([6113432](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/6113432a14c476a3a0dfc0d449e17d023697f2ba))
+* configure logging and add OpenTelemetry support ([#49](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/49)) ([d57c488](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/d57c4886612d1d92da0e1b79209fc83e6ef537a1))
+* **docker:** add .dockerignore and .gitignore files for build exclusions ([c987d8e](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/c987d8e258c0e6c4cfbdaa8381c64c410d7a2b83))
+* **docker:** add Dockerfiles for building Quarkus application in native and JVM modes ([3f2d2bb](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/3f2d2bb4c97fa8cddba66e1da4427c54236dfeed))
+* **docker:** add Dockerfiles for Quarkus application in JVM and native modes ([34b9933](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/34b993304670cf2aa62cd2f6460cee7b9864b08e))
+* **logging:** add DEBUG/INFO/WARN logging across services (NCS-72) ([#41](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/41)) ([804a4bf](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/804a4bf179e3dfb19e2be4390e7e543caf5237c6))
+* NCS-78 Add Traceability to the Applications ([#46](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/46)) ([649566e](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/649566eb3fcf38f91c8896a739f74ea318af312d))
+* NCS-78 Add Traceability to the Applications ([#47](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/47)) ([87dfc6c](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/87dfc6c2bcce7f7d58fc641bd8d468a2e584c108))
+* true-microservices ([#40](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/40)) ([5909242](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/590924254e8a2754de661a57a03e43f89ceb6299))
+* update application.yml with new API root paths and add Micrometer and OpenTelemetry dependencies ([72ce262](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/72ce262bc491f94297700e6002fb5d0812e2cc2a))
+
+### Bug Fixes
+
+* **auth:** add InternalClientHeadersFactory for custom client headers management ([e279c39](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/e279c39246470156bf11e745ee72204018d4229d))
+* remove unused HTTP root-path configurations from application.yml ([3ed3e59](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/3ed3e59ee456d54cd3d65ece4f36623e256b9736))
+
+### Reverts
+
+* Revert "feat: add authentication permissions for metrics endpoints in application.yml" ([a298417](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/a298417b9e4d68dc73bbf40be63d9484536e9f83))
+* Revert "refactor: update metrics paths formatting in application.yml for clarity" ([3870566](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/38705663498d5f47c40dafe2f26198589ede8656))
