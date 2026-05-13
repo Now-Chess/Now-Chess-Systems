@@ -8,6 +8,7 @@ import de.nowchess.coordinator.config.CoordinatorConfig
 import io.fabric8.kubernetes.api.model.GenericKubernetesResource
 import io.fabric8.kubernetes.client.KubernetesClient
 import io.micrometer.core.instrument.{Gauge, MeterRegistry}
+import io.quarkus.scheduler.Scheduled
 import org.jboss.logging.Logger
 
 import java.util.concurrent.atomic.AtomicReference
@@ -24,6 +25,12 @@ class AutoScaler:
 
   @Inject
   private var instanceRegistry: InstanceRegistry = uninitialized
+
+  @Inject
+  private var loadBalancer: LoadBalancer = uninitialized
+
+  @Inject
+  private var failoverService: FailoverService = uninitialized
 
   @Inject
   private var meterRegistry: MeterRegistry = uninitialized
@@ -50,6 +57,11 @@ class AutoScaler:
     meterRegistry.counter("nowchess.coordinator.scale.failures", "direction", "up").increment(0)
     meterRegistry.counter("nowchess.coordinator.scale.failures", "direction", "down").increment(0)
     ()
+
+  @Scheduled(every = "10s")
+  def periodicScaleCheck(): Unit =
+    try checkAndScale
+    catch case ex: Exception => log.warnf(ex, "Auto-scale check failed")
 
   // scalafix:off DisableSyntax.asInstanceOf
   private def rolloutSpec(rollout: GenericKubernetesResource): Option[java.util.Map[String, AnyRef]] =
@@ -105,6 +117,7 @@ class AutoScaler:
                       currentReplicas,
                       currentReplicas + 1,
                     )
+                    loadBalancer.rebalance
                   else log.infof("Already at max replicas %d for %s", maxReplicas, config.k8sRolloutName)
                 case _ => ()
             }
@@ -116,43 +129,61 @@ class AutoScaler:
 
   def scaleDown(): Unit =
     log.info("Scaling down Argo Rollout")
-    kubeClientOpt match
-      case None =>
-        log.warn("Kubernetes client not available, cannot scale")
-      case Some(kube) =>
-        try
-          Option(
-            kube
-              .genericKubernetesResources(argoApiVersion, argoKind)
-              .inNamespace(config.k8sNamespace)
-              .withName(config.k8sRolloutName)
-              .get(),
-          ).foreach { rollout =>
-            rolloutSpec(rollout).foreach { spec =>
-              spec.get("replicas") match
-                case replicas: Integer =>
-                  val currentReplicas = replicas.intValue()
-                  val minReplicas     = config.scaleMinReplicas
+    val underloadedInstance = instanceRegistry.getAllInstances
+      .filter(_.state == "HEALTHY")
+      .minByOption(_.subscriptionCount)
 
-                  if currentReplicas > minReplicas then
-                    spec.put("replicas", Integer.valueOf(currentReplicas - 1))
+    underloadedInstance.foreach { inst =>
+      log.infof("Draining instance %s before scale-down", inst.instanceId)
+      failoverService
+        .onInstanceStreamDropped(inst.instanceId)
+        .subscribe()
+        .`with`(
+          _ =>
+            kubeClientOpt match
+              case None =>
+                log.warn("Kubernetes client not available, cannot scale")
+              case Some(kube) =>
+                try
+                  Option(
                     kube
                       .genericKubernetesResources(argoApiVersion, argoKind)
                       .inNamespace(config.k8sNamespace)
-                      .resource(rollout)
-                      .update()
-                    meterRegistry.counter("nowchess.coordinator.scale.events", "direction", "down").increment()
-                    log.infof(
-                      "Scaled down %s from %d to %d replicas",
-                      config.k8sRolloutName,
-                      currentReplicas,
-                      currentReplicas - 1,
-                    )
-                  else log.infof("Already at min replicas %d for %s", minReplicas, config.k8sRolloutName)
-                case _ => ()
-            }
-          }
-        catch
-          case ex: Exception =>
+                      .withName(config.k8sRolloutName)
+                      .get(),
+                  ).foreach { rollout =>
+                    rolloutSpec(rollout).foreach { spec =>
+                      spec.get("replicas") match
+                        case replicas: Integer =>
+                          val currentReplicas = replicas.intValue()
+                          val minReplicas     = config.scaleMinReplicas
+
+                          if currentReplicas > minReplicas then
+                            spec.put("replicas", Integer.valueOf(currentReplicas - 1))
+                            kube
+                              .genericKubernetesResources(argoApiVersion, argoKind)
+                              .inNamespace(config.k8sNamespace)
+                              .resource(rollout)
+                              .update()
+                            meterRegistry.counter("nowchess.coordinator.scale.events", "direction", "down").increment()
+                            log.infof(
+                              "Scaled down %s from %d to %d replicas",
+                              config.k8sRolloutName,
+                              currentReplicas,
+                              currentReplicas - 1,
+                            )
+                          else log.infof("Already at min replicas %d for %s", minReplicas, config.k8sRolloutName)
+                        case _ => ()
+                    }
+                  }
+                catch
+                  case ex: Exception =>
+                    meterRegistry.counter("nowchess.coordinator.scale.failures", "direction", "down").increment()
+                    log.warnf(ex, "Failed to scale down %s", config.k8sRolloutName),
+          ex =>
             meterRegistry.counter("nowchess.coordinator.scale.failures", "direction", "down").increment()
-            log.warnf(ex, "Failed to scale down %s", config.k8sRolloutName)
+            log.warnf(ex, "Failed to drain instance %s before scale-down", inst.instanceId),
+        )
+    }
+
+    if underloadedInstance.isEmpty then log.warn("No healthy instances found for scale-down")

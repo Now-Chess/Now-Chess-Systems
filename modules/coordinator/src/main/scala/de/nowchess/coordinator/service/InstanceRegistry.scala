@@ -76,20 +76,24 @@ class InstanceRegistry:
       .onItem()
       .transformToUni { value =>
         try
-          val metadata = mapper.readValue(value, classOf[InstanceMetadata])
-          val isNew    = !instances.containsKey(instanceId)
-          instances.put(instanceId, metadata)
-          if isNew then
-            meterRegistry.counter("nowchess.coordinator.instances.joined").increment()
-            log.infof("Instance %s joined registry (subscriptions=%d)", instanceId, metadata.subscriptionCount)
+          if value == null then
+            log.debugf("Instance %s metadata missing from Redis (may have expired)", instanceId)
+            Uni.createFrom().item(())
           else
-            log.debugf(
-              "Instance %s updated (subscriptions=%d state=%s)",
-              instanceId,
-              metadata.subscriptionCount,
-              metadata.state,
-            )
-          Uni.createFrom().item(())
+            val metadata = mapper.readValue(value, classOf[InstanceMetadata])
+            val isNew    = !instances.containsKey(instanceId)
+            instances.put(instanceId, metadata)
+            if isNew then
+              meterRegistry.counter("nowchess.coordinator.instances.joined").increment()
+              log.infof("Instance %s joined registry (subscriptions=%d)", instanceId, metadata.subscriptionCount)
+            else
+              log.debugf(
+                "Instance %s updated (subscriptions=%d state=%s)",
+                instanceId,
+                metadata.subscriptionCount,
+                metadata.state,
+              )
+            Uni.createFrom().item(())
         catch
           case ex: Exception =>
             log.warnf(ex, "Failed to parse instance metadata for %s — removing from registry", instanceId)

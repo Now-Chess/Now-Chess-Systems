@@ -199,7 +199,7 @@ class InstanceHeartbeatService:
         val json = mapper.writeValueAsString(metadata)
         reactiveRedis
           .value(classOf[String])
-          .setex(key, 5L, json)
+          .setex(key, 15L, json)
           .subscribe()
           .`with`(
             _ => redisHeartbeatPending.set(false),

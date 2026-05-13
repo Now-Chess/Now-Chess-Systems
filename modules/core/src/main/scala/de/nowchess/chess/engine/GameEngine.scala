@@ -60,8 +60,8 @@ class GameEngine(
   @SuppressWarnings(Array("DisableSyntax.var"))
   private var pendingTakebackRequest: Option[Color] = initialTakebackRequest
 
+  GameEngine.activeGamesCount.incrementAndGet()
   meterRegistry.foreach { reg =>
-    GameEngine.activeGamesCount.incrementAndGet()
     reg.counter("nowchess.games.started").increment()
   }
   private def gamesCompletedCounter(result: String): Counter =
