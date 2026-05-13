@@ -76,6 +76,11 @@ nowchess:
   quarkus:
     http:
       root-path: /api
+      cors:
+        ~: true
+        origins: ${CORS_ORIGINS}
+        methods: GET,POST,PUT,DELETE,OPTIONS
+        headers: Content-Type,Accept,Authorization
     log:
       console:
         json: true
@@ -86,19 +91,6 @@ nowchess:
       exporter:
         otlp:
           endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
-  mp:
-    jwt:
-      verify:
-        publickey:
-          location: ${JWT_PUBLIC_KEY_PATH:keys/public.pem}
-        issuer: nowchess
-  quarkus:
-    http:
-      cors:
-        ~: true
-        origins: ${CORS_ORIGINS}
-        methods: GET,POST,PUT,DELETE,OPTIONS
-        headers: Content-Type,Accept,Authorization
     grpc:
       clients:
         rule-grpc:
@@ -117,6 +109,12 @@ nowchess:
         url: ${RULE_SERVICE_URL}
       store-service:
         url: ${STORE_SERVICE_URL}
+  mp:
+    jwt:
+      verify:
+        publickey:
+          location: ${JWT_PUBLIC_KEY_PATH:keys/public.pem}
+        issuer: nowchess
   nowchess:
     redis:
       host: ${REDIS_HOST}
