@@ -10,6 +10,7 @@ import io.fabric8.kubernetes.client.KubernetesClient
 import io.micrometer.core.instrument.{Gauge, MeterRegistry}
 import io.quarkus.scheduler.Scheduled
 import org.jboss.logging.Logger
+import scala.jdk.CollectionConverters.*
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.compiletime.uninitialized
@@ -46,6 +47,7 @@ class AutoScaler:
 
   private val argoApiVersion = "argoproj.io/v1alpha1"
   private val argoKind       = "Rollout"
+  private val metricsApiVersion = "metrics.k8s.io/v1beta1"
 
   @PostConstruct
   def initMetrics(): Unit =
@@ -70,6 +72,38 @@ class AutoScaler:
     }
   // scalafix:on DisableSyntax.asInstanceOf
 
+  private def isResourceConstrained(instanceId: String): Boolean =
+    kubeClientOpt.fold(false) { kube =>
+      try
+        val pods = kube.pods().inNamespace(config.k8sNamespace).withLabel(config.k8sRolloutLabelSelector).list().getItems.asScala
+        pods.find(_.getMetadata.getName.contains(instanceId)).exists { pod =>
+          try
+            val metricsRes = kube.genericKubernetesResources(metricsApiVersion, "PodMetrics")
+              .inNamespace(config.k8sNamespace)
+              .withName(pod.getMetadata.getName)
+              .get()
+            val metricsMap = metricsRes.asInstanceOf[java.util.Map[String, AnyRef]]
+            Option(metricsMap.get("metrics"))
+              .map(_.asInstanceOf[java.util.Map[String, AnyRef]])
+              .flatMap(m => Option(m.get("containers")).map(_.asInstanceOf[java.util.List[AnyRef]]))
+              .filter(!_.isEmpty)
+              .map(_.get(0).asInstanceOf[java.util.Map[String, AnyRef]])
+              .flatMap(c => Option(c.get("usage")).map(_.asInstanceOf[java.util.Map[String, AnyRef]]))
+              .flatMap(u => Option(u.get("cpu")))
+              .map(_.toString)
+              .exists { cpuStr =>
+                val cpuMillis = if cpuStr.endsWith("m") then cpuStr.dropRight(1).toLongOption.getOrElse(0L) else cpuStr.toLongOption.map(_ * 1000).getOrElse(0L)
+                cpuMillis > 800
+              }
+          catch
+            case _: Exception => false
+        }
+      catch
+        case ex: Exception =>
+          log.debugf(ex, "Failed to check resource metrics for %s", instanceId)
+          false
+    }
+
   def checkAndScale: Unit =
     if config.autoScaleEnabled then
       val now  = System.currentTimeMillis()
@@ -80,7 +114,9 @@ class AutoScaler:
           val avgLoad = instances.map(_.subscriptionCount).sum.toDouble / instances.size
           avgLoadRef.set(avgLoad)
 
-          if avgLoad > config.scaleUpThreshold * config.maxGamesPerCore then scaleUp()
+          val hasHighCpuOrMemory = instances.exists(inst => isResourceConstrained(inst.instanceId))
+
+          if avgLoad > config.scaleUpThreshold * config.maxGamesPerCore || hasHighCpuOrMemory then scaleUp()
           else if avgLoad < config.scaleDownThreshold * config.maxGamesPerCore && instances.size > config.scaleMinReplicas then scaleDown()
 
   def scaleUp(): Unit =

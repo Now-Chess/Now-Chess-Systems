@@ -28,7 +28,7 @@ nowchess:
   internal:
     secret: ${INTERNAL_SECRET:123abc}
   coordinator:
-    max-games-per-core: 500
+    max-games-per-core: 100
     max-deviation-percent: 20
     rebalance-interval: 30s
     rebalance-min-interval: 60s
