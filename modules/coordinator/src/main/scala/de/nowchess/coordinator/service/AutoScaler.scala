@@ -81,7 +81,7 @@ class AutoScaler:
           avgLoadRef.set(avgLoad)
 
           if avgLoad > config.scaleUpThreshold * config.maxGamesPerCore then scaleUp()
-          else if avgLoad < config.scaleDownThreshold * config.maxGamesPerCore then scaleDown()
+          else if avgLoad < config.scaleDownThreshold * config.maxGamesPerCore && instances.size > config.scaleMinReplicas then scaleDown()
 
   def scaleUp(): Unit =
     log.info("Scaling up Argo Rollout")
