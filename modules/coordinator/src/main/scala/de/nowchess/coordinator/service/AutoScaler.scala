@@ -72,6 +72,7 @@ class AutoScaler:
     }
   // scalafix:on DisableSyntax.asInstanceOf
 
+  // scalafix:off DisableSyntax.asInstanceOf
   private def isResourceConstrained(instanceId: String): Boolean =
     kubeClientOpt.fold(false) { kube =>
       try
@@ -106,6 +107,7 @@ class AutoScaler:
           log.debugf(ex, "Failed to check resource metrics for %s", instanceId)
           false
     }
+  // scalafix:on DisableSyntax.asInstanceOf
 
   def checkAndScale: Unit =
     if config.autoScaleEnabled then
