@@ -75,7 +75,6 @@ nowchess:
 "%deployed":
   quarkus:
     http:
-      root-path: /api
       cors:
         ~: true
         origins: ${CORS_ORIGINS}

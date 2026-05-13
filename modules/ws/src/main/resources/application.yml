@@ -29,8 +29,6 @@ nowchess:
 
 "%deployed":
   quarkus:
-    http:
-      root-path: /ws
     log:
       console:
         json: true
