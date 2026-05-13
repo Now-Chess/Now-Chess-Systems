@@ -78,6 +78,7 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-scala_3:${versions["JACKSON_SCALA"]!!}")
     implementation("io.quarkus:quarkus-redis-client")
     implementation("io.quarkus:quarkus-kubernetes-client")
+    implementation("io.quarkus:quarkus-scheduler")
 
     testImplementation(platform("org.junit:junit-bom:${versions["JUNIT_BOM"]!!}"))
     testImplementation("org.junit.jupiter:junit-jupiter")

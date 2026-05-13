@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.event.Observes
 import jakarta.enterprise.inject.Instance
 import jakarta.inject.Inject
+import io.quarkus.scheduler.Scheduled
 import de.nowchess.coordinator.config.CoordinatorConfig
 import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.api.model.Pod
@@ -73,7 +74,12 @@ class HealthMonitor:
       Thread.ofVirtual().start(() => validateStartupInstances(timeoutMs))
     startPodWatch()
 
-  def checkInstanceHealth: Unit =
+  @Scheduled(every = "10s")
+  def periodicHealthCheck(): Unit =
+    try checkInstanceHealth()
+    catch case ex: Exception => log.warnf(ex, "Health check failed")
+
+  def checkInstanceHealth(): Unit =
     meterRegistry.counter("nowchess.coordinator.health.checks").increment()
     val evicted = instanceRegistry.evictStaleInstances(config.instanceDeadTimeout)
     if evicted.nonEmpty then
