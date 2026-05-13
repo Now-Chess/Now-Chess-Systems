@@ -92,7 +92,9 @@ class InstanceRegistry:
           Uni.createFrom().item(())
         catch
           case ex: Exception =>
-            log.warnf(ex, "Failed to parse instance metadata for %s", instanceId)
+            log.warnf(ex, "Failed to parse instance metadata for %s — removing from registry", instanceId)
+            instances.remove(instanceId)
+            meterRegistry.counter("nowchess.coordinator.instances.removed").increment()
             Uni.createFrom().item(())
       }
       .onFailure()
@@ -112,15 +114,21 @@ class InstanceRegistry:
     val stale = instances.asScala
       .collect { case (id, inst) =>
         try
-          if Instant.parse(inst.lastHeartbeat).isBefore(cutoff) then Some(id)
-          else None
+          val isHeartbeatStale = Instant.parse(inst.lastHeartbeat).isBefore(cutoff)
+          val isDead           = inst.state == "DEAD"
+          if isHeartbeatStale || isDead then Some(id) else None
         catch case _: Exception => None
       }
       .flatten
       .toList
     stale.foreach { id =>
-      instances.remove(id)
+      val inst = Option(instances.remove(id))
       meterRegistry.counter("nowchess.coordinator.instances.evicted").increment()
-      log.warnf("Evicted stale instance %s (heartbeat older than %s)", id, maxAge)
+      inst.foreach { i =>
+        if i.state == "DEAD" then
+          log.warnf("Evicted dead instance %s", id)
+        else
+          log.warnf("Evicted stale instance %s (heartbeat older than %s)", id, maxAge)
+      }
     }
     stale
