@@ -2,17 +2,23 @@ package de.nowchess.coordinator.service
 
 import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
+import jakarta.enterprise.event.Observes
 import jakarta.enterprise.inject.Instance
 import jakarta.inject.Inject
 import de.nowchess.coordinator.config.CoordinatorConfig
 import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.api.model.Pod
+import io.fabric8.kubernetes.client.Watcher
+import io.fabric8.kubernetes.client.WatcherException
 import io.micrometer.core.instrument.MeterRegistry
 import io.quarkus.redis.datasource.RedisDataSource
+import io.quarkus.runtime.StartupEvent
 import scala.jdk.CollectionConverters.*
 import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
 import java.time.Instant
+import de.nowchess.coordinator.grpc.CoordinatorGrpcServer
+import de.nowchess.coordinator.dto.InstanceMetadata
 
 @ApplicationScoped
 class HealthMonitor:
@@ -32,6 +38,12 @@ class HealthMonitor:
   @Inject
   private var meterRegistry: MeterRegistry = uninitialized
 
+  @Inject
+  private var grpcServer: CoordinatorGrpcServer = uninitialized
+
+  @Inject
+  private var failoverService: FailoverService = uninitialized
+
   private val log         = Logger.getLogger(classOf[HealthMonitor])
   private var redisPrefix = "nowchess"
   // scalafix:on DisableSyntax.var
@@ -47,6 +59,15 @@ class HealthMonitor:
   def initializeMetrics(): Unit =
     meterRegistry.counter("nowchess.coordinator.health.checks").increment(0)
     meterRegistry.counter("nowchess.coordinator.pods.unhealthy").increment(0)
+
+  def onStartup(@Observes ev: StartupEvent): Unit =
+    instanceRegistry.loadAllFromRedis()
+    val loaded = instanceRegistry.getAllInstances
+    log.infof("Startup: loaded %d instances from Redis", loaded.size)
+    if loaded.nonEmpty then
+      val timeoutMs = config.startupValidationTimeout.toMillis
+      Thread.ofVirtual().start(() => validateStartupInstances(timeoutMs))
+    startPodWatch()
 
   def checkInstanceHealth: Unit =
     meterRegistry.counter("nowchess.coordinator.health.checks").increment()
@@ -98,41 +119,33 @@ class HealthMonitor:
           true
     }
 
-  def watchK8sPods: Unit =
+  private def startPodWatch(): Unit =
     kubeClientOpt match
-      case None =>
-        log.debug("Kubernetes client not available for pod watch")
+      case None => log.debug("K8s client unavailable, skipping pod watch")
       case Some(kube) =>
         try
-          val pods = kube
+          kube
             .pods()
             .inNamespace(config.k8sNamespace)
             .withLabel(config.k8sRolloutLabelSelector)
-            .list()
-            .getItems
-            .asScala
+            .watch(new Watcher[Pod]:
+              override def eventReceived(action: Watcher.Action, pod: Pod): Unit =
+                action match
+                  case Watcher.Action.DELETED =>
+                    handlePodGone(pod)
+                  case Watcher.Action.MODIFIED
+                      if Option(pod.getMetadata.getDeletionTimestamp).isDefined =>
+                    handlePodTerminating(pod)
+                  case _ => ()
 
-          val instances = instanceRegistry.getAllInstances
-          instances.foreach { inst =>
-            val matchingPod = pods.find { pod =>
-              pod.getMetadata.getName.contains(inst.instanceId)
-            }
-
-            matchingPod match
-              case Some(pod) =>
-                val isReady = isPodReady(pod)
-                if !isReady && inst.state == "HEALTHY" then
-                  meterRegistry.counter("nowchess.coordinator.pods.unhealthy").increment()
-                  log.warnf("Pod %s not ready, marking instance %s dead", pod.getMetadata.getName, inst.instanceId)
-                  instanceRegistry.markInstanceDead(inst.instanceId)
-                  deleteK8sPod(inst.instanceId)
-              case None =>
-                log.warnf("No pod found for instance %s, evicting from registry", inst.instanceId)
-                instanceRegistry.removeInstance(inst.instanceId)
-          }
+              override def onClose(cause: WatcherException): Unit =
+                if cause != null then
+                  log.warnf(cause, "Pod watch closed, restarting")
+                  startPodWatch()
+            )
+          log.info("Pod watch started")
         catch
-          case ex: Exception =>
-            log.warnf(ex, "Failed to watch k8s pods")
+          case ex: Exception => log.warnf(ex, "Failed to start pod watch")
 
   private def isPodReady(pod: Pod): Boolean =
     Option(pod.getStatus)
@@ -164,3 +177,48 @@ class HealthMonitor:
         catch
           case ex: Exception =>
             log.warnf(ex, "Failed to delete pod for instance %s", instanceId)
+
+  private def validateStartupInstances(timeoutMs: Long): Unit =
+    Thread.sleep(timeoutMs)
+    instanceRegistry.getAllInstances.foreach { inst =>
+      if !grpcServer.hasActiveStream(inst.instanceId) then
+        log.warnf(
+          "Startup: instance %s did not reconnect within %dms — evicting",
+          inst.instanceId,
+          timeoutMs,
+        )
+        instanceRegistry.removeInstance(inst.instanceId)
+        deleteK8sPod(inst.instanceId)
+    }
+
+  private def handlePodTerminating(pod: Pod): Unit =
+    findRegisteredInstance(pod).foreach { inst =>
+      if inst.state == "HEALTHY" then
+        meterRegistry.counter("nowchess.coordinator.pods.unhealthy").increment()
+        log.warnf(
+          "Pod %s terminating — marking instance %s dead",
+          pod.getMetadata.getName,
+          inst.instanceId,
+        )
+        instanceRegistry.markInstanceDead(inst.instanceId)
+    }
+
+  private def handlePodGone(pod: Pod): Unit =
+    findRegisteredInstance(pod).foreach { inst =>
+      log.warnf(
+        "Pod %s deleted — triggering failover for %s",
+        pod.getMetadata.getName,
+        inst.instanceId,
+      )
+      failoverService
+        .onInstanceStreamDropped(inst.instanceId)
+        .subscribe()
+        .`with`(
+          _ => (),
+          ex => log.warnf(ex, "Failover for %s failed", inst.instanceId),
+        )
+    }
+
+  private def findRegisteredInstance(pod: Pod): Option[InstanceMetadata] =
+    val podName = pod.getMetadata.getName
+    instanceRegistry.getAllInstances.find(inst => podName.contains(inst.instanceId))

@@ -8,6 +8,9 @@ import scala.compiletime.uninitialized
 import org.jboss.logging.Logger
 import de.nowchess.coordinator.dto.InstanceMetadata
 import de.nowchess.coordinator.grpc.CoreGrpcClient
+import de.nowchess.coordinator.config.CoordinatorConfig
+import io.smallrye.mutiny.Uni
+import java.time.Duration
 
 @ApplicationScoped
 class FailoverService:
@@ -21,6 +24,9 @@ class FailoverService:
   @Inject
   private var coreGrpcClient: CoreGrpcClient = uninitialized
 
+  @Inject
+  private var config: CoordinatorConfig = uninitialized
+
   private val log         = Logger.getLogger(classOf[FailoverService])
   private var redisPrefix = "nowchess"
   // scalafix:on DisableSyntax.var
@@ -28,7 +34,7 @@ class FailoverService:
   def setRedisPrefix(prefix: String): Unit =
     redisPrefix = prefix
 
-  def onInstanceStreamDropped(instanceId: String): Unit =
+  def onInstanceStreamDropped(instanceId: String): Uni[Unit] =
     log.infof("Instance %s stream dropped, triggering failover", instanceId)
 
     val startTime = System.currentTimeMillis()
@@ -37,19 +43,32 @@ class FailoverService:
     val gameIds = getOrphanedGames(instanceId)
     log.infof("Found %d orphaned games for instance %s", gameIds.size, instanceId)
 
-    if gameIds.nonEmpty then
-      val healthyInstances = instanceRegistry.getAllInstances
-        .filter(_.state == "HEALTHY")
-        .sortBy(_.subscriptionCount)
+    if gameIds.isEmpty then
+      cleanupDeadInstance(instanceId)
+      Uni.createFrom().item(())
+    else
+      waitForHealthyInstanceAsync()
+        .onItem()
+        .transform { _ =>
+          val healthyInstances = instanceRegistry.getAllInstances
+            .filter(_.state == "HEALTHY")
+            .sortBy(_.subscriptionCount)
+          distributeGames(gameIds, healthyInstances, instanceId)
 
-      if healthyInstances.nonEmpty then
-        distributeGames(gameIds, healthyInstances, instanceId)
-
-        val elapsed = System.currentTimeMillis() - startTime
-        log.infof("Failover completed in %dms for instance %s", elapsed, instanceId)
-      else log.warnf("No healthy instances available for failover of %s", instanceId)
-
-    cleanupDeadInstance(instanceId)
+          val elapsed = System.currentTimeMillis() - startTime
+          log.infof("Failover completed in %dms for instance %s", elapsed, instanceId)
+          cleanupDeadInstance(instanceId)
+          ()
+        }
+        .onFailure()
+        .recoverWithItem { _ =>
+          log.errorf(
+            "No healthy instance appeared within %s — games orphaned for %s",
+            config.failoverWaitTimeout,
+            instanceId,
+          )
+          ()
+        }
 
   private def getOrphanedGames(instanceId: String): List[String] =
     val setKey = s"$redisPrefix:instance:$instanceId:games"
@@ -101,3 +120,16 @@ class FailoverService:
     val setKey = s"$redisPrefix:instance:$instanceId:games"
     redis.key(classOf[String]).del(setKey)
     log.infof("Cleaned up games set for instance %s", instanceId)
+
+  private def waitForHealthyInstanceAsync(): Uni[InstanceMetadata] =
+    Uni.createFrom().deferred(() =>
+      instanceRegistry.getAllInstances
+        .filter(_.state == "HEALTHY")
+        .sortBy(_.subscriptionCount)
+        .headOption match
+          case Some(inst) => Uni.createFrom().item(inst)
+          case None       => Uni.createFrom().failure(new RuntimeException("no healthy instance"))
+    ).onFailure()
+      .retry()
+      .withBackOff(Duration.ofMillis(500))
+      .expireIn(config.failoverWaitTimeout.toMillis)

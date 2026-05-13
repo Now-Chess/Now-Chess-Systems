@@ -45,6 +45,8 @@ nowchess:
     k8s-namespace: default
     k8s-rollout-name: nowchess-core
     k8s-rollout-label-selector: "app=nowchess-core"
+    startup-validation-timeout: 15s
+    failover-wait-timeout: 30s
 
 ---
 # dev profile

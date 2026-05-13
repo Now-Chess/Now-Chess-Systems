@@ -4,6 +4,7 @@ import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import io.quarkus.redis.datasource.ReactiveRedisDataSource
+import io.quarkus.redis.datasource.RedisDataSource
 import scala.jdk.CollectionConverters.*
 import scala.compiletime.uninitialized
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -19,7 +20,10 @@ class InstanceRegistry:
   // scalafix:off DisableSyntax.var
   @Inject
   private var redis: ReactiveRedisDataSource = uninitialized
-  private var redisPrefix                    = "nowchess"
+
+  @Inject
+  private var syncRedis: RedisDataSource = uninitialized
+  private var redisPrefix                = "nowchess"
 
   @Inject
   private var meterRegistry: MeterRegistry = uninitialized
@@ -41,6 +45,21 @@ class InstanceRegistry:
 
   def setRedisPrefix(prefix: String): Unit =
     redisPrefix = prefix
+
+  def loadAllFromRedis(): Unit =
+    val keys = syncRedis.key(classOf[String]).keys(s"$redisPrefix:instances:*")
+    keys.asScala.foreach { key =>
+      val instanceId = key.stripPrefix(s"$redisPrefix:instances:")
+      val json       = syncRedis.value(classOf[String]).get(key)
+      if json != null then
+        try
+          val metadata = mapper.readValue(json, classOf[InstanceMetadata])
+          instances.put(instanceId, metadata)
+          log.infof("Startup: loaded instance %s from Redis", instanceId)
+        catch
+          case ex: Exception =>
+            log.warnf(ex, "Startup: failed to parse instance %s", instanceId)
+    }
 
   def getInstance(instanceId: String): Option[InstanceMetadata] =
     Option(instances.get(instanceId))

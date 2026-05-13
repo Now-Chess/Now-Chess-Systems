@@ -9,6 +9,7 @@ import de.nowchess.coordinator.proto.{CoordinatorServiceGrpc, *}
 import io.grpc.stub.StreamObserver
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.jboss.logging.Logger
+import java.util.concurrent.ConcurrentHashMap
 
 @GrpcService
 @Singleton
@@ -21,8 +22,9 @@ class CoordinatorGrpcServer extends CoordinatorServiceGrpc.CoordinatorServiceImp
   private var failoverService: FailoverService = uninitialized
   // scalafix:on DisableSyntax.var
 
-  private val mapper = ObjectMapper()
-  private val log    = Logger.getLogger(classOf[CoordinatorGrpcServer])
+  private val mapper        = ObjectMapper()
+  private val log           = Logger.getLogger(classOf[CoordinatorGrpcServer])
+  private val activeStreams = ConcurrentHashMap.newKeySet[String]()
 
   override def heartbeatStream(
       responseObserver: StreamObserver[CoordinatorCommand],
@@ -38,6 +40,7 @@ class CoordinatorGrpcServer extends CoordinatorServiceGrpc.CoordinatorServiceImp
         lastInstanceId = frame.getInstanceId
         if !firstFrameSeen then
           firstFrameSeen = true
+          activeStreams.add(frame.getInstanceId)
           log.infof(
             "First heartbeat from instance %s (host=%s http=%d grpc=%d)",
             frame.getInstanceId,
@@ -60,10 +63,19 @@ class CoordinatorGrpcServer extends CoordinatorServiceGrpc.CoordinatorServiceImp
 
       override def onError(t: Throwable): Unit =
         log.warnf(t, "Heartbeat stream error for instance %s", lastInstanceId)
-        if lastInstanceId.nonEmpty then failoverService.onInstanceStreamDropped(lastInstanceId)
+        if lastInstanceId.nonEmpty then
+          activeStreams.remove(lastInstanceId)
+          failoverService
+            .onInstanceStreamDropped(lastInstanceId)
+            .subscribe()
+            .`with`(
+              _ => (),
+              ex => log.warnf(ex, "Failover for %s failed", lastInstanceId),
+            )
 
       override def onCompleted: Unit =
         log.infof("Heartbeat stream completed for instance %s", lastInstanceId)
+        activeStreams.remove(lastInstanceId)
 
   override def batchResubscribeGames(
       request: BatchResubscribeRequest,
@@ -108,7 +120,18 @@ class CoordinatorGrpcServer extends CoordinatorServiceGrpc.CoordinatorServiceImp
     val instanceId = request.getInstanceId
     log.infof("Drain request for instance %s", instanceId)
     val gamesBefore = instanceRegistry.getInstance(instanceId).map(_.subscriptionCount).getOrElse(0)
-    failoverService.onInstanceStreamDropped(instanceId)
-    val response = DrainInstanceResponse.newBuilder().setGamesMigrated(gamesBefore).build()
-    responseObserver.onNext(response)
-    responseObserver.onCompleted()
+    failoverService
+      .onInstanceStreamDropped(instanceId)
+      .subscribe()
+      .`with`(
+        _ =>
+          val response = DrainInstanceResponse.newBuilder().setGamesMigrated(gamesBefore).build()
+          responseObserver.onNext(response)
+          responseObserver.onCompleted(),
+        ex =>
+          log.warnf(ex, "Drain failed for %s", instanceId)
+          responseObserver.onError(ex),
+      )
+
+  def hasActiveStream(instanceId: String): Boolean =
+    activeStreams.contains(instanceId)

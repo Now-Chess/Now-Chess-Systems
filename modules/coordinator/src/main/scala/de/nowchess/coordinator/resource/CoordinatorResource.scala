@@ -70,7 +70,13 @@ class CoordinatorResource:
   @Produces(Array(MediaType.APPLICATION_JSON))
   def triggerFailover(@PathParam("instanceId") instanceId: String): scala.collection.Map[String, String] =
     log.infof("Manual failover triggered for instance %s", instanceId)
-    failoverService.onInstanceStreamDropped(instanceId)
+    failoverService
+      .onInstanceStreamDropped(instanceId)
+      .subscribe()
+      .`with`(
+        _ => (),
+        ex => log.warnf(ex, "Manual failover for %s failed", instanceId),
+      )
     Map("status" -> "failover_started", "instanceId" -> instanceId)
 
   @POST

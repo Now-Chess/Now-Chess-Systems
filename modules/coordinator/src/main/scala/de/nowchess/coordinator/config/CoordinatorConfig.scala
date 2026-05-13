@@ -56,3 +56,9 @@ trait CoordinatorConfig:
 
   @WithName("k8s-rollout-label-selector")
   def k8sRolloutLabelSelector: String
+
+  @WithName("startup-validation-timeout")
+  def startupValidationTimeout: Duration
+
+  @WithName("failover-wait-timeout")
+  def failoverWaitTimeout: Duration
