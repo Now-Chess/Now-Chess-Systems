@@ -37,7 +37,7 @@ nowchess:
     stream-heartbeat-interval: PT0.2S
     cache-eviction-interval: 10m
     game-idle-threshold: 45m
-    auto-scale-enabled: false
+    auto-scale-enabled: true
     scale-up-threshold: 0.8
     scale-down-threshold: 0.3
     scale-min-replicas: 2

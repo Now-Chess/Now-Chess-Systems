@@ -7,6 +7,7 @@ import io.quarkus.redis.datasource.RedisDataSource
 import de.nowchess.coordinator.config.CoordinatorConfig
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.micrometer.core.instrument.MeterRegistry
+import io.quarkus.scheduler.Scheduled
 import scala.jdk.CollectionConverters.*
 import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
@@ -47,6 +48,11 @@ class CacheEvictionManager:
   def initializeMetrics(): Unit =
     meterRegistry.timer("nowchess.coordinator.cache.eviction.duration").record(0L, TimeUnit.MILLISECONDS)
     meterRegistry.counter("nowchess.coordinator.cache.evictions").increment(0)
+
+  @Scheduled(every = "5m")
+  def periodicCacheEviction(): Unit =
+    try evictStaleGames
+    catch case ex: Exception => log.warnf(ex, "Periodic cache eviction failed")
 
   def evictStaleGames: Unit =
     meterRegistry.timer("nowchess.coordinator.cache.eviction.duration").record((() => runEviction()): Runnable)

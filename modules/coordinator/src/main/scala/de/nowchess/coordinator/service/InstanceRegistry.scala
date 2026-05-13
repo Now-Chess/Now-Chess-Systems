@@ -76,11 +76,13 @@ class InstanceRegistry:
       .onItem()
       .transformToUni { value =>
         try
-          if value == null then
-            log.debugf("Instance %s metadata missing from Redis (may have expired)", instanceId)
-            Uni.createFrom().item(())
-          else
-            val metadata = mapper.readValue(value, classOf[InstanceMetadata])
+          Option(value).fold(
+            {
+              log.debugf("Instance %s metadata missing from Redis (may have expired)", instanceId)
+              Uni.createFrom().item(())
+            },
+          ) { json =>
+            val metadata = mapper.readValue(json, classOf[InstanceMetadata])
             val isNew    = !instances.containsKey(instanceId)
             instances.put(instanceId, metadata)
             if isNew then
@@ -94,6 +96,7 @@ class InstanceRegistry:
                 metadata.state,
               )
             Uni.createFrom().item(())
+          }
         catch
           case ex: Exception =>
             log.warnf(ex, "Failed to parse instance metadata for %s — removing from registry", instanceId)

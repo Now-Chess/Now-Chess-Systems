@@ -200,6 +200,7 @@
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/AutoScaler.scala`
   - class AutoScaler
   - function initMetrics
+  - function periodicScaleCheck
   - function checkAndScale
   - function scaleUp
   - function scaleDown

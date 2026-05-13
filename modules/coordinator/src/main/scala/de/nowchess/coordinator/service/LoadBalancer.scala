@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import de.nowchess.coordinator.config.CoordinatorConfig
 import io.quarkus.redis.datasource.RedisDataSource
+import io.quarkus.scheduler.Scheduled
 import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
 import scala.concurrent.duration.*
@@ -125,3 +126,8 @@ class LoadBalancer:
     catch
       case ex: Exception =>
         log.warnf(ex, "Failed to update Redis game sets")
+
+  @Scheduled(every = "30s")
+  def periodicRebalanceCheck(): Unit =
+    try if shouldRebalance then rebalance
+    catch case ex: Exception => log.warnf(ex, "Periodic rebalance check failed")

@@ -39,7 +39,7 @@ class CoreGrpcClient:
 
   def batchResubscribeGames(host: String, port: Int, gameIds: List[String]): Int =
     try
-      val stub    = CoordinatorServiceGrpc.newBlockingStub(getChannel(host, port))
+      val stub = CoordinatorServiceGrpc.newBlockingStub(getChannel(host, port)).withDeadlineAfter(5, TimeUnit.SECONDS)
       val request = BatchResubscribeRequest.newBuilder().addAllGameIds(gameIds.asJava).build()
       val count   = stub.batchResubscribeGames(request).getSubscribedCount
       log.debugf("batchResubscribeGames %s:%d — subscribed %d games", host, port, count)
@@ -52,7 +52,7 @@ class CoreGrpcClient:
 
   def unsubscribeGames(host: String, port: Int, gameIds: List[String]): Int =
     try
-      val stub    = CoordinatorServiceGrpc.newBlockingStub(getChannel(host, port))
+      val stub = CoordinatorServiceGrpc.newBlockingStub(getChannel(host, port)).withDeadlineAfter(5, TimeUnit.SECONDS)
       val request = UnsubscribeGamesRequest.newBuilder().addAllGameIds(gameIds.asJava).build()
       val count   = stub.unsubscribeGames(request).getUnsubscribedCount
       log.debugf("unsubscribeGames %s:%d — unsubscribed %d games", host, port, count)
@@ -65,7 +65,7 @@ class CoreGrpcClient:
 
   def evictGames(host: String, port: Int, gameIds: List[String]): Int =
     try
-      val stub    = CoordinatorServiceGrpc.newBlockingStub(getChannel(host, port))
+      val stub = CoordinatorServiceGrpc.newBlockingStub(getChannel(host, port)).withDeadlineAfter(5, TimeUnit.SECONDS)
       val request = EvictGamesRequest.newBuilder().addAllGameIds(gameIds.asJava).build()
       val count   = stub.evictGames(request).getEvictedCount
       log.debugf("evictGames %s:%d — evicted %d games", host, port, count)
