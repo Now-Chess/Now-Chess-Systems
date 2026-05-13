@@ -68,17 +68,15 @@ class GameRedisSubscriberManager:
     heartbeatServiceOpt.foreach(_.addGameSubscription(gameId))
 
     val handler: Consumer[String] = msg => handleC2sMessage(gameId, msg)
-    reactiveRedis
-      .pubsub(classOf[String])
-      .subscribe(c2sTopic(gameId), handler)
-      .subscribe()
-      .`with`(
-        subscriber => {
-          c2sListeners.put(gameId, subscriber)
-          log.debugf("Subscribed to game %s", gameId)
-        },
-        failure => log.warnf(failure, "Redis subscription failed for game %s", gameId),
-      )
+    try
+      val subscriber = reactiveRedis
+        .pubsub(classOf[String])
+        .subscribe(c2sTopic(gameId), handler)
+        .await()
+        .atMost(java.time.Duration.ofSeconds(5))
+      c2sListeners.put(gameId, subscriber)
+      log.debugf("Subscribed to game %s", gameId)
+    catch case ex: Exception => log.warnf(ex, "Redis subscription failed for game %s", gameId)
 
   def unsubscribeGame(gameId: String): Unit =
     Option(c2sListeners.remove(gameId)).foreach { subscriber =>

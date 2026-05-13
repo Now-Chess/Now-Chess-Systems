@@ -179,10 +179,10 @@
   - function rebalanceInterval
   - function rebalanceMinInterval
   - function heartbeatTtl
-  - _...12 more_
+  - _...14 more_
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/config/JacksonConfig.scala` — class JacksonConfig, function customize
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/config/NativeReflectionConfig.scala` — class NativeReflectionConfig
-- `modules/coordinator/src/main/scala/de/nowchess/coordinator/grpc/CoordinatorGrpcServer.scala` — class CoordinatorGrpcServer
+- `modules/coordinator/src/main/scala/de/nowchess/coordinator/grpc/CoordinatorGrpcServer.scala` — class CoordinatorGrpcServer, function hasActiveStream
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/grpc/CoreGrpcClient.scala`
   - class CoreGrpcClient
   - function shutdown
@@ -216,16 +216,17 @@
   - class HealthMonitor
   - function setRedisPrefix
   - function initializeMetrics
+  - function onStartup
+  - function periodicHealthCheck
   - function checkInstanceHealth
-  - function watchK8sPods
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/InstanceRegistry.scala`
   - class InstanceRegistry
   - function initMetrics
   - function setRedisPrefix
+  - function loadAllFromRedis
   - function getInstance
   - function getAllInstances
-  - function updateInstanceFromRedis
-  - _...3 more_
+  - _...4 more_
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/LoadBalancer.scala`
   - class LoadBalancer
   - function setRedisPrefix
