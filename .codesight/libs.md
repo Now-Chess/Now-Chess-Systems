@@ -208,6 +208,7 @@
   - class CacheEvictionManager
   - function setRedisPrefix
   - function initializeMetrics
+  - function periodicCacheEviction
   - function evictStaleGames
 - `modules/coordinator/src/main/scala/de/nowchess/coordinator/service/FailoverService.scala`
   - class FailoverService
@@ -233,6 +234,7 @@
   - function setRedisPrefix
   - function shouldRebalance
   - function rebalance
+  - function periodicRebalanceCheck
 - `modules/core/src/main/scala/de/nowchess/chess/adapter/RuleSetRestAdapter.scala`
   - class RuleSetRestAdapter
   - function candidateMoves

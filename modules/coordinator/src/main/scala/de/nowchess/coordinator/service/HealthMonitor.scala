@@ -192,7 +192,11 @@ class HealthMonitor:
               log.debugf("No pod found for instance %s, skipping deletion", instanceId)
         catch
           case ex: Exception =>
-            log.warnf(ex, "Failed to delete pod for instance %s — removing from registry to prevent blocking scale-down", instanceId)
+            log.warnf(
+              ex,
+              "Failed to delete pod for instance %s — removing from registry to prevent blocking scale-down",
+              instanceId,
+            )
             instanceRegistry.removeInstance(instanceId)
 
   private def validateStartupInstances(timeoutMs: Long): Unit =
