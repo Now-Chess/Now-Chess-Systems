@@ -185,14 +185,15 @@ class HealthMonitor:
           pods.find(pod => pod.getMetadata.getName.contains(instanceId)) match
             case Some(pod) =>
               val podName = pod.getMetadata.getName
-              kube.pods().inNamespace(config.k8sNamespace).withName(podName).delete()
+              kube.pods().inNamespace(config.k8sNamespace).withName(podName).withGracePeriod(0L).delete()
               meterRegistry.counter("nowchess.coordinator.pods.deleted").increment()
-              log.infof("Deleted pod %s for dead instance %s", podName, instanceId)
+              log.infof("Force-deleted pod %s for dead instance %s", podName, instanceId)
             case None =>
               log.debugf("No pod found for instance %s, skipping deletion", instanceId)
         catch
           case ex: Exception =>
-            log.warnf(ex, "Failed to delete pod for instance %s", instanceId)
+            log.warnf(ex, "Failed to delete pod for instance %s — removing from registry to prevent blocking scale-down", instanceId)
+            instanceRegistry.removeInstance(instanceId)
 
   private def validateStartupInstances(timeoutMs: Long): Unit =
     Thread.sleep(timeoutMs)
