@@ -98,7 +98,13 @@ class AutoScaler:
     else if s.endsWith("G") then s.dropRight(1).toLongOption.map(_ * 1000L * 1000L * 1000L).getOrElse(0L)
     else s.toLongOption.getOrElse(0L)
 
-  private def exceedsRatio(used: Long, request: Long, threshold: Double, resource: String, instanceId: String): Boolean =
+  private def exceedsRatio(
+      used: Long,
+      request: Long,
+      threshold: Double,
+      resource: String,
+      instanceId: String,
+  ): Boolean =
     if request <= 0 then false
     else
       val ratio = used.toDouble / request.toDouble
@@ -126,8 +132,10 @@ class AutoScaler:
               .flatMap(c => Option(c.getResources))
               .flatMap(r => Option(r.getRequests))
 
-            val cpuRequestMillis = requests.flatMap(m => Option(m.get("cpu"))).map(q => parseMillicores(q.toString)).getOrElse(0L)
-            val memRequestBytes  = requests.flatMap(m => Option(m.get("memory"))).map(q => parseBytes(q.toString)).getOrElse(0L)
+            val cpuRequestMillis =
+              requests.flatMap(m => Option(m.get("cpu"))).map(q => parseMillicores(q.toString)).getOrElse(0L)
+            val memRequestBytes =
+              requests.flatMap(m => Option(m.get("memory"))).map(q => parseBytes(q.toString)).getOrElse(0L)
 
             if cpuRequestMillis <= 0 && memRequestBytes <= 0 then
               log.debugf("No resource requests found for instance %s, skipping resource check", instanceId)
@@ -168,9 +176,9 @@ class AutoScaler:
       if now - last >= 120000 && lastScaleTime.compareAndSet(last, now) then
         val instances = instanceRegistry.getAllInstances.filter(_.state == "HEALTHY")
         if instances.nonEmpty then
-          val avgLoad        = instances.map(_.subscriptionCount).sum.toDouble / instances.size
-          val scaleUpLoad    = config.scaleUpThreshold * config.maxGamesPerCore
-          val scaleDownLoad  = config.scaleDownThreshold * config.maxGamesPerCore
+          val avgLoad       = instances.map(_.subscriptionCount).sum.toDouble / instances.size
+          val scaleUpLoad   = config.scaleUpThreshold * config.maxGamesPerCore
+          val scaleDownLoad = config.scaleDownThreshold * config.maxGamesPerCore
           avgLoadRef.set(avgLoad)
 
           val constrainedInstance = instances.find(inst => isResourceConstrained(inst.instanceId))
