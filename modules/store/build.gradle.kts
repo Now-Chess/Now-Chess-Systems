@@ -60,6 +60,7 @@ dependencies {
     implementation("io.quarkus:quarkus-opentelemetry")
     implementation("com.fasterxml.jackson.module:jackson-module-scala_3:${versions["JACKSON_SCALA"]!!}")
     implementation("io.quarkus:quarkus-redis-client")
+    implementation("io.quarkus:quarkus-scheduler")
 
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")

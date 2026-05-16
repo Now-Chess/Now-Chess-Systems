@@ -13,6 +13,7 @@ import de.nowchess.chess.service.InstanceHeartbeatService
 import io.quarkus.redis.datasource.ReactiveRedisDataSource
 import io.quarkus.redis.datasource.RedisDataSource
 import io.quarkus.redis.datasource.pubsub.ReactivePubSubCommands
+import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.inject.Instance
@@ -45,6 +46,30 @@ class GameRedisSubscriberManager:
   private val c2sListeners = new ConcurrentHashMap[String, ReactivePubSubCommands.ReactiveRedisSubscriber]()
   private val s2cObservers = new ConcurrentHashMap[String, Observer]()
 
+  // scalafix:off DisableSyntax.var
+  private var clockExpireSubscriber: Option[ReactivePubSubCommands.ReactiveRedisSubscriber] = None
+  // scalafix:on DisableSyntax.var
+
+  private def clockExpireChannel: String = s"${redisConfig.prefix}:game:clock:expire"
+
+  @PostConstruct
+  def subscribeClockExpiry(): Unit =
+    val handler: Consumer[String] = gameId => handleClockExpiry(gameId)
+    try
+      val subscriber = reactiveRedis
+        .pubsub(classOf[String])
+        .subscribe(clockExpireChannel, handler)
+        .await()
+        .atMost(java.time.Duration.ofSeconds(5))
+      clockExpireSubscriber = Some(subscriber)
+      log.infof("Subscribed to clock expiry channel %s", clockExpireChannel)
+    catch case ex: Exception => log.warnf(ex, "Failed to subscribe to clock expiry channel")
+
+  private def handleClockExpiry(gameId: String): Unit =
+    if !s2cObservers.containsKey(gameId) then
+      log.infof("Clock expired for game %s — loading engine to enforce timeout", gameId)
+      subscribeGame(gameId)
+
   private def c2sTopic(gameId: String): String =
     s"${redisConfig.prefix}:game:$gameId:c2s"
 
@@ -65,6 +90,7 @@ class GameRedisSubscriberManager:
     )
     s2cObservers.put(gameId, obs)
     registry.get(gameId).foreach(_.engine.subscribe(obs))
+    obs.emitInitialWriteback()
     heartbeatServiceOpt.foreach(_.addGameSubscription(gameId))
 
     val handler: Consumer[String] = msg => handleC2sMessage(gameId, msg)
@@ -156,5 +182,6 @@ class GameRedisSubscriberManager:
 
   @PreDestroy
   def cleanup(): Unit =
+    clockExpireSubscriber.foreach(_.unsubscribe(clockExpireChannel).await().indefinitely())
     c2sListeners.forEach((gameId, subscriber) => subscriber.unsubscribe(c2sTopic(gameId)).await().indefinitely())
     s2cObservers.forEach((gameId, obs) => registry.get(gameId).foreach(_.engine.unsubscribe(obs)))
