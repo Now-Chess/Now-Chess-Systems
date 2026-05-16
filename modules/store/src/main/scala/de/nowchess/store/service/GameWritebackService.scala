@@ -8,12 +8,15 @@ import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
+import org.jboss.logging.Logger
 
 import scala.compiletime.uninitialized
 import java.time.Instant
 
 @ApplicationScoped
 class GameWritebackService:
+
+  private val log = Logger.getLogger(classOf[GameWritebackService])
 
   // scalafix:off DisableSyntax.var
   @Inject
@@ -46,12 +49,15 @@ class GameWritebackService:
   private def doWriteBack(event: GameWritebackEventDto): Unit =
     repository.findByGameId(event.gameId) match
       case None =>
+        log.infof("Creating game record for gameId=%s", event.gameId)
         createRecord(event)
         gamesWrittenCounter("create").increment()
       case Some(r) if event.moveCount > r.moveCount || event.pgn != r.pgn =>
+        log.infof("Updating game record for gameId=%s moveCount=%d", event.gameId, event.moveCount)
         updateRecord(r, event)
         gamesWrittenCounter("update").increment()
       case _ =>
+        log.debugf("Skipping writeback for gameId=%s (no change)", event.gameId)
         writebackSkipped.increment()
 
   private def createRecord(event: GameWritebackEventDto): Unit =

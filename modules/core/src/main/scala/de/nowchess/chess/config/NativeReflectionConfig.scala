@@ -4,11 +4,13 @@ import de.nowchess.api.board.{CastlingRights, Color, File, Piece, PieceType, Ran
 import de.nowchess.api.dto.*
 import de.nowchess.api.game.{DrawReason, GameContext, GameMode, GameResult}
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
+import de.nowchess.chess.registry.GameCacheDto
 import io.quarkus.runtime.annotations.RegisterForReflection
 
 @RegisterForReflection(
   targets = Array(
     classOf[ApiErrorDto],
+    classOf[GameCacheDto],
     classOf[ClockDto],
     classOf[CreateGameRequestDto],
     classOf[ErrorEventDto],
