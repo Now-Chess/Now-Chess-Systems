@@ -51,7 +51,7 @@ class AutoScaler:
     drainingForScaleDown.remove(instanceId)
 
   def clearDrainingByPodName(podName: String): Unit =
-    drainingForScaleDown.asScala.find(podName.contains).foreach(drainingForScaleDown.remove)
+    drainingForScaleDown.asScala.find(id => id.contains(podName)).foreach(drainingForScaleDown.remove)
 
   private def kubeClientOpt: Option[KubernetesClient] =
     if kubeClientInstance.isUnsatisfied then None
@@ -124,7 +124,7 @@ class AutoScaler:
       try
         val pods =
           kube.pods().inNamespace(config.k8sNamespace).withLabel(config.k8sRolloutLabelSelector).list().getItems.asScala
-        pods.find(_.getMetadata.getName.contains(instanceId)).exists { pod =>
+        pods.find(pod => instanceId.contains(pod.getMetadata.getName)).exists { pod =>
           try
             val requests = Option(pod.getSpec)
               .flatMap(s => Option(s.getContainers))
@@ -302,7 +302,7 @@ class AutoScaler:
         .list()
         .getItems
         .asScala
-      pods.find(_.getMetadata.getName.contains(instanceId)) match
+      pods.find(pod => instanceId.contains(pod.getMetadata.getName)) match
         case Some(pod) =>
           kube.pods().inNamespace(config.k8sNamespace).withName(pod.getMetadata.getName).withGracePeriod(0L).delete()
           log.infof("Force-deleted pod for drained instance %s", instanceId)
