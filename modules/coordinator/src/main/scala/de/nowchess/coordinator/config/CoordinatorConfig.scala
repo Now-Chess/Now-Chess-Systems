@@ -62,3 +62,9 @@ trait CoordinatorConfig:
 
   @WithName("failover-wait-timeout")
   def failoverWaitTimeout: Duration
+
+  @WithName("scale-cpu-threshold-percent")
+  def scaleCpuThresholdPercent: Double
+
+  @WithName("scale-memory-threshold-percent")
+  def scaleMemoryThresholdPercent: Double

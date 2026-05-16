@@ -47,6 +47,8 @@ nowchess:
     k8s-rollout-label-selector: "app=nowchess-core"
     startup-validation-timeout: 15s
     failover-wait-timeout: 30s
+    scale-cpu-threshold-percent: 0.8
+    scale-memory-threshold-percent: 0.8
 
 ---
 # dev profile
