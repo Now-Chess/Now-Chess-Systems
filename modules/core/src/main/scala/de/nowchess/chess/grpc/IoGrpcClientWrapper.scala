@@ -25,7 +25,7 @@ class IoGrpcClientWrapper:
       CombinedExportResponse(combined.getFen, combined.getPgn)
     catch
       case ex: Exception =>
-        log.warnf(ex, "IO gRPC exportCombined failed")
+        log.errorf(ex, "IO gRPC exportCombined failed")
         // scalafix:off DisableSyntax.throw
         throw ex
       // scalafix:on DisableSyntax.throw
@@ -34,7 +34,7 @@ class IoGrpcClientWrapper:
     try CoreProtoMapper.fromProtoGameContext(stub.importFen(ProtoImportFenRequest.newBuilder().setFen(fen).build()))
     catch
       case ex: Exception =>
-        log.warnf(ex, "IO gRPC importFen failed for fen %s", fen)
+        log.errorf(ex, "IO gRPC importFen failed for fen %s", fen)
         // scalafix:off DisableSyntax.throw
         throw ex
       // scalafix:on DisableSyntax.throw
@@ -43,7 +43,7 @@ class IoGrpcClientWrapper:
     try CoreProtoMapper.fromProtoGameContext(stub.importPgn(ProtoImportPgnRequest.newBuilder().setPgn(pgn).build()))
     catch
       case ex: Exception =>
-        log.warnf(ex, "IO gRPC importPgn failed")
+        log.errorf(ex, "IO gRPC importPgn failed")
         // scalafix:off DisableSyntax.throw
         throw ex
       // scalafix:on DisableSyntax.throw
@@ -52,7 +52,7 @@ class IoGrpcClientWrapper:
     try stub.exportFen(CoreProtoMapper.toProtoGameContext(ctx)).getValue
     catch
       case ex: Exception =>
-        log.warnf(ex, "IO gRPC exportFen failed")
+        log.errorf(ex, "IO gRPC exportFen failed")
         // scalafix:off DisableSyntax.throw
         throw ex
       // scalafix:on DisableSyntax.throw
@@ -61,7 +61,7 @@ class IoGrpcClientWrapper:
     try stub.exportPgn(CoreProtoMapper.toProtoGameContext(ctx)).getValue
     catch
       case ex: Exception =>
-        log.warnf(ex, "IO gRPC exportPgn failed")
+        log.errorf(ex, "IO gRPC exportPgn failed")
         // scalafix:off DisableSyntax.throw
         throw ex
       // scalafix:on DisableSyntax.throw

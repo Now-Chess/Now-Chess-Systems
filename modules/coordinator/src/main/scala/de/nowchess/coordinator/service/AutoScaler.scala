@@ -167,7 +167,7 @@ class AutoScaler:
         catch
           case ex: Exception =>
             meterRegistry.counter("nowchess.coordinator.scale.failures", "direction", "up").increment()
-            log.warnf(ex, "Failed to scale up %s", config.k8sRolloutName)
+            log.errorf(ex, "Failed to scale up %s", config.k8sRolloutName)
 
   def scaleDown(): Unit =
     log.info("Scaling down Argo Rollout")
@@ -225,4 +225,4 @@ class AutoScaler:
         catch
           case ex: Exception =>
             meterRegistry.counter("nowchess.coordinator.scale.failures", "direction", "down").increment()
-            log.warnf(ex, "Failed to scale down %s", config.k8sRolloutName)
+            log.errorf(ex, "Failed to scale down %s", config.k8sRolloutName)

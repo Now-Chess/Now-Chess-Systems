@@ -95,7 +95,7 @@ class ChallengeService:
       challenge.expiresAt = Instant.now().plus(24, ChronoUnit.HOURS)
       challengeRepository.persist(challenge)
       try eventPublisher.publishChallengeCreated(destUser.id.toString, challenge.id.toString, challenger.username)
-      catch case ex: Exception => log.warnf(ex, "Failed to notify dest user for challenge %s", challenge.id)
+      catch case ex: Exception => log.errorf(ex, "Failed to notify dest user for challenge %s", challenge.id)
       challenge
 
   @Transactional
@@ -116,7 +116,7 @@ class ChallengeService:
       challengeRepository.merge(challenge)
       notifyBotIfNeeded(challenge, gameId)
       try eventPublisher.publishChallengeAccepted(challenge.challenger.id.toString, challenge.id.toString, gameId)
-      catch case ex: Exception => log.warnf(ex, "Failed to notify challenger for game %s", gameId)
+      catch case ex: Exception => log.errorf(ex, "Failed to notify challenger for game %s", gameId)
       challenge
 
   @Transactional

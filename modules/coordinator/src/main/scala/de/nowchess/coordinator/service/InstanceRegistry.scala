@@ -99,7 +99,7 @@ class InstanceRegistry:
           }
         catch
           case ex: Exception =>
-            log.warnf(ex, "Failed to parse instance metadata for %s — removing from registry", instanceId)
+            log.errorf(ex, "Failed to parse instance metadata for %s — removing from registry", instanceId)
             instances.remove(instanceId)
             meterRegistry.counter("nowchess.coordinator.instances.removed").increment()
             Uni.createFrom().item(())

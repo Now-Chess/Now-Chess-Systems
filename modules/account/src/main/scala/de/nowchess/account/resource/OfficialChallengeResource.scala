@@ -79,7 +79,7 @@ class OfficialChallengeResource:
                   Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(ErrorDto(err)).build()
                 case Right(id) =>
                   try botEventPublisher.publishGameStart(bot.name, id, botColor, difficulty, bot.id.toString)
-                  catch case ex: Exception => log.warnf(ex, "Failed to notify bot for game %s", id)
+                  catch case ex: Exception => log.errorf(ex, "Failed to notify bot for game %s", id)
                   Response
                     .status(Response.Status.CREATED)
                     .entity(OfficialChallengeResponse(id, botName, difficulty))

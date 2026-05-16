@@ -112,7 +112,7 @@ class FailoverService:
           else false
         catch
           case ex: Exception =>
-            log.warnf(ex, "Failed to migrate batch to %s, trying next", target.instanceId)
+            log.errorf(ex, "Failed to migrate batch to %s, trying next", target.instanceId)
             false
       if success then true else tryMigrateBatch(batch, batchIdx, instances, deadId, attempt + 1)
 

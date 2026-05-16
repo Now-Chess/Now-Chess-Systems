@@ -192,7 +192,7 @@ class HealthMonitor:
               log.debugf("No pod found for instance %s, skipping deletion", instanceId)
         catch
           case ex: Exception =>
-            log.warnf(
+            log.errorf(
               ex,
               "Failed to delete pod for instance %s — removing from registry to prevent blocking scale-down",
               instanceId,

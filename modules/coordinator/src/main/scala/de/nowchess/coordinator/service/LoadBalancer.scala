@@ -96,14 +96,14 @@ class LoadBalancer:
                 log.infof("Moved %d games from %s to %s", subscribed, over.instanceId, target.instanceId)
             catch
               case ex: Exception =>
-                log.warnf(ex, "Failed to move games from %s to %s", over.instanceId, target.instanceId)
+                log.errorf(ex, "Failed to move games from %s to %s", over.instanceId, target.instanceId)
           }
 
           val elapsed = System.currentTimeMillis() - startTime
           log.infof("Rebalance completed in %dms", elapsed)
     catch
       case ex: Exception =>
-        log.warnf(ex, "Rebalance failed")
+        log.errorf(ex, "Rebalance failed")
 
   private def getGamesToMove(instanceId: String, count: Int): List[String] =
     try
@@ -125,7 +125,7 @@ class LoadBalancer:
       }
     catch
       case ex: Exception =>
-        log.warnf(ex, "Failed to update Redis game sets")
+        log.errorf(ex, "Failed to update Redis game sets")
 
   @Scheduled(every = "30s")
   def periodicRebalanceCheck(): Unit =

@@ -80,14 +80,14 @@ class CacheEvictionManager:
                 count + 1
               catch
                 case ex: Exception =>
-                  log.warnf(ex, "Failed to evict game %s", gameId)
+                  log.errorf(ex, "Failed to evict game %s", gameId)
                   count
             }
           else count
         }
       catch
         case ex: Exception =>
-          log.warnf(ex, "Error processing game key %s", key)
+          log.errorf(ex, "Error processing game key %s", key)
           count
     }
 
