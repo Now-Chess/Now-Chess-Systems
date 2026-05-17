@@ -9,5 +9,6 @@ import io.quarkus.runtime.annotations.RegisterForReflection
     classOf[GameRecord],
     classOf[GameWritebackEventDto],
   ),
+  registerFullHierarchy = true,
 )
 class NativeReflectionConfig
