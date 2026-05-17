@@ -50,9 +50,6 @@ class AutoScaler:
   def clearDraining(instanceId: String): Unit =
     drainingForScaleDown.remove(instanceId)
 
-  def clearDrainingByPodName(podName: String): Unit =
-    drainingForScaleDown.asScala.find(id => id.contains(podName)).foreach(drainingForScaleDown.remove)
-
   private def kubeClientOpt: Option[KubernetesClient] =
     if kubeClientInstance.isUnsatisfied then None
     else Some(kubeClientInstance.get())

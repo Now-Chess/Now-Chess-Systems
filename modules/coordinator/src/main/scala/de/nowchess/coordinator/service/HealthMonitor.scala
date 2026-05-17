@@ -89,6 +89,7 @@ class HealthMonitor:
       log.warnf("Evicted %d stale instances: %s", evicted.size, evicted.mkString(", "))
       evicted.foreach(deleteK8sPod)
       val unexpectedEvictions = evicted.filterNot(autoScaler.isDrainingForScaleDown)
+      evicted.foreach(autoScaler.clearDraining)
       if unexpectedEvictions.nonEmpty then autoScaler.scaleUp()
     val instances = instanceRegistry.getAllInstances
     val failed = instances.collect { inst =>
@@ -230,7 +231,6 @@ class HealthMonitor:
 
   private def handlePodGone(pod: Pod): Unit =
     val podName = pod.getMetadata.getName
-    autoScaler.clearDrainingByPodName(podName)
     findRegisteredInstance(pod).foreach { inst =>
       log.warnf("Pod %s deleted — triggering failover for %s", podName, inst.instanceId)
       failoverService
