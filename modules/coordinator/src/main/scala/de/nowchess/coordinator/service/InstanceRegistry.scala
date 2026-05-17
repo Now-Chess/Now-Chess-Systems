@@ -9,6 +9,7 @@ import scala.jdk.CollectionConverters.*
 import scala.compiletime.uninitialized
 import com.fasterxml.jackson.databind.ObjectMapper
 import de.nowchess.coordinator.dto.InstanceMetadata
+import de.nowchess.coordinator.config.CoordinatorConfig
 import java.util.concurrent.ConcurrentHashMap
 import java.time.{Duration, Instant}
 import io.micrometer.core.instrument.{Gauge, MeterRegistry}
@@ -27,6 +28,9 @@ class InstanceRegistry:
 
   @Inject
   private var meterRegistry: MeterRegistry = uninitialized
+
+  @Inject
+  private var config: CoordinatorConfig = uninitialized
   // scalafix:on DisableSyntax.var
 
   private val log       = Logger.getLogger(classOf[InstanceRegistry])
@@ -95,7 +99,13 @@ class InstanceRegistry:
                 metadata.subscriptionCount,
                 metadata.state,
               )
-            Uni.createFrom().item(())
+            val ttlMs = config.heartbeatTtl.toMillis
+            redis
+              .key(classOf[String])
+              .pexpire(key, ttlMs)
+              .map(_ => ())
+              .onFailure()
+              .recoverWithItem(())
           }
         catch
           case ex: Exception =>
