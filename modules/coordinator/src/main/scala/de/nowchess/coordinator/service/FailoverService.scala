@@ -107,6 +107,7 @@ class FailoverService:
         try
           val subscribed = coreGrpcClient.batchResubscribeGames(target.hostname, target.grpcPort, batch)
           if subscribed > 0 then
+            updateGameInstanceMappings(batch, deadId, target.instanceId)
             log.infof("Migrated %d games from %s to %s", subscribed, deadId, target.instanceId)
             true
           else false
@@ -115,6 +116,18 @@ class FailoverService:
             log.errorf(ex, "Failed to migrate batch to %s, trying next", target.instanceId)
             false
       if success then true else tryMigrateBatch(batch, batchIdx, instances, deadId, attempt + 1)
+
+  private def updateGameInstanceMappings(gameIds: List[String], deadId: String, targetId: String): Unit =
+    try
+      val fromKey = s"$redisPrefix:instance:$deadId:games"
+      val toKey   = s"$redisPrefix:instance:$targetId:games"
+      gameIds.foreach { gameId =>
+        redis.set(classOf[String]).sadd(toKey, gameId)
+        redis.value(classOf[String]).set(s"$redisPrefix:game:$gameId:instance", targetId)
+      }
+    catch
+      case ex: Exception =>
+        log.errorf(ex, "Failed to update game instance mappings")
 
   private def cleanupDeadInstance(instanceId: String): Unit =
     val setKey = s"$redisPrefix:instance:$instanceId:games"

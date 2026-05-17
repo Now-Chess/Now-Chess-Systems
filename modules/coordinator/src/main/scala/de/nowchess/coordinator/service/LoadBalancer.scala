@@ -69,7 +69,7 @@ class LoadBalancer:
 
         val overloaded = instances
           .filter(_.subscriptionCount > config.maxGamesPerCore)
-          .sortBy[Int](_.subscriptionCount)
+          .sortBy(_.subscriptionCount)
           .reverse
         val underloaded = instances
           .filter(_.subscriptionCount < avgLoad * 0.8)
@@ -108,7 +108,10 @@ class LoadBalancer:
   private def getGamesToMove(instanceId: String, count: Int): List[String] =
     try
       val setKey = s"$redisPrefix:instance:$instanceId:games"
-      redis.set(classOf[String]).smembers(setKey).asScala.toList.take(count)
+      val result = scala.collection.mutable.ListBuffer[String]()
+      for _ <- 0 until count do
+        Option(redis.set(classOf[String]).spop(setKey)).foreach(result += _)
+      result.toList
     catch
       case ex: Exception =>
         log.debugf(ex, "Failed to get games for %s", instanceId)
@@ -116,12 +119,10 @@ class LoadBalancer:
 
   private def updateRedisGameSets(fromInstanceId: String, toInstanceId: String, gameIds: List[String]): Unit =
     try
-      val fromKey = s"$redisPrefix:instance:$fromInstanceId:games"
-      val toKey   = s"$redisPrefix:instance:$toInstanceId:games"
-
+      val toKey = s"$redisPrefix:instance:$toInstanceId:games"
       gameIds.foreach { gameId =>
-        redis.set(classOf[String]).srem(fromKey, gameId)
         redis.set(classOf[String]).sadd(toKey, gameId)
+        redis.value(classOf[String]).set(s"$redisPrefix:game:$gameId:instance", toInstanceId)
       }
     catch
       case ex: Exception =>

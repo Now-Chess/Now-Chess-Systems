@@ -75,6 +75,7 @@ class CacheEvictionManager:
               try
                 coreGrpcClient.evictGames(instance.hostname, instance.grpcPort, List(gameId))
                 redis.key(classOf[String]).del(key)
+                redis.key(classOf[String]).del(s"$redisPrefix:game:$gameId:instance")
                 meterRegistry.counter("nowchess.coordinator.cache.evictions").increment()
                 log.infof("Evicted idle game %s from %s", gameId, instance.instanceId)
                 count + 1
@@ -96,17 +97,18 @@ class CacheEvictionManager:
   private def extractLastUpdatedTimestamp(json: String): Long =
     Try {
       val parsed = objectMapper.readTree(json)
-      Option(parsed.get("lastHeartbeat"))
-        .filter(_.isTextual)
-        .fold(0L)(lh => Instant.parse(lh.asText()).toEpochMilli)
+      Option(parsed.get("lastUpdatedMs"))
+        .filter(_.isNumber)
+        .fold(0L)(_.asLong())
     }.getOrElse(0L)
 
   private def findInstanceWithGame(gameId: String): Option[de.nowchess.coordinator.dto.InstanceMetadata] =
     try
-      instanceRegistry.getAllInstances.find { instance =>
-        val setKey = s"$redisPrefix:instance:${instance.instanceId}:games"
-        redis.set(classOf[String]).sismember(setKey, gameId)
-      }
+      val mapKey = s"$redisPrefix:game:$gameId:instance"
+      Option(redis.value(classOf[String]).get(mapKey))
+        .flatMap { instanceId =>
+          instanceRegistry.getInstance(instanceId)
+        }
     catch
       case ex: Exception =>
         log.debugf(ex, "Failed to find instance for game %s", gameId)

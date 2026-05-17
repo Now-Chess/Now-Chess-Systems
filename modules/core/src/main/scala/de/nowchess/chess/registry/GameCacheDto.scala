@@ -22,4 +22,5 @@ case class GameCacheDto(
     pendingDrawOffer: Option[String],
     redoStack: List[String] = Nil,
     pendingTakebackRequest: Option[String] = None,
+    lastUpdatedMs: Long = System.currentTimeMillis(),
 )

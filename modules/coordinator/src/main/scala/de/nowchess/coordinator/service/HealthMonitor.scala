@@ -131,7 +131,7 @@ class HealthMonitor:
 
         pods.exists { pod =>
           val podName = pod.getMetadata.getName
-          instanceId.contains(podName) && isPodReady(pod)
+          podName.endsWith(instanceId) && isPodReady(pod)
         }
       catch
         case ex: Exception =>
@@ -185,7 +185,7 @@ class HealthMonitor:
             .getItems
             .asScala
 
-          pods.find(pod => instanceId.contains(pod.getMetadata.getName)) match
+          pods.find(pod => pod.getMetadata.getName.endsWith(instanceId)) match
             case Some(pod) =>
               val podName = pod.getMetadata.getName
               kube.pods().inNamespace(config.k8sNamespace).withName(podName).withGracePeriod(0L).delete()
@@ -244,4 +244,4 @@ class HealthMonitor:
 
   private def findRegisteredInstance(pod: Pod): Option[InstanceMetadata] =
     val podName = pod.getMetadata.getName
-    instanceRegistry.getAllInstances.find(inst => inst.instanceId.contains(podName))
+    instanceRegistry.getAllInstances.find(inst => podName.endsWith(inst.instanceId))

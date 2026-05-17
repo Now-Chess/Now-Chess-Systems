@@ -143,6 +143,7 @@ class RedisGameRegistry extends GameRegistry:
         clockMoveDeadline = Option(record.clockMoveDeadline).map(_.longValue),
         clockActiveColor = Option(record.clockActiveColor),
         pendingDrawOffer = Option(record.pendingDrawOffer),
+        lastUpdatedMs = System.currentTimeMillis(),
       )
       (dto, reconstruct(dto))
     } match
