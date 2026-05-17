@@ -109,8 +109,7 @@ class LoadBalancer:
     try
       val setKey = s"$redisPrefix:instance:$instanceId:games"
       val result = scala.collection.mutable.ListBuffer[String]()
-      for _ <- 0 until count do
-        Option(redis.set(classOf[String]).spop(setKey)).foreach(result += _)
+      for _ <- 0 until count do Option(redis.set(classOf[String]).spop(setKey)).foreach(result += _)
       result.toList
     catch
       case ex: Exception =>
