@@ -167,7 +167,9 @@ class GameResource:
     val mode  = req.mode.getOrElse(GameMode.Open)
     val entry = newEntry(GameContext.initial, white, black, tc, mode)
     registry.store(entry)
+    log.infof("About to subscribe game %s", entry.gameId)
     subscriberManager.subscribeGame(entry.gameId)
+    log.infof("Subscribed game %s", entry.gameId)
     log.infof(
       "Game %s created — white=%s black=%s mode=%s",
       entry.gameId,
