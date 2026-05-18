@@ -88,9 +88,7 @@ class HealthMonitor:
     if evicted.nonEmpty then
       log.warnf("Evicted %d stale instances: %s", evicted.size, evicted.mkString(", "))
       evicted.foreach(deleteK8sPod)
-      val unexpectedEvictions = evicted.filterNot(autoScaler.isDrainingForScaleDown)
       evicted.foreach(autoScaler.clearDraining)
-      if unexpectedEvictions.nonEmpty then autoScaler.scaleUp()
     val instances = instanceRegistry.getAllInstances
     val failed = instances.collect { inst =>
       val isHealthy = checkHealth(inst.instanceId)
@@ -101,8 +99,6 @@ class HealthMonitor:
         Some(inst.instanceId)
       else None
     }.flatten
-    val unexpectedFailures = failed.filterNot(autoScaler.isDrainingForScaleDown)
-    if unexpectedFailures.nonEmpty then autoScaler.scaleUp()
 
   private def checkHealth(instanceId: String): Boolean =
     val redisHealthy = checkRedisHeartbeat(instanceId)

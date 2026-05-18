@@ -182,16 +182,14 @@ class AutoScaler:
           val hasHighCpuOrMemory  = constrainedInstance.isDefined
 
           log.infof(
-            "Scale check: instances=%d avgLoad=%.1f scaleUpAt=%.1f scaleDownAt=%.1f resourceConstrained=%s",
+            "Scale check: instances=%d avgLoad=%.1f resourceConstrained=%s",
             instances.size,
             avgLoad,
-            scaleUpLoad,
-            scaleDownLoad,
             constrainedInstance.map(_.instanceId).getOrElse("none"),
           )
 
-          if avgLoad > scaleUpLoad || hasHighCpuOrMemory then scaleUp()
-          else if avgLoad < scaleDownLoad && instances.size > config.scaleMinReplicas
+          if hasHighCpuOrMemory then scaleUp()
+          if !hasHighCpuOrMemory && avgLoad < scaleDownLoad && instances.size > config.scaleMinReplicas
           then scaleDown()
 
   private def patchRolloutReplicas(
