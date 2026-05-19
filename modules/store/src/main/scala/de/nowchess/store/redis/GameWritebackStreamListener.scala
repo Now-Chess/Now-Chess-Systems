@@ -35,4 +35,5 @@ class GameWritebackStreamListener:
               log.errorf(ex, "Failed to write back game event for gameId=%s", event.gameId)
             case Success(_) => ()
     redis.pubsub(classOf[String]).subscribe("game-writeback", handler)
+    log.infof("Started listening to Writebacks")
     ()
