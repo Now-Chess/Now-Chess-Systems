@@ -14,6 +14,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection
     classOf[ClockDto],
     classOf[CreateGameRequestDto],
     classOf[ErrorEventDto],
+    classOf[GameWritebackEventDto],
     classOf[GameFullDto],
     classOf[GameFullEventDto],
     classOf[GameStateDto],
