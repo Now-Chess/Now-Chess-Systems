@@ -88,9 +88,9 @@ class ChallengeService:
       challenge.destUser = destUser
       challenge.color = color
       challenge.status = ChallengeStatus.Created
-      challenge.timeControlType = req.timeControl.`type`
-      challenge.timeControlLimit = req.timeControl.limit.map(java.lang.Integer.valueOf).orNull
-      challenge.timeControlIncrement = req.timeControl.increment.map(java.lang.Integer.valueOf).orNull
+      challenge.limitSeconds = req.timeControl.limitSeconds.map(java.lang.Integer.valueOf).orNull
+      challenge.incrementSeconds = req.timeControl.incrementSeconds.map(java.lang.Integer.valueOf).orNull
+      challenge.daysPerMove = req.timeControl.daysPerMove.map(java.lang.Integer.valueOf).orNull
       challenge.createdAt = Instant.now()
       challenge.expiresAt = Instant.now().plus(24, ChronoUnit.HOURS)
       challengeRepository.persist(challenge)
@@ -200,10 +200,9 @@ class ChallengeService:
         if ThreadLocalRandom.current().nextBoolean() then (challenger, destUser) else (destUser, challenger)
 
   private def buildTimeControl(challenge: Challenge): Option[CoreTimeControl] =
-    challenge.timeControlType match
-      case "unlimited"      => None
-      case "correspondence" => Some(CoreTimeControl(None, None, challenge.timeControlLimitOpt))
-      case _ => Some(CoreTimeControl(challenge.timeControlLimitOpt, challenge.timeControlIncrementOpt, None))
+    if challenge.limitSecondsOpt.isEmpty && challenge.incrementSecondsOpt.isEmpty && challenge.daysPerMoveOpt.isEmpty
+    then None
+    else Some(CoreTimeControl(challenge.limitSecondsOpt, challenge.incrementSecondsOpt, challenge.daysPerMoveOpt))
 
   private def parseColor(raw: String): Either[ChallengeError, ChallengeColor] =
     raw.toLowerCase match
@@ -227,7 +226,7 @@ class ChallengeService:
       destUser = PlayerInfo(c.destUser.id.toString, c.destUser.username, c.destUser.rating),
       variant = "standard",
       color = c.color.toString.toLowerCase,
-      timeControl = TimeControlDto(c.timeControlType, c.timeControlLimitOpt, c.timeControlIncrementOpt),
+      timeControl = TimeControlDto(c.limitSecondsOpt, c.incrementSecondsOpt, c.daysPerMoveOpt),
       status = c.status.toString.toLowerCase,
       declineReason = c.declineReasonOpt.map(_.toString.toLowerCase),
       gameId = c.gameIdOpt,

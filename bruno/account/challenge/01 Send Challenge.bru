@@ -10,11 +10,6 @@ post {
   auth: inherit
 }
 
-settings {
-  encodeUrl: true
-  timeout: 0
-}
-
 headers {
   Content-Type: application/json
   Authorization: Bearer {{token}}
@@ -22,9 +17,20 @@ headers {
 
 body:json {
   {
+    "color": "random",
     "timeControl": {
       "limitSeconds": 600,
       "incrementSeconds": 5
     }
   }
+}
+
+vars:pre-request {
+  username: bdc
+  token: eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJub3djaGVzcyIsInN1YiI6ImY3MGQxNDIwLTdhZmEtNGVjMy05Mzg1LWViYWU0N2U3NGY4OCIsInVzZXJuYW1lIjoicGxheWVyMSIsImlhdCI6MTc3OTE5MjkwOCwiZXhwIjoxNzc5MTkzMjA4LCJqdGkiOiJkMDhlZmRhMi01ZjliLTQyNjgtOGM3MC1iNDA2OTViNDhiMTUifQ.q68R2bUdRQ5QwEIfcP0d2g_Wac94qd4K6BzP-PC94x-tDpT3leUY8ZpqY6YzoNv-ywp5sm47-WC539DyUqdzDgPVLLSmOMjRxG-HpaNdXwsXlp8_C7KGlgkK_XSMa3Gq6S4AfUbaXbRhPg5NZz2MRosu0BY2ed0ISvmEfX5XEdBRlKgD14BIKAsEFv3tHtarFS1RGpcSoHV2oeIk_m-VHUC78N-ciNHmBH6mZna_fVHgMocOIrEsTZuUms0Zacmebvh2tAcf36xux1Bm2awJff19zReD-A2o9jucrKcM3Im5BJ6JtuWAsHEae9KLmuol6S2pldvNOmUn3egFUYz0yQ
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
 }

@@ -6,7 +6,6 @@ import scala.compiletime.uninitialized
 
 import java.time.Instant
 import java.util.UUID
-import scala.Conversion
 
 @Entity
 @Table(name = "challenges")
@@ -34,13 +33,14 @@ class Challenge extends PanacheEntityBase:
   @Column(nullable = true, columnDefinition = "varchar(255)")
   var declineReason: DeclineReason = uninitialized
 
-  var timeControlType: String = uninitialized
+  @Column(nullable = true)
+  var limitSeconds: java.lang.Integer = uninitialized
 
   @Column(nullable = true)
-  var timeControlLimit: java.lang.Integer = uninitialized
+  var incrementSeconds: java.lang.Integer = uninitialized
 
   @Column(nullable = true)
-  var timeControlIncrement: java.lang.Integer = uninitialized
+  var daysPerMove: java.lang.Integer = uninitialized
 
   var createdAt: Instant = uninitialized
 
@@ -52,5 +52,6 @@ class Challenge extends PanacheEntityBase:
 
   def gameIdOpt: Option[String]               = Option(gameId)
   def declineReasonOpt: Option[DeclineReason] = Option(declineReason)
-  def timeControlLimitOpt: Option[Int]        = Option(timeControlLimit).map(_.intValue())
-  def timeControlIncrementOpt: Option[Int]    = Option(timeControlIncrement).map(_.intValue())
+  def limitSecondsOpt: Option[Int]            = Option(limitSeconds).map(_.intValue())
+  def incrementSecondsOpt: Option[Int]        = Option(incrementSeconds).map(_.intValue())
+  def daysPerMoveOpt: Option[Int]             = Option(daysPerMove).map(_.intValue())

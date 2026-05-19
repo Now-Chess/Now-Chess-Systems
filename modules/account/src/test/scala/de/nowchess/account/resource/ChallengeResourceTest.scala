@@ -44,7 +44,7 @@ class ChallengeResourceTest:
       .path[String]("token")
 
   private val clockBody =
-    """{"color":"random","timeControl":{"type":"clock","limit":300,"increment":5}}"""
+    """{"color":"random","timeControl":{"limitSeconds":300,"incrementSeconds":5}}"""
 
   private def authed(token: String) =
     givenRequest().header("Authorization", s"Bearer $token")

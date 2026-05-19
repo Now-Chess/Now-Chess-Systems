@@ -10,7 +10,7 @@ case class PlayerInfo(id: String, name: String, rating: Int)
 
 case class PublicAccountDto(id: String, username: String, rating: Int, createdAt: String)
 
-case class TimeControlDto(`type`: String, limit: Option[Int], increment: Option[Int])
+case class TimeControlDto(limitSeconds: Option[Int], incrementSeconds: Option[Int], daysPerMove: Option[Int])
 
 case class ChallengeRequest(color: String, timeControl: TimeControlDto)
 
