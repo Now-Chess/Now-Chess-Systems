@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import de.nowchess.api.dto.GameWritebackEventDto
 import de.nowchess.store.service.GameWritebackService
 import io.quarkus.redis.datasource.RedisDataSource
+import io.quarkus.runtime.Startup
 import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
@@ -12,6 +13,7 @@ import scala.compiletime.uninitialized
 import scala.util.{Failure, Success, Try}
 import java.util.function.Consumer
 
+@Startup
 @ApplicationScoped
 class GameWritebackStreamListener:
   @Inject
