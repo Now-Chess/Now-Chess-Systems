@@ -6,6 +6,7 @@ import de.nowchess.account.error.AccountError
 import de.nowchess.account.repository.{BotAccountRepository, OfficialBotAccountRepository, UserAccountRepository}
 import io.micrometer.core.instrument.MeterRegistry
 import io.quarkus.elytron.security.common.BcryptUtil
+import io.smallrye.jwt.auth.principal.JWTParser
 import io.smallrye.jwt.build.Jwt
 import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
@@ -34,6 +35,9 @@ class AccountService:
 
   @Inject
   var meterRegistry: MeterRegistry = uninitialized
+
+  @Inject
+  var jwtParser: JWTParser = uninitialized
   // scalafix:on
 
   @PostConstruct
@@ -66,7 +70,7 @@ class AccountService:
       log.infof("User %s registered successfully", req.username)
       Right(account)
 
-  def login(req: LoginRequest): Either[AccountError, String] =
+  def login(req: LoginRequest): Either[AccountError, (String, String)] =
     val result = authenticateUser(req)
     result match
       case Right(_) => meterRegistry.counter("nowchess.auth.logins", "result", "success").increment()
@@ -75,7 +79,7 @@ class AccountService:
         meterRegistry.counter("nowchess.auth.login.failures", "reason", loginFailureReason(error)).increment()
     result
 
-  private def authenticateUser(req: LoginRequest): Either[AccountError, String] =
+  private def authenticateUser(req: LoginRequest): Either[AccountError, (String, String)] =
     userAccountRepository.findByUsername(req.username) match
       case None =>
         log.warnf("Login failed for unknown user %s", req.username)
@@ -89,16 +93,39 @@ class AccountService:
           Left(AccountError.UserBanned)
         else
           log.infof("User %s logged in successfully", req.username)
-          Right(
-            Jwt
-              .issuer("nowchess")
-              .subject(account.id.toString)
-              .claim("username", account.username)
-              .sign(),
-          )
+          Right((generateAccessToken(account), generateRefreshToken(account.id)))
+
+  def refresh(refreshToken: String): Either[AccountError, (String, String)] =
+    try
+      val parsed = jwtParser.parse(refreshToken)
+      if parsed.getClaim[String]("type") != "refresh" then Left(AccountError.InvalidRefreshToken)
+      else
+        val userId = UUID.fromString(parsed.getSubject)
+        userAccountRepository.findById(userId) match
+          case None                => Left(AccountError.UserNotFound)
+          case Some(u) if u.banned => Left(AccountError.UserBanned)
+          case Some(u)             => Right((generateAccessToken(u), generateRefreshToken(u.id)))
+    catch case _: Throwable => Left(AccountError.InvalidRefreshToken)
+
+  private def generateAccessToken(account: UserAccount): String =
+    Jwt
+      .issuer("nowchess")
+      .subject(account.id.toString)
+      .claim("username", account.username)
+      .expiresIn(3600)
+      .sign()
+
+  private def generateRefreshToken(userId: UUID): String =
+    Jwt
+      .issuer("nowchess")
+      .subject(userId.toString)
+      .claim("type", "refresh")
+      .expiresIn(30L * 24 * 3600)
+      .sign()
 
   private def loginFailureReason(error: AccountError): String = error match
     case AccountError.InvalidCredentials        => "invalid_credentials"
+    case AccountError.InvalidRefreshToken       => "invalid_refresh_token"
     case AccountError.UserBanned                => "user_banned"
     case AccountError.UsernameTaken(_)          => "username_taken"
     case AccountError.EmailAlreadyRegistered(_) => "email_registered"

@@ -4,7 +4,9 @@ case class RegisterRequest(username: String, email: String, password: String)
 
 case class LoginRequest(username: String, password: String)
 
-case class TokenResponse(token: String)
+case class RefreshRequest(refreshToken: String)
+
+case class TokenPairResponse(accessToken: String, refreshToken: String)
 
 case class PlayerInfo(id: String, name: String, rating: Int)
 

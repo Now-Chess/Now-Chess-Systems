@@ -32,7 +32,24 @@ class AccountResourceTest:
       .`then`()
       .statusCode(200)
       .extract()
-      .path[String]("token")
+      .path[String]("accessToken")
+
+  private def registerAndLoginPair(username: String): (String, String) =
+    givenRequest()
+      .body(registerBody(username))
+      .when()
+      .post("/api/account")
+      .`then`()
+      .statusCode(200)
+    val resp = givenRequest()
+      .body(loginBody(username))
+      .when()
+      .post("/api/account/login")
+      .`then`()
+      .statusCode(200)
+      .extract()
+      .response()
+    (resp.path[String]("accessToken"), resp.path[String]("refreshToken"))
 
   @Test
   def registerReturns200(): Unit =
@@ -57,7 +74,7 @@ class AccountResourceTest:
       .body("error", containsString("bob"))
 
   @Test
-  def loginReturns200WithToken(): Unit =
+  def loginReturns200WithTokenPair(): Unit =
     givenRequest().body(registerBody("charlie")).when().post("/api/account")
     givenRequest()
       .body(loginBody("charlie"))
@@ -65,7 +82,8 @@ class AccountResourceTest:
       .post("/api/account/login")
       .`then`()
       .statusCode(200)
-      .body("token", notNullValue())
+      .body("accessToken", notNullValue())
+      .body("refreshToken", notNullValue())
 
   @Test
   def loginUnauthorizedOnWrongPassword(): Unit =
@@ -105,3 +123,34 @@ class AccountResourceTest:
       .get("/api/account/doesnotexist")
       .`then`()
       .statusCode(404)
+
+  @Test
+  def refreshReturnsNewTokenPair(): Unit =
+    val (_, refreshToken) = registerAndLoginPair("refresh_user")
+    givenRequest()
+      .body(s"""{"refreshToken":"$refreshToken"}""")
+      .when()
+      .post("/api/account/refresh")
+      .`then`()
+      .statusCode(200)
+      .body("accessToken", notNullValue())
+      .body("refreshToken", notNullValue())
+
+  @Test
+  def refreshWithInvalidTokenReturns401(): Unit =
+    givenRequest()
+      .body("""{"refreshToken":"invalid.token.value"}""")
+      .when()
+      .post("/api/account/refresh")
+      .`then`()
+      .statusCode(401)
+
+  @Test
+  def refreshWithAccessTokenReturns401(): Unit =
+    val accessToken = registerAndLogin("refresh_bad_type")
+    givenRequest()
+      .body(s"""{"refreshToken":"$accessToken"}""")
+      .when()
+      .post("/api/account/refresh")
+      .`then`()
+      .statusCode(401)

@@ -40,8 +40,19 @@ class AccountResource:
   @Path("/login")
   def login(req: LoginRequest): Response =
     accountService.login(req) match
-      case Right(token) =>
-        Response.ok(TokenResponse(token)).build()
+      case Right((accessToken, refreshToken)) =>
+        Response.ok(TokenPairResponse(accessToken, refreshToken)).build()
+      case Left(AccountError.UserBanned) =>
+        Response.status(Response.Status.FORBIDDEN).entity(ErrorDto(AccountError.UserBanned.message)).build()
+      case Left(error) =>
+        Response.status(Response.Status.UNAUTHORIZED).entity(ErrorDto(error.message)).build()
+
+  @POST
+  @Path("/refresh")
+  def refresh(req: RefreshRequest): Response =
+    accountService.refresh(req.refreshToken) match
+      case Right((accessToken, refreshToken)) =>
+        Response.ok(TokenPairResponse(accessToken, refreshToken)).build()
       case Left(AccountError.UserBanned) =>
         Response.status(Response.Status.FORBIDDEN).entity(ErrorDto(AccountError.UserBanned.message)).build()
       case Left(error) =>
