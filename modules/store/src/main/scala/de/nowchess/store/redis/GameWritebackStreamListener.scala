@@ -8,6 +8,7 @@ import io.quarkus.runtime.Startup
 import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
+import org.eclipse.microprofile.context.ManagedExecutor
 import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
 import scala.util.{Failure, Success, Try}
@@ -21,6 +22,7 @@ class GameWritebackStreamListener:
   var redis: RedisDataSource                         = uninitialized
   @Inject var objectMapper: ObjectMapper             = uninitialized
   @Inject var writebackService: GameWritebackService = uninitialized
+  @Inject var executor: ManagedExecutor              = uninitialized
   // scalafix:on
 
   private val log = Logger.getLogger(classOf[GameWritebackStreamListener])
@@ -32,10 +34,14 @@ class GameWritebackStreamListener:
         case Failure(ex) =>
           log.errorf(ex, "Failed to parse game-writeback event: %s", json)
         case Success(event) =>
-          Try(writebackService.writeBack(event)) match
-            case Failure(ex) =>
-              log.errorf(ex, "Failed to write back game event for gameId=%s", event.gameId)
-            case Success(_) => ()
+          executor.submit(
+            new Runnable:
+              def run(): Unit =
+                Try(writebackService.writeBack(event)) match
+                  case Failure(ex) =>
+                    log.errorf(ex, "Failed to write back game event for gameId=%s", event.gameId)
+                  case Success(_) => (),
+          )
     redis.pubsub(classOf[String]).subscribe("game-writeback", handler)
     log.infof("Started listening to Writebacks")
     ()
