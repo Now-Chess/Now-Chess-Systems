@@ -41,7 +41,7 @@ class ChallengeResourceTest:
       .`then`()
       .statusCode(200)
       .extract()
-      .path[String]("token")
+      .path[String]("accessToken")
 
   private val clockBody =
     """{"color":"random","timeControl":{"limitSeconds":300,"incrementSeconds":5}}"""
