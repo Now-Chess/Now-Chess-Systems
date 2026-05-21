@@ -76,6 +76,9 @@ nowchess:
       password: ${DB_PASSWORD}
       jdbc:
         url: ${DB_URL}
+        min-size: 10
+        max-size: 50
+        acquisition-timeout: 30
     hibernate-orm:
       schema-management:
         strategy: update
