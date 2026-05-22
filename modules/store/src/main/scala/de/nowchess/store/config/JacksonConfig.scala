@@ -3,7 +3,6 @@ package de.nowchess.store.config
 import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import de.nowchess.api.dto.GameWritebackEventDto
 import io.quarkus.jackson.ObjectMapperCustomizer
 import jakarta.inject.Singleton
 
@@ -16,4 +15,3 @@ class JacksonConfig extends ObjectMapperCustomizer:
         new Version(2, 21, 1, null, "com.fasterxml.jackson.module", "jackson-module-scala")
         // scalafix:on DisableSyntax.null
     })
-    mapper.addMixIn(classOf[GameWritebackEventDto], classOf[GameWritebackEventDtoMixin])

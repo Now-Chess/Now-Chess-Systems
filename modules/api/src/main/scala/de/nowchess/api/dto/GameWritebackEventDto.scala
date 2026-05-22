@@ -1,5 +1,7 @@
 package de.nowchess.api.dto
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
+
 case class GameWritebackEventDto(
     gameId: String,
     fen: String,
@@ -14,11 +16,11 @@ case class GameWritebackEventDto(
     limitSeconds: Option[Int],
     incrementSeconds: Option[Int],
     daysPerMove: Option[Int],
-    whiteRemainingMs: Option[Long],
-    blackRemainingMs: Option[Long],
-    incrementMs: Option[Long],
-    clockLastTickAt: Option[Long],
-    clockMoveDeadline: Option[Long],
+    @JsonDeserialize(contentAs = classOf[java.lang.Long]) whiteRemainingMs: Option[Long],
+    @JsonDeserialize(contentAs = classOf[java.lang.Long]) blackRemainingMs: Option[Long],
+    @JsonDeserialize(contentAs = classOf[java.lang.Long]) incrementMs: Option[Long],
+    @JsonDeserialize(contentAs = classOf[java.lang.Long]) clockLastTickAt: Option[Long],
+    @JsonDeserialize(contentAs = classOf[java.lang.Long]) clockMoveDeadline: Option[Long],
     clockActiveColor: Option[String],
     pendingDrawOffer: Option[String],
     result: Option[String] = None,
