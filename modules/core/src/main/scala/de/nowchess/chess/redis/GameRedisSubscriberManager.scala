@@ -20,6 +20,7 @@ import jakarta.enterprise.inject.Instance
 import jakarta.inject.Inject
 import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Consumer
@@ -77,7 +78,8 @@ class GameRedisSubscriberManager:
     s"${redisConfig.prefix}:game:$gameId:s2c"
 
   def subscribeGame(gameId: String): Unit =
-    val writebackFn: String => Unit = json => redis.pubsub(classOf[String]).publish("game-writeback", json)
+    val writebackFn: String => Unit = json =>
+      redis.stream(classOf[String]).xadd(s"${redisConfig.prefix}:game-writeback", Map("data" -> json).asJava)
     val obs = new GameRedisPublisher(
       gameId,
       registry,
