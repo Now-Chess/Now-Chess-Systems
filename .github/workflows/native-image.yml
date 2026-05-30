@@ -57,6 +57,13 @@ jobs:
           - rule
           - store
           - ws
+        arch:
+          - name: default
+            march_flag: ""
+            tag_suffix: ""
+          - name: x86_v2
+            march_flag: "-march=x86-64-v2"
+            tag_suffix: "-x86_v2"
 
     steps:
       - uses: actions/checkout@v4
@@ -66,12 +73,12 @@ jobs:
         run: |
           if [ -f "modules/${{ matrix.module }}/versions.env" ]; then
             source modules/${{ matrix.module }}/versions.env
-            VERSION="${MAJOR}.${MINOR}.${PATCH}"
-            echo "[${{ matrix.module }}] Version: ${VERSION}"
+            VERSION="${MAJOR}.${MINOR}.${PATCH}${{ matrix.arch.tag_suffix }}"
+            echo "[${{ matrix.module }}/${{ matrix.arch.name }}] Version: ${VERSION}"
             echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           else
-            echo "[${{ matrix.module }}] No versions.env found — using 'latest'"
-            echo "version=latest" >> "$GITHUB_OUTPUT"
+            echo "[${{ matrix.module }}/${{ matrix.arch.name }}] No versions.env found — using 'latest${{ matrix.arch.tag_suffix }}'"
+            echo "version=latest${{ matrix.arch.tag_suffix }}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Check if image exists in GHCR
@@ -83,12 +90,12 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           EXISTING_TAGS=$(gh api "orgs/now-chess/packages/container/${PACKAGE}/versions" \
             --jq '.[].metadata.container.tags[]' 2>/dev/null || echo "")
-          echo "[${{ matrix.module }}] Existing tags: $(echo "${EXISTING_TAGS}" | tr '\n' ' ' | xargs)"
+          echo "[${{ matrix.module }}/${{ matrix.arch.name }}] Existing tags: $(echo "${EXISTING_TAGS}" | tr '\n' ' ' | xargs)"
           if echo "${EXISTING_TAGS}" | grep -qx "${VERSION}"; then
-            echo "[${{ matrix.module }}] Image ${VERSION} already exists — skipping build"
+            echo "[${{ matrix.module }}/${{ matrix.arch.name }}] Image ${VERSION} already exists — skipping build"
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
-            echo "[${{ matrix.module }}] Image ${VERSION} not found — will build"
+            echo "[${{ matrix.module }}/${{ matrix.arch.name }}] Image ${VERSION} not found — will build"
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -112,7 +119,13 @@ jobs:
 
       - name: Build native binary
         if: steps.image-check.outputs.exists == 'false'
-        run: ./gradlew :modules:${{ matrix.module }}:build -x test -Dquarkus.native.enabled=true -Dquarkus.package.jar.enabled=false -Dquarkus.profile=deployed --no-daemon
+        run: |
+          MARCH="${{ matrix.arch.march_flag }}"
+          MARCH_ARG=""
+          if [ -n "$MARCH" ]; then
+            MARCH_ARG="-Dquarkus.native.additional-build-args=$MARCH"
+          fi
+          ./gradlew :modules:${{ matrix.module }}:build -x test -Dquarkus.native.enabled=true -Dquarkus.package.jar.enabled=false -Dquarkus.profile=deployed $MARCH_ARG --no-daemon
 
       - name: Set up Docker Buildx
         if: steps.image-check.outputs.exists == 'false'
@@ -134,7 +147,7 @@ jobs:
           images: ghcr.io/now-chess/now-chess-systems/${{ matrix.module }}
           tags: |
             type=raw,value=${{ steps.version.outputs.version }}
-            type=raw,value=latest
+            type=raw,value=latest${{ matrix.arch.tag_suffix }}
 
       - name: Build and push
         if: steps.image-check.outputs.exists == 'false'
@@ -145,5 +158,5 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.module }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.module }}
+          cache-from: type=gha,scope=${{ matrix.module }}-${{ matrix.arch.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.module }}-${{ matrix.arch.name }}
