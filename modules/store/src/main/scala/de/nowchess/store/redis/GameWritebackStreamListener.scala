@@ -61,7 +61,7 @@ class GameWritebackStreamListener:
           ">",
           new XReadGroupArgs().count(10).block(java.time.Duration.ofSeconds(2)),
         )
-        if messages != null then messages.forEach(msg => handleMessage(msg))
+        Option(messages).foreach(_.forEach(msg => handleMessage(msg)))
       } match
         case Failure(ex) => log.warnf(ex, "Error in writeback poll loop")
         case Success(_)  => ()
