@@ -32,16 +32,17 @@ class GameWritebackStreamListener:
   private val log       = Logger.getLogger(classOf[GameWritebackStreamListener])
   private val groupName = "store-writeback"
 
-  private def streamKey = s"${redisConfig.prefix}:game-writeback"
-  private def dlqKey    = s"${redisConfig.prefix}:game-writeback-dlq"
+  private def streamKey  = s"${redisConfig.prefix}:game-writeback"
+  private def dlqKey     = s"${redisConfig.prefix}:game-writeback-dlq"
   private val maxRetries = 3
   private val consumerId = UUID.randomUUID().toString
 
   @PostConstruct
   def startListening(): Unit =
     createGroupIfAbsent()
-    executor.submit(new Runnable:
-      def run(): Unit = pollLoop()
+    executor.submit(
+      new Runnable:
+        def run(): Unit = pollLoop(),
     )
     log.infof("Started listening to game-writeback stream (consumer=%s)", consumerId)
 
@@ -54,13 +55,15 @@ class GameWritebackStreamListener:
   private def pollLoop(): Unit =
     while true do
       Try {
-        val messages = redis.stream(classOf[String]).xreadgroup(
-          groupName,
-          consumerId,
-          streamKey,
-          ">",
-          new XReadGroupArgs().count(10).block(java.time.Duration.ofSeconds(2)),
-        )
+        val messages = redis
+          .stream(classOf[String])
+          .xreadgroup(
+            groupName,
+            consumerId,
+            streamKey,
+            ">",
+            new XReadGroupArgs().count(10).block(java.time.Duration.ofSeconds(2)),
+          )
         Option(messages).foreach(_.forEach(msg => handleMessage(msg)))
       } match
         case Failure(ex) => log.warnf(ex, "Error in writeback poll loop")
