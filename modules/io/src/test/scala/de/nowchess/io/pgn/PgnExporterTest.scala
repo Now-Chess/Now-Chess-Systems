@@ -112,3 +112,38 @@ class PgnExporterTest extends AnyFunSuite with Matchers:
     pgn should include("exf8=Q")
     pawnCapturePgn should include("exd3")
     quietPromotionPgn should include("e8=Q")
+
+  test("exportGame disambiguates when two knights can reach same square"):
+    // 1.Nf3 a6 2.d3 a5 3.Nfd2: d3 clears d2 so both Nb1 and Nf3 can reach d2; must emit "Nfd2"
+    val moves = List(
+      Move(sq("g1"), sq("f3")),
+      Move(sq("a7"), sq("a6")),
+      Move(sq("d2"), sq("d3")),
+      Move(sq("a6"), sq("a5")),
+      Move(sq("f3"), sq("d2")),
+    )
+    val pgn = PgnExporter.exportGame(Map.empty, moves)
+    pgn should include("Nfd2")
+
+  test("exportGame appends + after move that gives check"):
+    // 1.e4 e5 2.Qh5 Nc6 3.Qxf7+ — queen captures f7, gives check to black king on e8
+    val moves = List(
+      Move(sq("e2"), sq("e4")),
+      Move(sq("e7"), sq("e5")),
+      Move(sq("d1"), sq("h5")),
+      Move(sq("b8"), sq("c6")),
+      Move(sq("h5"), sq("f7"), MoveType.Normal(isCapture = true)),
+    )
+    val pgn = PgnExporter.exportGame(Map.empty, moves)
+    pgn should include("Qxf7+")
+
+  test("exportGame appends # after checkmate move"):
+    // Fool's mate: 1.f3 e5 2.g4 Qh4#
+    val moves = List(
+      Move(sq("f2"), sq("f3")),
+      Move(sq("e7"), sq("e5")),
+      Move(sq("g2"), sq("g4")),
+      Move(sq("d8"), sq("h4")),
+    )
+    val pgn = PgnExporter.exportGame(Map("Result" -> "*"), moves)
+    pgn should include("Qh4#")

@@ -418,7 +418,6 @@ class GameEngine(
     val contextBefore = currentContext
     val nextContext   = ruleSet.applyMove(currentContext)(move)
     val captured      = computeCaptured(currentContext, move)
-    val notation      = translateMoveToNotation(move, contextBefore.board)
     currentContext = nextContext
 
     advanceClock(contextBefore.turn)
@@ -463,13 +462,18 @@ class GameEngine(
       redoStack = Nil
     else if status.isCheck then notifyObservers(CheckDetectedEvent(currentContext))
 
-  private def translateMoveToNotation(move: Move, boardBefore: Board): String =
-    move.moveType match
+  private def translateMoveToNotation(move: Move, ctxBefore: GameContext, status: PostMoveStatus): String =
+    val suffix =
+      if status.isCheckmate then "#"
+      else if status.isCheck then "+"
+      else ""
+    val base = move.moveType match
       case MoveType.CastleKingside    => "O-O"
       case MoveType.CastleQueenside   => "O-O-O"
       case MoveType.EnPassant         => enPassantNotation(move)
       case MoveType.Promotion(pp)     => promotionNotation(move, pp)
-      case MoveType.Normal(isCapture) => normalMoveNotation(move, boardBefore, isCapture)
+      case MoveType.Normal(isCapture) => normalMoveNotation(move, ctxBefore, isCapture)
+    base + suffix
 
   private def enPassantNotation(move: Move): String =
     s"${move.from.file.toString.toLowerCase}x${move.to}"
@@ -482,15 +486,30 @@ class GameEngine(
       case PromotionPiece.Knight => "N"
     s"${move.to}=$ppChar"
 
-  private[engine] def normalMoveNotation(move: Move, boardBefore: Board, isCapture: Boolean): String =
-    boardBefore.pieceAt(move.from).map(_.pieceType) match
+  private[engine] def normalMoveNotation(move: Move, ctxBefore: GameContext, isCapture: Boolean): String =
+    ctxBefore.board.pieceAt(move.from).map(_.pieceType) match
       case Some(PieceType.Pawn) =>
         if isCapture then s"${move.from.file.toString.toLowerCase}x${move.to}"
         else move.to.toString
       case Some(pt) =>
         val letter = pieceNotation(pt)
-        if isCapture then s"${letter}x${move.to}" else s"$letter${move.to}"
+        val d      = disambiguatePiece(move.from, move.to, pt, ctxBefore)
+        if isCapture then s"$letter${d}x${move.to}" else s"$letter$d${move.to}"
       case None => move.to.toString
+
+  private def disambiguatePiece(from: Square, to: Square, pieceType: PieceType, ctx: GameContext): String =
+    if pieceType == PieceType.King then ""
+    else
+      val competitors = ruleSet
+        .allLegalMoves(ctx)
+        .filter(m => m.to == to && m.from != from && ctx.board.pieceAt(m.from).exists(_.pieceType == pieceType))
+      if competitors.isEmpty then ""
+      else
+        val sameFile = competitors.exists(_.from.file == from.file)
+        val sameRank = competitors.exists(_.from.rank == from.rank)
+        if !sameFile then from.file.toString.toLowerCase
+        else if !sameRank then (from.rank.ordinal + 1).toString
+        else from.toString
 
   private[engine] def pieceNotation(pieceType: PieceType): String =
     pieceType match
@@ -519,9 +538,10 @@ class GameEngine(
     if currentContext.moves.isEmpty then
       notifyObservers(InvalidMoveEvent(currentContext, InvalidMoveReason.NothingToUndo))
     else
-      val lastMove = currentContext.moves.last
-      val prevCtx  = replayContextFromMoves(currentContext.moves.dropRight(1))
-      val notation = translateMoveToNotation(lastMove, prevCtx.board)
+      val lastMove   = currentContext.moves.last
+      val prevCtx    = replayContextFromMoves(currentContext.moves.dropRight(1))
+      val postStatus = ruleSet.postMoveStatus(currentContext)
+      val notation   = translateMoveToNotation(lastMove, prevCtx, postStatus)
       redoStack = lastMove :: redoStack
       currentContext = prevCtx
       notifyObservers(MoveUndoneEvent(currentContext, notation))

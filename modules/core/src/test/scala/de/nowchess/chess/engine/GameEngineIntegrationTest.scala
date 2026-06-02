@@ -1,6 +1,6 @@
 package de.nowchess.chess.engine
 
-import de.nowchess.api.board.{Board, Color, File, PieceType, Rank, Square}
+import de.nowchess.api.board.{Color, File, PieceType, Rank, Square}
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.chess.observer.{GameEvent, InvalidMoveEvent, InvalidMoveReason, Observer}
@@ -137,7 +137,7 @@ class GameEngineIntegrationTest extends AnyFunSuite with Matchers:
 
   test("normalMoveNotation handles missing source piece"):
     val engine = new GameEngine(ruleSet = DefaultRules)
-    val result = engine.normalMoveNotation(Move(sq("e3"), sq("e4")), Board.initial, isCapture = false)
+    val result = engine.normalMoveNotation(Move(sq("e3"), sq("e4")), GameContext.initial, isCapture = false)
 
     result shouldBe "e4"
 

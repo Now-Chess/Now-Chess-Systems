@@ -31,7 +31,9 @@ object PgnExporter extends GameContextExport:
       if moves.isEmpty then ""
       else
         val contexts = moves.scanLeft(GameContext.initial)((ctx, move) => DefaultRules.applyMove(ctx)(move))
-        val sanMoves = moves.zip(contexts).map { case (move, ctx) => moveToAlgebraic(move, ctx.board) }
+        val sanMoves = moves.zip(contexts).zip(contexts.tail).map { case ((move, ctxBefore), ctxAfter) =>
+          moveToAlgebraic(move, ctxBefore, ctxAfter)
+        }
 
         val groupedMoves = sanMoves.zipWithIndex.groupBy(_._2 / 2)
         val moveLines = for (moveNumber, movePairs) <- groupedMoves.toList.sortBy(_._1) yield
@@ -48,9 +50,24 @@ object PgnExporter extends GameContextExport:
     else if moveText.isEmpty then headerLines
     else s"$headerLines\n\n$moveText"
 
-  /** Convert a Move to Standard Algebraic Notation using the board state before the move. */
-  private def moveToAlgebraic(move: Move, boardBefore: Board): String =
-    move.moveType match
+  private def disambiguate(from: Square, to: Square, pieceType: PieceType, ctx: GameContext): String =
+    val competitors = DefaultRules
+      .allLegalMoves(ctx)
+      .filter(m => m.to == to && m.from != from && ctx.board.pieceAt(m.from).exists(_.pieceType == pieceType))
+    if competitors.isEmpty then ""
+    else
+      val sameFile = competitors.exists(_.from.file == from.file)
+      val sameRank = competitors.exists(_.from.rank == from.rank)
+      if !sameFile then from.file.toString.toLowerCase
+      else if !sameRank then (from.rank.ordinal + 1).toString
+      else from.toString
+
+  private def moveToAlgebraic(move: Move, ctxBefore: GameContext, ctxAfter: GameContext): String =
+    val suffix =
+      if DefaultRules.isCheckmate(ctxAfter) then "#"
+      else if DefaultRules.isCheck(ctxAfter) then "+"
+      else ""
+    val base = move.moveType match
       case MoveType.CastleKingside  => "O-O"
       case MoveType.CastleQueenside => "O-O-O"
       case MoveType.EnPassant       => s"${move.from.file.toString.toLowerCase}x${move.to}"
@@ -60,18 +77,19 @@ object PgnExporter extends GameContextExport:
           case PromotionPiece.Rook   => "=R"
           case PromotionPiece.Bishop => "=B"
           case PromotionPiece.Knight => "=N"
-        val isCapture = boardBefore.pieceAt(move.to).isDefined
+        val isCapture = ctxBefore.board.pieceAt(move.to).isDefined
         if isCapture then s"${move.from.file.toString.toLowerCase}x${move.to}$promSuffix"
         else s"${move.to}$promSuffix"
       case MoveType.Normal(isCapture) =>
         val dest   = move.to.toString
         val capStr = if isCapture then "x" else ""
-        boardBefore.pieceAt(move.from).map(_.pieceType).getOrElse(PieceType.Pawn) match
+        ctxBefore.board.pieceAt(move.from).map(_.pieceType).getOrElse(PieceType.Pawn) match
           case PieceType.Pawn =>
             if isCapture then s"${move.from.file.toString.toLowerCase}x$dest"
             else dest
-          case PieceType.Knight => s"N$capStr$dest"
-          case PieceType.Bishop => s"B$capStr$dest"
-          case PieceType.Rook   => s"R$capStr$dest"
-          case PieceType.Queen  => s"Q$capStr$dest"
+          case PieceType.Knight => s"N${disambiguate(move.from, move.to, PieceType.Knight, ctxBefore)}$capStr$dest"
+          case PieceType.Bishop => s"B${disambiguate(move.from, move.to, PieceType.Bishop, ctxBefore)}$capStr$dest"
+          case PieceType.Rook   => s"R${disambiguate(move.from, move.to, PieceType.Rook, ctxBefore)}$capStr$dest"
+          case PieceType.Queen  => s"Q${disambiguate(move.from, move.to, PieceType.Queen, ctxBefore)}$capStr$dest"
           case PieceType.King   => s"K$capStr$dest"
+    base + suffix

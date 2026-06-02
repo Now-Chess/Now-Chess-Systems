@@ -106,7 +106,7 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
     engine.undo()
 
     val evt = events.collect { case e: MoveUndoneEvent => e }.head
-    evt.pgnNotation shouldBe "e8=B"
+    evt.pgnNotation shouldBe "e8=B+"
 
   // ── King normal move notation (line 246) ───────────────────────────
 
@@ -134,3 +134,87 @@ class GameEngineNotationTest extends AnyFunSuite with Matchers:
     val evt = events.collect { case e: MoveUndoneEvent => e }.head
     evt.pgnNotation should startWith("K")
     evt.pgnNotation should include("f1")
+
+  // ── Disambiguation: two knights same rank (file suffix) ────────────
+
+  test("undo with two knights on same rank disambiguates by file"):
+    // White knights on b1 and f3, black pawn on h7 prevents draw, both knights can reach d2
+    val board = FenParser.parseBoard("k7/7p/8/8/8/5N2/8/1N5K").get
+    val ctx = GameContext.initial
+      .withBoard(board)
+      .withTurn(Color.White)
+      .withCastlingRights(de.nowchess.api.board.CastlingRights(false, false, false, false))
+
+    val engine = new GameEngine(ctx, DefaultRules)
+    val events = captureEvents(engine)
+
+    // Knight on b1 moves to d2; notation must be "Nbd2" to disambiguate from Nf3
+    engine.processUserInput("b1d2")
+    events.clear()
+    engine.undo()
+
+    val evt = events.collect { case e: MoveUndoneEvent => e }.head
+    evt.pgnNotation should startWith("Nb")
+    evt.pgnNotation should include("d2")
+
+  // ── Disambiguation: two knights same file (rank suffix) ────────────
+
+  test("undo with two knights on same file disambiguates by rank"):
+    // White knights on b1 and b3, both can reach d2 or c5; use b1->d2
+    val board = FenParser.parseBoard("k7/7p/8/8/8/1N6/8/1N5K").get
+    val ctx = GameContext.initial
+      .withBoard(board)
+      .withTurn(Color.White)
+      .withCastlingRights(de.nowchess.api.board.CastlingRights(false, false, false, false))
+
+    val engine = new GameEngine(ctx, DefaultRules)
+    val events = captureEvents(engine)
+
+    // Knight on b1 moves to d2; notation must be "N1d2" to disambiguate from b3
+    engine.processUserInput("b1d2")
+    events.clear()
+    engine.undo()
+
+    val evt = events.collect { case e: MoveUndoneEvent => e }.head
+    evt.pgnNotation should include("1")
+    evt.pgnNotation should include("d2")
+
+  // ── Check suffix (+) ───────────────────────────────────────────────
+
+  test("undo after move that gives check emits notation with + suffix"):
+    // White rook a1, white king h1, black king e8; Ra1-e1 gives check on e-file
+    val board = FenParser.parseBoard("4k3/8/8/8/8/8/8/R6K").get
+    val ctx = GameContext.initial
+      .withBoard(board)
+      .withTurn(Color.White)
+      .withCastlingRights(de.nowchess.api.board.CastlingRights(false, false, false, false))
+
+    val engine = new GameEngine(ctx, DefaultRules)
+    val events = captureEvents(engine)
+
+    engine.processUserInput("a1e1")
+    events.clear()
+    engine.undo()
+
+    val evt = events.collect { case e: MoveUndoneEvent => e }.head
+    evt.pgnNotation should endWith("+")
+
+  // ── Checkmate suffix (#) ──────────────────────────────────────────
+
+  test("undo after checkmate move emits notation with # suffix"):
+    // Fool's mate setup (before final move): 1.f3 e5 2.g4 -- black plays Qd8-h4#
+    val board = FenParser.parseBoard("rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR").get
+    val ctx = GameContext.initial
+      .withBoard(board)
+      .withTurn(Color.Black)
+      .withCastlingRights(de.nowchess.api.board.CastlingRights(true, true, true, true))
+
+    val engine = new GameEngine(ctx, DefaultRules)
+    val events = captureEvents(engine)
+
+    engine.processUserInput("d8h4")
+    events.clear()
+    engine.undo()
+
+    val evt = events.collect { case e: MoveUndoneEvent => e }.head
+    evt.pgnNotation should endWith("#")
