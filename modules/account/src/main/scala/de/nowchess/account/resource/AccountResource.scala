@@ -4,6 +4,7 @@ import de.nowchess.account.domain.{BotAccount, OfficialBotAccount, UserAccount}
 import de.nowchess.account.dto.*
 import de.nowchess.account.error.AccountError
 import de.nowchess.account.service.AccountService
+import de.nowchess.security.RateLimited
 import jakarta.annotation.security.RolesAllowed
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
@@ -16,6 +17,7 @@ import java.util.UUID
 
 @Path("/api/account")
 @ApplicationScoped
+@RateLimited
 @Consumes(Array(MediaType.APPLICATION_JSON))
 @Produces(Array(MediaType.APPLICATION_JSON))
 class AccountResource:

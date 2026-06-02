@@ -30,8 +30,15 @@ nowchess:
     prefix: nowchess
   internal:
     secret: 123abc
+  rate-limit:
+    enabled: true
+    requests-per-window: 60
+    window-seconds: 60
 
 "%test":
+  nowchess:
+    rate-limit:
+      enabled: false
   quarkus:
     datasource:
       db-kind: h2
@@ -89,6 +96,8 @@ nowchess:
       prefix: ${REDIS_PREFIX:nowchess}
     internal:
       secret: ${INTERNAL_SECRET}
+    rate-limit:
+      gatling-secret: ${GATLING_SECRET}
   mp:
     jwt:
       verify:

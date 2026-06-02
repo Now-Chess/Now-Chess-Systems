@@ -34,3 +34,17 @@ nowchess:
     secret: test-secret
     auth:
       enabled: false
+  rate-limit:
+    enabled: false
+
+"%rate-limit-test":
+  nowchess:
+    internal:
+      secret: test-secret
+      auth:
+        enabled: false
+    rate-limit:
+      enabled: true
+      requests-per-window: 3
+      window-seconds: 60
+      gatling-secret: gatling-test-secret

@@ -3,6 +3,7 @@ package de.nowchess.account.resource
 import de.nowchess.account.dto.*
 import de.nowchess.account.error.ChallengeError
 import de.nowchess.account.service.ChallengeService
+import de.nowchess.security.RateLimited
 import jakarta.annotation.security.RolesAllowed
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
@@ -16,6 +17,7 @@ import java.util.UUID
 @Path("/api/challenge")
 @ApplicationScoped
 @RolesAllowed(Array("**"))
+@RateLimited
 @Consumes(Array(MediaType.APPLICATION_JSON))
 @Produces(Array(MediaType.APPLICATION_JSON))
 class ChallengeResource:

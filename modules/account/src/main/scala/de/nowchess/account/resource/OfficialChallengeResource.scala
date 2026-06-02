@@ -3,6 +3,7 @@ package de.nowchess.account.resource
 import de.nowchess.account.client.{CoreCreateGameRequest, CoreGameClient, CorePlayerInfo}
 import de.nowchess.account.dto.{ErrorDto, OfficialChallengeResponse}
 import de.nowchess.account.service.{AccountService, EventPublisher}
+import de.nowchess.security.RateLimited
 import jakarta.annotation.security.RolesAllowed
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
@@ -19,6 +20,7 @@ import java.util.concurrent.ThreadLocalRandom
 @Path("/api/challenge/official")
 @ApplicationScoped
 @RolesAllowed(Array("**"))
+@RateLimited
 @Consumes(Array(MediaType.APPLICATION_JSON))
 @Produces(Array(MediaType.APPLICATION_JSON))
 class OfficialChallengeResource:
