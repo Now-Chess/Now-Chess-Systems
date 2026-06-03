@@ -77,6 +77,8 @@ dependencies {
     implementation(project(":modules:api"))
     implementation(project(":modules:io"))
     implementation(project(":modules:rule"))
+    implementation(project(":modules:security"))
+    implementation("io.quarkus:quarkus-rest-client-jackson")
     implementation("com.microsoft.onnxruntime:onnxruntime:${versions["ONNXRUNTIME"]!!}")
     implementation("io.quarkus:quarkus-redis-client")
 

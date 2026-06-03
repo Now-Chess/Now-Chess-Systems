@@ -154,3 +154,35 @@ class AccountResourceTest:
       .post("/api/account/refresh")
       .`then`()
       .statusCode(401)
+
+  @Test
+  def syncOfficialBotsCreatesNewBots(): Unit =
+    givenRequest()
+      .body("""{"bots":["sync-easy","sync-hard"]}""")
+      .when()
+      .post("/api/account/official-bots/sync")
+      .`then`()
+      .statusCode(204)
+    RestAssured
+      .`given`()
+      .when()
+      .get("/api/account/official-bots")
+      .`then`()
+      .statusCode(200)
+      .body("name", hasItems("sync-easy", "sync-hard"))
+
+  @Test
+  def syncOfficialBotsIsIdempotent(): Unit =
+    val body = """{"bots":["idempotent-bot"]}"""
+    givenRequest()
+      .body(body)
+      .when()
+      .post("/api/account/official-bots/sync")
+      .`then`()
+      .statusCode(204)
+    givenRequest()
+      .body(body)
+      .when()
+      .post("/api/account/official-bots/sync")
+      .`then`()
+      .statusCode(204)

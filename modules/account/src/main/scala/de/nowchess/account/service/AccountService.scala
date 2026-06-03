@@ -206,6 +206,17 @@ class AccountService:
     officialBotAccountRepository.persist(bot)
     Right(bot)
 
+  @Transactional
+  def syncOfficialBots(botNames: List[String]): Unit =
+    botNames.foreach { name =>
+      if officialBotAccountRepository.findByName(name).isEmpty then
+        val bot = new OfficialBotAccount()
+        bot.name = name
+        bot.createdAt = Instant.now()
+        officialBotAccountRepository.persist(bot)
+        log.infof("Auto-registered official bot: %s", name)
+    }
+
   def getOfficialBotAccounts(): List[OfficialBotAccount] =
     officialBotAccountRepository.findAll()
 

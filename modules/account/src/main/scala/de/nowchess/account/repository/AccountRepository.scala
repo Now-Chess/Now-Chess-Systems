@@ -89,6 +89,13 @@ class OfficialBotAccountRepository:
   def findAll(): List[OfficialBotAccount] =
     em.createQuery("FROM OfficialBotAccount", classOf[OfficialBotAccount]).getResultList.asScala.toList
 
+  def findByName(name: String): Option[OfficialBotAccount] =
+    em.createQuery("FROM OfficialBotAccount WHERE name = :name", classOf[OfficialBotAccount])
+      .setParameter("name", name)
+      .getResultList
+      .asScala
+      .headOption
+
   def persist(bot: OfficialBotAccount): OfficialBotAccount =
     em.persist(bot)
     bot

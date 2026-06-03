@@ -49,3 +49,5 @@ case class RotatedTokenDto(token: String)
 case class OfficialBotAccountDto(id: String, name: String, rating: Int, createdAt: String)
 
 case class OfficialChallengeResponse(gameId: String, botName: String, difficulty: Int)
+
+case class SyncOfficialBotsRequest(bots: List[String])

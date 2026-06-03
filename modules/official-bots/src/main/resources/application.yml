@@ -5,6 +5,9 @@ quarkus:
     name: nowchess-official-bots
   redis:
     hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
+  rest-client:
+    account-service:
+      url: http://localhost:8083
   smallrye-jwt:
     enabled: true
   log:
@@ -15,6 +18,8 @@ nowchess:
     host: localhost
     port: 6379
     prefix: nowchess
+  internal:
+    secret: 123abc
 
 "%deployed":
   quarkus:
@@ -28,8 +33,13 @@ nowchess:
       exporter:
         otlp:
           endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
+    rest-client:
+      account-service:
+        url: ${ACCOUNT_SERVICE_URL}
   nowchess:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       prefix: ${REDIS_PREFIX:nowchess}
+    internal:
+      secret: ${INTERNAL_SECRET}

@@ -4,6 +4,7 @@ import de.nowchess.account.domain.{BotAccount, OfficialBotAccount, UserAccount}
 import de.nowchess.account.dto.*
 import de.nowchess.account.error.AccountError
 import de.nowchess.account.service.AccountService
+import de.nowchess.security.InternalOnly
 import jakarta.annotation.security.RolesAllowed
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
@@ -178,6 +179,13 @@ class AccountResource:
       token = bot.token,
       createdAt = bot.createdAt.toString,
     )
+
+  @POST
+  @Path("/official-bots/sync")
+  @InternalOnly
+  def syncOfficialBots(req: SyncOfficialBotsRequest): Response =
+    accountService.syncOfficialBots(req.bots)
+    Response.noContent().build()
 
   @GET
   @Path("/official-bots")

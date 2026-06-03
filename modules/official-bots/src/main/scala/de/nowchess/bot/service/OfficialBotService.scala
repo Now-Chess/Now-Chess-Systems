@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.bot.BotController
 import de.nowchess.bot.BotDifficulty
+import de.nowchess.bot.client.{AccountServiceClient, SyncOfficialBotsRequest}
 import de.nowchess.bot.config.RedisConfig
 import de.nowchess.io.fen.FenParser
 import io.micrometer.core.instrument.MeterRegistry
@@ -13,6 +14,8 @@ import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.event.Observes
 import jakarta.inject.Inject
+import org.eclipse.microprofile.rest.client.inject.RestClient
+import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
 import java.util.function.Consumer
 import java.util.concurrent.TimeUnit
@@ -20,12 +23,18 @@ import java.util.concurrent.TimeUnit
 @ApplicationScoped
 class OfficialBotService:
 
+  private val log = Logger.getLogger(classOf[OfficialBotService])
+
   // scalafix:off DisableSyntax.var
   @Inject var redis: RedisDataSource       = uninitialized
   @Inject var redisConfig: RedisConfig     = uninitialized
   @Inject var objectMapper: ObjectMapper   = uninitialized
   @Inject var botController: BotController = uninitialized
   @Inject var meterRegistry: MeterRegistry = uninitialized
+
+  @Inject
+  @RestClient
+  var accountServiceClient: AccountServiceClient = uninitialized
   // scalafix:on DisableSyntax.var
 
   private val terminalStatuses =
@@ -39,7 +48,10 @@ class OfficialBotService:
     }
 
   def onStart(@Observes event: StartupEvent): Unit =
-    BotController.listBots.foreach(subscribeToEventChannel)
+    val bots = BotController.listBots
+    try accountServiceClient.syncBots(SyncOfficialBotsRequest(bots))
+    catch case ex: Exception => log.errorf(ex, "Failed to auto-register official bots with account service")
+    bots.foreach(subscribeToEventChannel)
 
   private def subscribeToEventChannel(botName: String): Unit =
     val handler: Consumer[String] = msg => handleBotEvent(botName, msg)
