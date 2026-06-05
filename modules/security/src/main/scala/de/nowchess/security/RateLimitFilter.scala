@@ -38,7 +38,8 @@ class RateLimitFilter extends ContainerRequestFilter:
   override def filter(ctx: ContainerRequestContext): Unit =
     val ip = clientIp(ctx)
     if enabled && !isGatlingRequest(ctx) && isOverLimit(ip) then
-      log.warnf("Rate limit exceeded for IP %s on %s %s", ip, ctx.getMethod, ctx.getUriInfo.getPath)
+      val path = Option(ctx.getUriInfo).map(_.getPath).getOrElse("-")
+      log.warnf("Rate limit exceeded for IP %s on %s %s", ip, ctx.getMethod, path)
       ctx.abortWith(Response.status(429).build())
 
   private def isGatlingRequest(ctx: ContainerRequestContext): Boolean =
