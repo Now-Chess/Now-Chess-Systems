@@ -122,5 +122,6 @@ Call `mcp__youtrack__link_issues` for each confirmed link.
 
 ## Step 8 — Cleanup
 
-Call `ExitWorktree` to delete the worktree.
+Call `ExitWorktree` with `discard_changes: true` to delete the worktree.
+(Branch was pushed in step 6 — commits are safe on remote; `discard_changes: true` bypasses the local-ahead guard.)
 Report: branch pushed, ticket commented, links created, worktree deleted, done.

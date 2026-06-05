@@ -83,5 +83,6 @@ Files changed:
 
 ## Step 8 — Cleanup
 
-Call `ExitWorktree` to delete the worktree.
+Call `ExitWorktree` with `discard_changes: true` to delete the worktree.
+(Branch was pushed in step 6 — commits are safe on remote; `discard_changes: true` bypasses the local-ahead guard.)
 Report: branch pushed, ticket commented, worktree deleted, done.
