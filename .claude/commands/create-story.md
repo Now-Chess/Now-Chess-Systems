@@ -66,10 +66,17 @@ Incorporate feedback. Repeat until user approves.
 
 ## Step 5 — Determine Project
 
+> **Project routing rules (always apply these):**
+> - Backend code (game engine, bots, API, services, coordinator) → `NCS`
+> - Frontend code (UI, UX, web app) → `NCWF`
+> - Infrastructure (Kubernetes, pipelines, CI/CD, DB setup, cloud infra) → `NCI`
+> - If ambiguous, ask the user.
+
 - Frontend / UI / UX → project: `NCWF`
 - Backend / coordinator / systems / bot / engine → project: `NCS`
+- Kubernetes, pipelines, CI/CD, DB setup, infrastructure → project: `NCI`
 
-If ambiguous, ask the user.
+If still ambiguous, ask the user.
 
 ## Step 6 — Create Issue
 
@@ -79,7 +86,27 @@ Call `mcp__youtrack__create_issue` with:
 - `description`: full formatted story from Step 3 (Markdown)
 - `type`: `Feature` (or `Task` if purely technical with no user-facing value)
 
-## Step 7 — Report
+## Step 7 — Link Issues
+
+After creation, **automatically** ask the user (use `AskUserQuestion` if interactive, otherwise infer from context):
+
+> Are there related issues to link? (skip if none)
+
+Collect any issue IDs the user mentions. For each, determine the correct relation and call `mcp__youtrack__link_issues`:
+
+| Situation | Relation to use |
+|-----------|----------------|
+| This story must be done before another | `blocks` |
+| Another story must be done before this | `is blocked by` |
+| Stories share domain or are related | `relates to` |
+| This is a child of an epic/story | `subtask of` |
+| This is a parent grouping subtasks | `parent for` |
+| This depends on another ticket's output | `depends on` |
+
+If the user mentions an issue in the story description or implementation notes (e.g. "see NCS-42", "after NCS-12 is done"), auto-detect and suggest linking it — confirm before creating the link.
+
+## Step 8 — Report
 
 Display the created issue ID and URL.
+List any links created (relation type + linked issue ID).
 Ask if a linked sub-task or implementation ticket is needed.

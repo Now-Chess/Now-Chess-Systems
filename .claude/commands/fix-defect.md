@@ -39,12 +39,16 @@ After root cause confirmed, assess scope:
 To create subtasks:
 1. Break fix into discrete, independently-completable tasks (e.g. "Fix validation in RuleSet", "Add regression test for castling edge case", "Update FenParser to handle X").
 2. For each subtask call `mcp__youtrack__create_issue` with:
-   - `project`: same project as parent ticket
+   - `project`: based on subtask content — do **not** inherit from parent. Backend code → `NCS`; frontend/UI → `NCWF`; Kubernetes/pipelines/CI-CD/DB setup/infrastructure → `NCI`. If ambiguous, ask user.
    - `summary`: concise action-oriented title
    - `type`: `Task`
    - `description`: what to do and why
 3. Call `mcp__youtrack__link_issues` to link each subtask to `$ARGUMENTS` with relation `subtask of`.
-4. List created subtask IDs to user.
+4. Check if the ticket description or comments mention other issue IDs. For each mentioned ID, suggest a link and confirm with user:
+   - Fix depends on another fix finishing first → `is blocked by`
+   - This fix blocks another ticket → `blocks`
+   - Logically related but independent → `relates to`
+5. List created subtask IDs and any additional links to user.
 
 Then proceed to Step 4, implementing subtasks in order.
 
@@ -101,7 +105,22 @@ Files changed:
 - <file2>
 ```
 
+## Step 7b — Additional Links
+
+After commenting, ask the user if `$ARGUMENTS` should be linked to any other issues not already linked:
+
+| Situation | Relation |
+|-----------|---------|
+| This fix blocks another open ticket | `blocks` |
+| Another ticket must ship first | `is blocked by` |
+| Related defect or story | `relates to` |
+| Duplicate of another defect | `duplicates` |
+
+Scan the ticket description and comments for any issue IDs that were mentioned but not yet linked. Suggest those automatically.
+
+Call `mcp__youtrack__link_issues` for each confirmed link.
+
 ## Step 8 — Cleanup
 
 Call `ExitWorktree` to delete the worktree.
-Report: branch pushed, ticket commented, worktree deleted, done.
+Report: branch pushed, ticket commented, links created, worktree deleted, done.
