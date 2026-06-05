@@ -53,7 +53,10 @@ Then proceed to Step 4, implementing subtasks in order.
 1. Implement fix (use `scala-implementer` agent for non-trivial changes; inline edits for small ones).
 2. Run `./compile` — must be green.
 3. Run `./test` — must be green.
-4. Run `./lint` — must be green.
+4. Run `./gradlew spotlessScalaApply` — **blocking, foreground only**. Wait for completion before continuing.
+5. Run `./lint` — **blocking, foreground only** (never `run_in_background`). Wait for exit code 0. Must be green.
+   - If lint fails, fix all issues and re-run until exit code 0.
+   - **Do NOT proceed to Step 5 until `./lint` has completed and returned exit code 0.**
 If any step fails, iterate until all pass.
 
 ## Step 5 — Review
