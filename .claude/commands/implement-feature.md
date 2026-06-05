@@ -44,6 +44,19 @@ If any step fails, iterate until all pass.
 Spawn `cavecrew-reviewer` on the full diff.
 Display findings grouped by severity.
 
+## Step 5b — Apply Review Findings
+
+If the review produced any findings (any severity):
+1. Implement all agreed fixes.
+2. Run `./compile` — must be green.
+3. Run `./test` — must be green.
+4. Run `./gradlew spotlessScalaApply` — **blocking, foreground only**. Wait for completion.
+5. Run `./lint` — **blocking, foreground only**. Wait for exit code 0.
+   - If lint fails, fix all issues and re-run until exit code 0.
+6. Re-spawn `cavecrew-reviewer` on the updated diff to confirm all findings are resolved.
+
+Repeat until review is clean or user explicitly accepts remaining findings.
+
 ## Step 6 — Confirm + Push
 
 Show summary: ticket, branch, files changed, review findings.
