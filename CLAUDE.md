@@ -57,6 +57,14 @@ Use consistently.
 - **Tests are the spec.** Don't modify to pass. Fix requirements/code. Update only if requirements change.
 - Never read build folders. Ask permission if needed.
 - Keep file current with decisions + conventions.
+- **NativeReflectionConfig (mandatory):** Every new type (class, case class, enum, sealed trait — anything serialized) must be registered in the `NativeReflectionConfig` of **every module that interacts with it**. Configs live at:
+  - `modules/account/src/main/scala/de/nowchess/account/config/NativeReflectionConfig.scala`
+  - `modules/coordinator/src/main/scala/de/nowchess/coordinator/config/NativeReflectionConfig.scala`
+  - `modules/core/src/main/scala/de/nowchess/chess/config/NativeReflectionConfig.scala`
+  - `modules/io/src/main/scala/de/nowchess/io/service/config/NativeReflectionConfig.scala`
+  - `modules/rule/src/main/scala/de/nowchess/rules/config/NativeReflectionConfig.scala`
+  - `modules/store/src/main/scala/de/nowchess/store/config/NativeReflectionConfig.scala`
+  - `modules/ws/src/main/scala/de/nowchess/ws/config/NativeReflectionConfig.scala`
 
 ---
 
