@@ -12,10 +12,13 @@ import de.nowchess.account.domain.{
   UserAccount,
 }
 import de.nowchess.account.dto.*
+import de.nowchess.api.event.{EventEnvelope, EventType}
 import io.quarkus.runtime.annotations.RegisterForReflection
 
 @RegisterForReflection(
   targets = Array(
+    classOf[EventEnvelope],
+    classOf[EventType],
     classOf[UserAccount],
     classOf[BotAccount],
     classOf[OfficialBotAccount],

@@ -50,6 +50,8 @@ dependencies {
         }
     }
     implementation("com.fasterxml.jackson.core:jackson-databind:${versions["JACKSON"]!!}")
+    implementation("com.fasterxml.jackson.module:jackson-module-scala_3:${versions["JACKSON_SCALA"]!!}")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${versions["JACKSON"]!!}")
 
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")

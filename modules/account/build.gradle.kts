@@ -45,6 +45,7 @@ dependencies {
         }
     }
 
+    implementation(project(":modules:api"))
     implementation(project(":modules:security"))
 
     implementation(platform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}"))
