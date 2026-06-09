@@ -1,6 +1,6 @@
 package de.nowchess.account.config
 
-import de.nowchess.account.client.{CoreCreateGameRequest, CoreGameResponse, CorePlayerInfo, CoreTimeControl}
+import de.nowchess.account.client.{CoreCreateGameRequest, CorePlayerInfo, CoreTimeControl}
 import de.nowchess.account.domain.{
   BotAccount,
   Challenge,
@@ -53,7 +53,6 @@ import io.quarkus.runtime.annotations.RegisterForReflection
     classOf[CorePlayerInfo],
     classOf[CoreTimeControl],
     classOf[CoreCreateGameRequest],
-    classOf[CoreGameResponse],
     classOf[OfficialChallengeResponse],
     classOf[GameCreationRequestDto],
     classOf[GameCreationResponseDto],
