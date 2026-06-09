@@ -1,0 +1,59 @@
+quarkus:
+  http:
+    port: 8088
+  application:
+    name: nowchess-tournament
+  redis:
+    hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
+  rest-client:
+    core-service:
+      url: http://localhost:8080
+  datasource:
+    db-kind: h2
+    username: sa
+    password: ""
+    jdbc:
+      url: jdbc:h2:mem:nowchess-tournament;DB_CLOSE_DELAY=-1
+  hibernate-orm:
+    schema-management:
+      strategy: drop-and-create
+  smallrye-jwt:
+    enabled: true
+
+nowchess:
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    prefix: ${REDIS_PREFIX:nowchess}
+  internal:
+    secret: ${INTERNAL_SECRET:123abc}
+
+mp:
+  jwt:
+    verify:
+      publickey:
+        location: keys/public.pem
+      issuer: nowchess
+
+"%deployed":
+  quarkus:
+    datasource:
+      db-kind: postgresql
+      username: ${DB_USER:nowchess}
+      password: ${DB_PASSWORD:nowchess}
+      jdbc:
+        url: ${DB_URL:jdbc:postgresql://localhost:5432/nowchess}
+    hibernate-orm:
+      schema-management:
+        strategy: update
+
+"%test":
+  quarkus:
+    datasource:
+      jdbc:
+        url: jdbc:h2:mem:nowchess-tournament;DB_CLOSE_DELAY=-1
+    hibernate-orm:
+      schema-management:
+        strategy: drop-and-create
+    arc:
+      exclude-types: de.nowchess.tournament.redis.GameResultStreamListener

@@ -46,7 +46,7 @@ case class BotAccountWithTokenDto(id: String, name: String, rating: Int, token: 
 
 case class RotatedTokenDto(token: String)
 
-case class OfficialBotAccountDto(id: String, name: String, rating: Int, createdAt: String)
+case class OfficialBotAccountDto(id: String, name: String, rating: Int, createdAt: String, token: Option[String] = None)
 
 case class OfficialChallengeResponse(gameId: String, botName: String, difficulty: Int)
 

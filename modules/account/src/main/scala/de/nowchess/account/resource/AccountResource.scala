@@ -199,7 +199,7 @@ class AccountResource:
   def createOfficialBot(req: CreateBotAccountRequest): Response =
     accountService.createOfficialBotAccount(req.name) match
       case Right(bot) =>
-        Response.status(Response.Status.CREATED).entity(toOfficialBotDto(bot)).build()
+        Response.status(Response.Status.CREATED).entity(toOfficialBotDtoWithToken(bot)).build()
       case Left(error) =>
         Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(ErrorDto(error.message)).build()
 
@@ -218,4 +218,13 @@ class AccountResource:
       name = bot.name,
       rating = bot.rating,
       createdAt = bot.createdAt.toString,
+    )
+
+  private def toOfficialBotDtoWithToken(bot: OfficialBotAccount): OfficialBotAccountDto =
+    OfficialBotAccountDto(
+      id = bot.id.toString,
+      name = bot.name,
+      rating = bot.rating,
+      createdAt = bot.createdAt.toString,
+      token = Some(bot.token),
     )

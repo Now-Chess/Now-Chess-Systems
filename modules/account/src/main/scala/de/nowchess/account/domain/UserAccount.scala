@@ -51,7 +51,7 @@ class BotAccount extends PanacheEntityBase:
   @JoinColumn(name = "owner_id", nullable = false)
   var owner: UserAccount = uninitialized
 
-  @Column(unique = true, nullable = false, length = 256)
+  @Column(unique = true, nullable = false, length = 1024)
   var token: String = uninitialized
 
   var rating: Int = 1500
@@ -75,4 +75,7 @@ class OfficialBotAccount extends PanacheEntityBase:
   var rating: Int = 1500
 
   var createdAt: Instant = uninitialized
+
+  @Column(length = 1024)
+  var token: String = uninitialized
   // scalafix:on

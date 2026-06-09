@@ -25,6 +25,7 @@ import de.nowchess.chess.observer.*
 import de.nowchess.chess.redis.GameRedisSubscriberManager
 import de.nowchess.chess.registry.{GameEntry, GameRegistry}
 import de.nowchess.security.InternalOnly
+import jakarta.annotation.security.PermitAll
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.ws.rs.*
@@ -178,6 +179,32 @@ class GameResource:
       mode.toString,
     )
     created(GameDtoMapper.toGameFullDto(entry, ioClient))
+
+  // Player-facing game creation for "play vs bot". Unlike createGame this is not
+  // internal-only: a logged-in (or anonymous) player creates the game directly,
+  // and core notifies the official-bots service to play the bot side.
+  @POST
+  @Path("/vs-bot")
+  @PermitAll
+  @Consumes(Array(MediaType.APPLICATION_JSON))
+  @Produces(Array(MediaType.APPLICATION_JSON))
+  def createBotGame(body: CreateGameRequestDto): Response =
+    val req   = Option(body).getOrElse(CreateGameRequestDto(None, None, None, None))
+    val white = playerInfoFrom(req.white, DefaultWhite)
+    val black = playerInfoFrom(req.black, DefaultBlack)
+    val tc    = toTimeControl(req.timeControl)
+    val entry = newEntry(GameContext.initial, white, black, tc, GameMode.Open)
+    registry.store(entry)
+    subscriberManager.subscribeGame(entry.gameId)
+    notifyBotSide(entry)
+    log.infof("Bot game %s created — white=%s black=%s", entry.gameId, white.displayName, black.displayName)
+    created(GameDtoMapper.toGameFullDto(entry, ioClient))
+
+  private def notifyBotSide(entry: GameEntry): Unit =
+    if entry.black.id.value.startsWith("bot-") then
+      subscriberManager.publishBotGameStart(entry.gameId, entry.black.id.value, "black")
+    else if entry.white.id.value.startsWith("bot-") then
+      subscriberManager.publishBotGameStart(entry.gameId, entry.white.id.value, "white")
 
   @GET
   @Path("/{gameId}")

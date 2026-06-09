@@ -49,3 +49,8 @@ graphify-out/
 /jacoco-reporter/.venv/
 /.claude/settings.local.json
 /.claude/worktrees/
+modules/tournament/src/main/resources/keys/dev-public.pem
+modules/account/src/main/resources/keys/dev-private.pem
+modules/account/src/main/resources/keys/dev-public.pem
+modules/core/src/main/resources/keys/dev-public.pem
+*.hprof

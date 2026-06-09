@@ -153,9 +153,10 @@ class AccountService:
           val bot = new BotAccount()
           bot.name = botName
           bot.owner = owner
-          bot.token = generateBotToken(bot.id)
+          bot.token = UUID.randomUUID().toString
           bot.createdAt = Instant.now()
           botAccountRepository.persist(bot)
+          bot.token = generateBotToken(bot.id, bot.name)
           log.infof("Bot account %s created for owner %s", botName, ownerId.toString)
           Right(bot)
 
@@ -194,7 +195,7 @@ class AccountService:
       case Some(bot) =>
         if bot.owner.id != ownerId then Left(AccountError.NotAuthorized)
         else
-          bot.token = generateBotToken(botId)
+          bot.token = generateBotToken(botId, bot.name)
           botAccountRepository.persist(bot)
           Right(bot)
 
@@ -203,6 +204,8 @@ class AccountService:
     val bot = new OfficialBotAccount()
     bot.name = botName
     bot.createdAt = Instant.now()
+    officialBotAccountRepository.persist(bot)
+    bot.token = generateBotToken(bot.id, bot.name)
     officialBotAccountRepository.persist(bot)
     Right(bot)
 
@@ -213,6 +216,8 @@ class AccountService:
         val bot = new OfficialBotAccount()
         bot.name = name
         bot.createdAt = Instant.now()
+        officialBotAccountRepository.persist(bot)
+        bot.token = generateBotToken(bot.id, bot.name)
         officialBotAccountRepository.persist(bot)
         log.infof("Auto-registered official bot: %s", name)
     }
@@ -228,12 +233,13 @@ class AccountService:
         officialBotAccountRepository.delete(botId)
         Right(())
 
-  private def generateBotToken(botId: UUID): String =
+  private def generateBotToken(botId: UUID, botName: String): String =
     Jwt
       .issuer("nowchess")
       .subject(botId.toString)
       .expiresAt(Long.MaxValue)
       .claim("type", "bot")
+      .claim("name", botName)
       .sign()
 
   @Transactional
