@@ -42,19 +42,26 @@ class EventPublisher:
     val payload = objectMapper.createObjectNode()
     payload.put("challengeId", challengeId)
     payload.put("challengerName", challengerName)
-    publish(s"${redisConfig.prefix}:user:$destUserId:events", EventType.ChallengeCreated, payload)
+    publishToUserStream(destUserId, EventType.ChallengeCreated, payload)
 
   def publishChallengeAccepted(challengerId: String, challengeId: String, gameId: String): Unit =
     val payload = objectMapper.createObjectNode()
     payload.put("challengeId", challengeId)
     payload.put("gameId", gameId)
-    publish(s"${redisConfig.prefix}:user:$challengerId:events", EventType.ChallengeAccepted, payload)
+    publishToUserStream(challengerId, EventType.ChallengeAccepted, payload)
 
-  private def publish(
-      channel: String,
+  private def publishToUserStream(
+      userId: String,
       eventType: EventType,
       payload: com.fasterxml.jackson.databind.node.ObjectNode,
   ): Unit =
     val envelope = EventEnvelope.of(eventType, payload)
-    redis.pubsub(classOf[String]).publish(channel, objectMapper.writeValueAsString(envelope))
+    val json     = objectMapper.writeValueAsString(envelope)
+    redis
+      .stream(classOf[String])
+      .xadd(
+        s"${redisConfig.prefix}:user:$userId:events:stream",
+        new XAddArgs().maxlen(maxStreamLen).nearlyExactTrimming(),
+        Map("data" -> json).asJava,
+      )
     ()
