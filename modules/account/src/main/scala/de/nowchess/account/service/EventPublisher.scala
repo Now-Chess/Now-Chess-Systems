@@ -36,7 +36,6 @@ class EventPublisher:
         new XAddArgs().maxlen(maxStreamLen).nearlyExactTrimming(),
         Map("data" -> json).asJava,
       )
-    redis.pubsub(classOf[String]).publish(s"${redisConfig.prefix}:bot:$botId:events", json)
     ()
 
   def publishChallengeCreated(destUserId: String, challengeId: String, challengerName: String): Unit =
