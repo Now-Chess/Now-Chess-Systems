@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import de.nowchess.account.config.RedisConfig
 import de.nowchess.api.event.{EventEnvelope, EventType}
 import io.quarkus.redis.datasource.RedisDataSource
+import io.quarkus.redis.datasource.stream.XAddArgs
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import scala.compiletime.uninitialized
+import scala.jdk.CollectionConverters.*
 
 @ApplicationScoped
 class EventPublisher:
@@ -17,13 +19,25 @@ class EventPublisher:
   @Inject var objectMapper: ObjectMapper = uninitialized
   // scalafix:on DisableSyntax.var
 
+  private val maxStreamLen = 1000L
+
   def publishGameStart(botId: String, gameId: String, playingAs: String, difficulty: Int, botAccountId: String): Unit =
     val payload = objectMapper.createObjectNode()
     payload.put("gameId", gameId)
     payload.put("playingAs", playingAs)
     payload.put("difficulty", difficulty)
     payload.put("botAccountId", botAccountId)
-    publish(s"${redisConfig.prefix}:bot:$botId:events", EventType.GameStart, payload)
+    val envelope = EventEnvelope.of(EventType.BotGameStart, payload)
+    val json     = objectMapper.writeValueAsString(envelope)
+    redis
+      .stream(classOf[String])
+      .xadd(
+        s"${redisConfig.prefix}:bot:$botId:events:stream",
+        new XAddArgs().maxlen(maxStreamLen).nearlyExactTrimming(),
+        Map("data" -> json).asJava,
+      )
+    redis.pubsub(classOf[String]).publish(s"${redisConfig.prefix}:bot:$botId:events", json)
+    ()
 
   def publishChallengeCreated(destUserId: String, challengeId: String, challengerName: String): Unit =
     val payload = objectMapper.createObjectNode()

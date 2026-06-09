@@ -34,3 +34,5 @@ nowchess:
     secret: test-secret
     auth:
       enabled: false
+  game-creation-stream:
+    enabled: false

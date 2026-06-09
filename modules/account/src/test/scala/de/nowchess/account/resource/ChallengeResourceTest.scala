@@ -1,11 +1,11 @@
 package de.nowchess.account.resource
 
-import de.nowchess.account.client.{CoreGameClient, CoreGameResponse}
+import de.nowchess.account.client.GameCreationStreamClient
+import de.nowchess.api.dto.GameCreationResponseDto
 import io.quarkus.test.InjectMock
 import io.quarkus.test.junit.QuarkusTest
 import io.restassured.RestAssured
 import io.restassured.http.ContentType
-import org.eclipse.microprofile.rest.client.inject.RestClient
 import org.hamcrest.Matchers.*
 import org.junit.jupiter.api.{BeforeEach, Test}
 import org.mockito.{ArgumentMatchers, Mockito}
@@ -14,14 +14,15 @@ import org.mockito.{ArgumentMatchers, Mockito}
 class ChallengeResourceTest:
 
   @InjectMock
-  @RestClient
   // scalafix:off DisableSyntax.var
-  var coreGameClient: CoreGameClient = scala.compiletime.uninitialized
+  var gameCreationClient: GameCreationStreamClient = scala.compiletime.uninitialized
   // scalafix:on
 
   @BeforeEach
   def setup(): Unit =
-    Mockito.when(coreGameClient.createGame(ArgumentMatchers.any())).thenReturn(CoreGameResponse("test-game-id"))
+    Mockito
+      .when(gameCreationClient.createGame(ArgumentMatchers.any()))
+      .thenReturn(GameCreationResponseDto(Some("test-game-id")))
 
   private def givenRequest() = RestAssured.`given`().contentType(ContentType.JSON)
 

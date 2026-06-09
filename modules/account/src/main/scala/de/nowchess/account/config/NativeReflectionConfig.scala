@@ -12,6 +12,12 @@ import de.nowchess.account.domain.{
   UserAccount,
 }
 import de.nowchess.account.dto.*
+import de.nowchess.api.dto.{
+  GameCreationRequestDto,
+  GameCreationResponseDto,
+  PlayerInfoDto as ApiPlayerInfoDto,
+  TimeControlDto as ApiTimeControlDto,
+}
 import de.nowchess.api.event.{EventEnvelope, EventType}
 import io.quarkus.runtime.annotations.RegisterForReflection
 
@@ -49,6 +55,10 @@ import io.quarkus.runtime.annotations.RegisterForReflection
     classOf[CoreCreateGameRequest],
     classOf[CoreGameResponse],
     classOf[OfficialChallengeResponse],
+    classOf[GameCreationRequestDto],
+    classOf[GameCreationResponseDto],
+    classOf[ApiPlayerInfoDto],
+    classOf[ApiTimeControlDto],
   ),
 )
 class NativeReflectionConfig

@@ -138,6 +138,8 @@ tasks.withType(org.gradle.api.tasks.scala.ScalaCompile::class).configureEach {
             exclude("**/resource/GameDtoMapper.scala")
             exclude("**/resource/GameResource.scala")
             exclude("**/redis/GameRedis*.scala")
+            exclude("**/redis/GameCreationStreamListener.scala")
+            exclude("**/service/GameCreationService.scala")
         }
     }
 }

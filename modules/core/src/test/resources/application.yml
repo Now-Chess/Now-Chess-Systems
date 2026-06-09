@@ -18,6 +18,8 @@ nowchess:
       enabled: false
   coordinator:
     enabled: false
+  game-creation-stream:
+    enabled: false
   redis:
     host: localhost
     port: 6379

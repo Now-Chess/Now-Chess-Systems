@@ -1,6 +1,6 @@
 package de.nowchess.account.resource
 
-import de.nowchess.account.client.{CoreCreateGameRequest, CoreGameClient, CorePlayerInfo}
+import de.nowchess.account.client.{CoreCreateGameRequest, CorePlayerInfo, GameCreationStreamClient}
 import de.nowchess.account.dto.{ErrorDto, OfficialChallengeResponse}
 import de.nowchess.account.service.{AccountService, EventPublisher}
 import jakarta.annotation.security.RolesAllowed
@@ -9,7 +9,6 @@ import jakarta.inject.Inject
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.{MediaType, Response}
 import org.eclipse.microprofile.jwt.JsonWebToken
-import org.eclipse.microprofile.rest.client.inject.RestClient
 import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
 
@@ -29,8 +28,7 @@ class OfficialChallengeResource:
   @Inject var botEventPublisher: EventPublisher = uninitialized
 
   @Inject
-  @RestClient
-  var coreGameClient: CoreGameClient = uninitialized
+  var gameCreationClient: GameCreationStreamClient = uninitialized
   // scalafix:on
 
   private val log = Logger.getLogger(classOf[OfficialChallengeResource])
@@ -72,7 +70,7 @@ class OfficialChallengeResource:
                   (CorePlayerInfo(bot.id.toString, bot.name), CorePlayerInfo(user.id.toString, user.username), "white")
               val req = CoreCreateGameRequest(Some(white), Some(black), None, Some("Authenticated"))
               val gameId =
-                try Right(coreGameClient.createGame(req).gameId)
+                try gameCreationClient.createGame(req).gameId.toRight("Failed to create game")
                 catch case _ => Left("Failed to create game")
               gameId match
                 case Left(err) =>

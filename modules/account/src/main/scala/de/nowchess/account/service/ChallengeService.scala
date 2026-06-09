@@ -1,12 +1,6 @@
 package de.nowchess.account.service
 
-import de.nowchess.account.client.{
-  CoreCreateGameRequest,
-  CoreGameClient,
-  CoreGameResponse,
-  CorePlayerInfo,
-  CoreTimeControl,
-}
+import de.nowchess.account.client.{CoreCreateGameRequest, CorePlayerInfo, CoreTimeControl, GameCreationStreamClient}
 import de.nowchess.account.domain.{Challenge, ChallengeColor, ChallengeStatus, DeclineReason}
 import de.nowchess.account.dto.{
   ChallengeDto,
@@ -23,7 +17,6 @@ import jakarta.annotation.PostConstruct
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
-import org.eclipse.microprofile.rest.client.inject.RestClient
 import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
 
@@ -45,8 +38,7 @@ class ChallengeService:
   var challengeRepository: ChallengeRepository = uninitialized
 
   @Inject
-  @RestClient
-  var coreGameClient: CoreGameClient = uninitialized
+  var gameCreationClient: GameCreationStreamClient = uninitialized
 
   @Inject
   var eventPublisher: EventPublisher = uninitialized
@@ -187,7 +179,7 @@ class ChallengeService:
       val (white, black) = assignColors(challenge)
       val tc             = buildTimeControl(challenge)
       val req            = CoreCreateGameRequest(Some(white), Some(black), tc, Some("Authenticated"))
-      Right(coreGameClient.createGame(req).gameId)
+      gameCreationClient.createGame(req).gameId.toRight(ChallengeError.GameCreationFailed)
     catch case _ => Left(ChallengeError.GameCreationFailed)
 
   private def assignColors(challenge: Challenge): (CorePlayerInfo, CorePlayerInfo) =
