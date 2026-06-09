@@ -164,3 +164,23 @@
 
 * **dependencies:** correct Jackson databind dependency group ID ([008d72d](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/008d72d826707c04205bac7de25170fae5fed861))
 * IO microservice ([#38](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/38)) ([a386f57](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/a386f57c21d34ead6cc6f92836c52b714597e289))
+##  (2026-06-09)
+
+### Features
+
+* **api:** define shared EventEnvelope and EventType for Redis EventBus ([#61](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/61)) ([595c172](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/595c172900da99de367c274488c3ccbeaef55882))
+* **dto:** update GameWritebackEventDto for JSON deserialization and remove unused mixin ([576e3fe](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/576e3fea9bf1082549ea53efd3288474c42be93d))
+* **events:** migrate game-creation and bot flows to Redis Streams NCS-89 ([#62](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/62)) ([a24924c](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/a24924c23057db3d700a75dbc4333557789cd991))
+* NCS-13 Implement Threefold Repetition ([#31](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/31)) ([767d305](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/767d3051a76c266050b6335774d66e2db2273c16))
+* NCS-14 implemented insufficient moves rule ([#30](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/30)) ([b0399a4](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/b0399a4e489950083066c9538df9a84dcc7a4613))
+* NCS-21 Write Scripts to automate certain tasks ([#15](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/15)) ([8051871](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/80518719d536a087d339fe02530825dc07f8b388))
+* NCS-25 Add linters to keep quality up ([#27](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/27)) ([fd4e67d](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/fd4e67d4f782a7e955822d90cb909d0a81676fb2))
+* NCS-37 Quarkus integration ([#35](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/35)) ([f088c4e](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/f088c4e9ffcc498d3d1b6f01e8f50042d5830d55))
+* NCS-41 Bot Platform ([#33](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/33)) ([8744bee](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/8744bee2dd20966dae90a09c21a43d5b06f59e00))
+* **rule:** Rules as a microservice ([#39](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/39)) ([093134d](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/093134d36c6844ba02a36a28d5d044f09291cd1d))
+* true-microservices ([#40](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/40)) ([5909242](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/590924254e8a2754de661a57a03e43f89ceb6299))
+
+### Bug Fixes
+
+* **dependencies:** correct Jackson databind dependency group ID ([008d72d](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/008d72d826707c04205bac7de25170fae5fed861))
+* IO microservice ([#38](https://git.janis-eccarius.de/NowChess/NowChessSystems/issues/38)) ([a386f57](https://git.janis-eccarius.de/NowChess/NowChessSystems/commit/a386f57c21d34ead6cc6f92836c52b714597e289))
