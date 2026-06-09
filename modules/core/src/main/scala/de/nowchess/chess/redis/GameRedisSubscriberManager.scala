@@ -93,6 +93,7 @@ class GameRedisSubscriberManager:
       writebackFn,
       ioClient,
       unsubscribeGame,
+      redisConfig.prefix,
     )
     s2cObservers.put(gameId, obs)
     registry.get(gameId).foreach(_.engine.subscribe(obs))

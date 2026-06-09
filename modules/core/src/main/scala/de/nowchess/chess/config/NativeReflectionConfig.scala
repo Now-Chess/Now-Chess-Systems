@@ -2,7 +2,7 @@ package de.nowchess.chess.config
 
 import de.nowchess.api.board.{CastlingRights, Color, File, Piece, PieceType, Rank, Square}
 import de.nowchess.api.dto.*
-import de.nowchess.api.event.{EventEnvelope, EventType}
+import de.nowchess.api.event.{EventEnvelope, EventType, GameOverPayload}
 import de.nowchess.api.game.{DrawReason, GameContext, GameMode, GameResult}
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.chess.registry.GameCacheDto
@@ -18,6 +18,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection
     classOf[GameCreationResponseDto],
     classOf[EventEnvelope],
     classOf[EventType],
+    classOf[GameOverPayload],
     classOf[ErrorEventDto],
     classOf[GameWritebackEventDto],
     classOf[GameFullDto],
