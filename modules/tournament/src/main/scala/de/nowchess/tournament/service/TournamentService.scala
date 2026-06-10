@@ -49,7 +49,7 @@ class TournamentService:
   @Transactional
   def create(createdBy: String, form: CreateTournamentForm): Tournament =
     val t = new Tournament()
-    t.id = scala.util.Random.alphanumeric.take(6).mkString
+    t.id = java.util.UUID.randomUUID().toString.replace("-", "").take(8)
     t.fullName = form.name
     t.nbRounds = form.nbRounds
     t.clockLimit = form.clockLimit
