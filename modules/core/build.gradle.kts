@@ -144,6 +144,23 @@ tasks.withType(org.gradle.api.tasks.scala.ScalaCompile::class).configureEach {
     }
 }
 
+// GraalVM CE javac fails type inference for asyncUnaryCall when request/response types are
+// both different and when the response type appears as a request type elsewhere in the service.
+// Patching the generated stub to add explicit type witnesses is the minimal targeted fix.
+tasks.named("quarkusGenerateCode") {
+    doLast {
+        val grpcDir = file("build/classes/java/quarkus-generated-sources/grpc/de/nowchess/core/proto")
+        grpcDir.walkTopDown().filter { it.name.endsWith("Grpc.java") }.forEach { f ->
+            val original = f.readText()
+            val patched = original.replace(
+                "io.grpc.stub.ClientCalls.asyncUnaryCall(getChannel().newCall(getApplyMoveMethod(), getCallOptions()), request, responseObserver);",
+                "io.grpc.stub.ClientCalls.<de.nowchess.core.proto.ProtoMoveRequest, de.nowchess.core.proto.ProtoGameContext>asyncUnaryCall(getChannel().newCall(getApplyMoveMethod(), getCallOptions()), request, responseObserver);"
+            )
+            if (patched != original) f.writeText(patched)
+        }
+    }
+}
+
 tasks.named("compileScoverageJava").configure {
     dependsOn(tasks.named("quarkusGenerateCode"))
 }
