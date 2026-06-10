@@ -63,7 +63,12 @@ class UserWebSocketResource:
   @OnClose
   def onClose(connection: WebSocketConnection): Unit =
     log.infof("User WebSocket closed — connectionId=%s", connection.id())
-    connections.remove(connection.id())
+    val userIdOpt = Option(connections.remove(connection.id())).map(_._1)
+    userIdOpt.foreach { userId =>
+      Try(redis.stream(classOf[String]).xgroupDestroy(userStreamKey(userId), connection.id())) match
+        case Failure(ex) => log.warnf(ex, "Failed to destroy consumer group for connectionId=%s", connection.id())
+        case Success(_)  => ()
+    }
 
   private def createGroupIfAbsent(userId: String, groupName: String): Unit =
     Try(

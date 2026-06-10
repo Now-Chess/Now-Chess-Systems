@@ -1,0 +1,27 @@
+{
+  "reflection": [
+    { "type": "scala.Tuple1[]" },
+    { "type": "scala.Tuple2[]" },
+    { "type": "scala.Tuple3[]" },
+    { "type": "scala.Tuple4[]" },
+    { "type": "scala.Tuple5[]" },
+    { "type": "scala.Tuple6[]" },
+    { "type": "scala.Tuple7[]" },
+    { "type": "scala.Tuple8[]" },
+    { "type": "scala.Tuple9[]" },
+    { "type": "scala.Tuple10[]" },
+    { "type": "scala.Tuple11[]" },
+    { "type": "scala.Tuple12[]" },
+    { "type": "scala.Tuple13[]" },
+    { "type": "scala.Tuple14[]" },
+    { "type": "scala.Tuple15[]" },
+    { "type": "scala.Tuple16[]" },
+    { "type": "scala.Tuple17[]" },
+    { "type": "scala.Tuple18[]" },
+    { "type": "scala.Tuple19[]" },
+    { "type": "scala.Tuple20[]" },
+    { "type": "scala.Tuple21[]" },
+    { "type": "scala.Tuple22[]" },
+    { "type": "com.fasterxml.jackson.module.scala.introspect.PropertyDescriptor[]" }
+  ]
+}

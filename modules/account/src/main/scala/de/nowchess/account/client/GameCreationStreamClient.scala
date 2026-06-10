@@ -36,7 +36,7 @@ class GameCreationStreamClient:
 
   private val log          = Logger.getLogger(classOf[GameCreationStreamClient])
   private val instanceId   = UUID.randomUUID().toString
-  private val groupName    = s"account-game-creation-$instanceId"
+  private val groupName    = "account-game-creation"
   private val consumerId   = instanceId
   private val maxStreamLen = 1000L
   private val timeout      = Duration.ofSeconds(10)
