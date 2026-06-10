@@ -1,5 +1,6 @@
 package de.nowchess.tournament.config
 
+import de.nowchess.api.dto.GameWritebackEventDto
 import de.nowchess.tournament.client.{CoreCreateGameRequest, CoreGameResponse, CorePlayerInfo, CoreTimeControl}
 import de.nowchess.tournament.domain.{Tournament, TournamentPairing, TournamentParticipant}
 import de.nowchess.tournament.dto.*
@@ -29,6 +30,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection
     classOf[CoreTimeControl],
     classOf[CoreCreateGameRequest],
     classOf[CoreGameResponse],
+    classOf[GameWritebackEventDto],
   ),
 )
 class NativeReflectionConfig
