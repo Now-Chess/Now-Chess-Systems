@@ -1,0 +1,130 @@
+name: Build & Push Analytics Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'modules/analytics/**'
+  workflow_dispatch:
+
+jobs:
+  check-actor:
+    runs-on: ubuntu-latest
+    outputs:
+      allowed: ${{ steps.check.outputs.allowed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "Triggered manually — allowing build"
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+          else
+            COMMIT_AUTHOR=$(git log -1 --format='%an')
+            COMMIT_SHA=$(git log -1 --format='%H')
+            COMMIT_MSG=$(git log -1 --format='%s')
+            echo "Commit: ${COMMIT_SHA}"
+            echo "Author: ${COMMIT_AUTHOR}"
+            echo "Message: ${COMMIT_MSG}"
+            if [[ "$COMMIT_AUTHOR" == "TeamCity" ]]; then
+              echo "Author is TeamCity — allowing build"
+              echo "allowed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "Author is not TeamCity — skipping build"
+              echo "allowed=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+  build-and-push:
+    needs: check-actor
+    if: needs.check-actor.outputs.allowed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version from versions.env
+        id: version
+        run: |
+          source modules/analytics/versions.env
+          echo "version=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Check if image exists in GHCR
+        id: image-check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PACKAGE="now-chess-systems%2Fanalytics"
+          VERSION="${{ steps.version.outputs.version }}"
+          EXISTING_TAGS=$(gh api "orgs/now-chess/packages/container/${PACKAGE}/versions" \
+            --jq '.[].metadata.container.tags[]' 2>/dev/null || echo "")
+          echo "Existing tags: $(echo "${EXISTING_TAGS}" | tr '\n' ' ' | xargs)"
+          if echo "${EXISTING_TAGS}" | grep -qx "${VERSION}"; then
+            echo "Image ${VERSION} already exists — skipping build"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Image ${VERSION} not found — will build"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up JDK 17
+        if: steps.image-check.outputs.exists == 'false'
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle packages
+        if: steps.image-check.outputs.exists == 'false'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Build fat jar
+        if: steps.image-check.outputs.exists == 'false'
+        run: ./gradlew :modules:analytics:jar --no-daemon
+
+      - name: Set up Docker Buildx
+        if: steps.image-check.outputs.exists == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: steps.image-check.outputs.exists == 'false'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        if: steps.image-check.outputs.exists == 'false'
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/now-chess/now-chess-systems/analytics
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest
+
+      - name: Build and push
+        if: steps.image-check.outputs.exists == 'false'
+        uses: docker/build-push-action@v6
+        with:
+          context: modules/analytics
+          file: modules/analytics/src/main/docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

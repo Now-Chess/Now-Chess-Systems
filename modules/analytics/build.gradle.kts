@@ -79,7 +79,11 @@ application {
 
 // Fat jar: includes runtimeClasspath (our code + pg driver + scala3-library)
 // but NOT compileOnly Spark jars.
+// archiveVersion is cleared so the output is always "analytics.jar" — stable
+// name required by the Dockerfile COPY instruction.
 tasks.jar {
+    archiveBaseName.set("analytics")
+    archiveVersion.set("")
     manifest {
         attributes["Main-Class"] = "de.nowchess.analytics.OpeningBookJob"
     }
