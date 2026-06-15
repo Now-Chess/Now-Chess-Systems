@@ -116,6 +116,16 @@ object PlayerGraphJob:
       .mode("overwrite")
       .parquet(s"$outputDir/player_graph")
 
+    result.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_player_graph")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()
+
     // How many players belong to each connected component?
     // A large dominant component + many singletons is the expected shape.
     val componentSizes = result

@@ -115,9 +115,9 @@ object PlayerClusteringJob:
 
     archetypes.show(20, false)
 
-    predictions
-      .select("player_id", "total_games", "win_rate", "avg_move_count", "cluster")
-      .write
+    val clustersDf = predictions.select("player_id", "total_games", "win_rate", "avg_move_count", "cluster")
+
+    clustersDf.write
       .mode("overwrite")
       .parquet(s"$outputDir/player_clusters")
 
@@ -125,6 +125,26 @@ object PlayerClusteringJob:
       .mode("overwrite")
       .option("header", "true")
       .csv(s"$outputDir/cluster_archetypes")
+
+    clustersDf.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_player_clusters")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()
+
+    archetypes.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_cluster_archetypes")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()
 
   private def buildPlayerStats(games: org.apache.spark.sql.DataFrame): org.apache.spark.sql.DataFrame =
     val asWhite = games.select(

@@ -72,12 +72,22 @@ object OpeningBookJob:
       .mode("overwrite")
       .parquet(s"$outputDir/opening_book")
 
-    stats
-      .limit(1000)
-      .write
+    val top1000 = stats.limit(1000)
+
+    top1000.write
       .mode("overwrite")
       .option("header", "true")
       .csv(s"$outputDir/opening_book_top1000")
+
+    top1000.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_opening_stats")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()
 
   /** Extracts the first `maxPlies` moves from a PGN column as a space-separated string.
     *

@@ -83,3 +83,13 @@ object PlayerStatsJob:
     stats.write
       .mode("overwrite")
       .parquet(s"$outputDir/player_stats")
+
+    stats.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_player_stats")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()
