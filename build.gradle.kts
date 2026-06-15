@@ -53,6 +53,8 @@ val coverageExclusions = listOf(
     "**/core/src/main/scala/de/nowchess/chess/resource/GameWebSocketResource.scala",
     // Coordinator infrastructure — gRPC, microservice orchestration
     "**/coordinator/src/main/scala/**",
+    // Analytics module — standalone Spark batch jobs; coverage not applicable (no Quarkus, no scoverage plugin)
+    "modules/analytics/**",
 )
 
 // Converts a Sonar-style glob to a scoverage regex (matched against full source path).
