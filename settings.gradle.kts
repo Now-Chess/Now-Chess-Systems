@@ -27,4 +27,5 @@ include(
     "modules:store",
     "modules:coordinator",
     "modules:tournament",
+    "modules:analysis",
 )

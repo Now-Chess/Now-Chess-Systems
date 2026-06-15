@@ -1,0 +1,40 @@
+quarkus:
+  http:
+    port: 8087
+  application:
+    name: nowchess-analysis
+  config:
+    yaml:
+      enabled: true
+
+nowchess:
+  analysis:
+    chess-api:
+      base-url: ${CHESS_API_URL:https://chess-api.com/v1}
+      timeout-ms: ${CHESS_API_TIMEOUT_MS:5000}
+
+"%dev":
+  quarkus:
+    rest-client:
+      chess-api:
+        url: https://chess-api.com/v1
+        connect-timeout: 5000
+        read-timeout: 5000
+
+"%deployed":
+  quarkus:
+    log:
+      console:
+        json: true
+    otel:
+      traces:
+        sampler: parentbased_traceidratio
+        sampler-arg: 0.1
+      exporter:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
+    rest-client:
+      chess-api:
+        url: ${CHESS_API_URL:https://chess-api.com/v1}
+        connect-timeout: ${CHESS_API_CONNECT_TIMEOUT_MS:5000}
+        read-timeout: ${CHESS_API_TIMEOUT_MS:5000}

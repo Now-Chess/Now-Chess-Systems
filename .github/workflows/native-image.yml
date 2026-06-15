@@ -49,6 +49,7 @@ jobs:
       matrix:
         module:
           - account
+          - analysis
           - bot-platform
           - coordinator
           - core

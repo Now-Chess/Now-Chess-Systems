@@ -53,6 +53,10 @@ val coverageExclusions = listOf(
     "**/core/src/main/scala/de/nowchess/chess/resource/GameWebSocketResource.scala",
     // Coordinator infrastructure — gRPC, microservice orchestration
     "**/coordinator/src/main/scala/**",
+    // Analysis resource/config — REST integration layer; @QuarkusTest not instrumented by Scoverage
+    "**/analysis/src/main/scala/de/nowchess/analysis/resource/**",
+    "**/analysis/src/main/scala/de/nowchess/analysis/config/**",
+    "**/analysis/src/main/scala/de/nowchess/analysis/error/AnalysisExceptionMapper.scala",
 )
 
 // Converts a Sonar-style glob to a scoverage regex (matched against full source path).
