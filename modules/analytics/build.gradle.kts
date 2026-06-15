@@ -62,6 +62,12 @@ dependencies {
     compileOnly("org.apache.spark:spark-core_2.13:$sparkVersion") {
         exclude(group = "org.slf4j", module = "slf4j-log4j12")
     }
+    compileOnly("org.apache.spark:spark-mllib_2.13:$sparkVersion") {
+        exclude(group = "org.slf4j", module = "slf4j-log4j12")
+    }
+    compileOnly("org.apache.spark:spark-graphx_2.13:$sparkVersion") {
+        exclude(group = "org.slf4j", module = "slf4j-log4j12")
+    }
 
     // PostgreSQL JDBC driver bundled so it is available on executor classpath.
     implementation("org.postgresql:postgresql:42.7.4")
