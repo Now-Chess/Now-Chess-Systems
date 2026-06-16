@@ -1,17 +1,24 @@
 package de.nowchess.tournament.resource
 
+import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
 import de.nowchess.tournament.dto.*
 import de.nowchess.tournament.error.TournamentError
-import de.nowchess.tournament.service.{TournamentService, TournamentStreamManager}
+import de.nowchess.tournament.service.{
+  ExternalTournamentClient,
+  TournamentServerRegistry,
+  TournamentService,
+  TournamentStreamManager,
+}
 import io.smallrye.mutiny.Multi
 import jakarta.annotation.security.{PermitAll, RolesAllowed}
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.ws.rs.*
-import jakarta.ws.rs.core.{Context, HttpHeaders, MediaType, Response}
+import jakarta.ws.rs.core.{Context, HttpHeaders, MediaType, Response, StreamingOutput}
 import org.eclipse.microprofile.jwt.JsonWebToken
 import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
+import scala.jdk.CollectionConverters.*
 
 @Path("/api/tournament")
 @ApplicationScoped
@@ -22,21 +29,48 @@ class TournamentResource:
   private val log = Logger.getLogger(classOf[TournamentResource])
 
   // scalafix:off DisableSyntax.var
-  @Inject var tournamentService: TournamentService   = uninitialized
-  @Inject var streamManager: TournamentStreamManager = uninitialized
-  @Inject var jwt: JsonWebToken                      = uninitialized
+  @Inject var tournamentService: TournamentService     = uninitialized
+  @Inject var streamManager: TournamentStreamManager   = uninitialized
+  @Inject var jwt: JsonWebToken                        = uninitialized
+  @Inject var registry: TournamentServerRegistry       = uninitialized
+  @Inject var externalClient: ExternalTournamentClient = uninitialized
+  @Inject var objectMapper: ObjectMapper               = uninitialized
+  @Context var headers: HttpHeaders                    = uninitialized
   // scalafix:on
 
   @GET
   @PermitAll
   def list(): Response =
     val (created, started, finished) = tournamentService.list()
-    val dto = TournamentListDto(
-      created = created.map(t => tournamentService.toDto(t)),
-      started = started.map(t => tournamentService.toDto(t)),
-      finished = finished.map(t => tournamentService.toDto(t)),
-    )
-    Response.ok(dto).build()
+    val internalCreated              = created.map(t => objectMapper.valueToTree[JsonNode](tournamentService.toDto(t)))
+    val internalStarted              = started.map(t => objectMapper.valueToTree[JsonNode](tournamentService.toDto(t)))
+    val internalFinished             = finished.map(t => objectMapper.valueToTree[JsonNode](tournamentService.toDto(t)))
+
+    val (extCreated, extStarted, extFinished) = registry
+      .serverUrls()
+      .foldLeft(
+        (List.empty[JsonNode], List.empty[JsonNode], List.empty[JsonNode]),
+      ) { case ((ac, as, af), url) =>
+        externalClient.fetchList(url).fold((ac, as, af)) { node =>
+          val c = node.path("created").elements().asScala.toList
+          val s = node.path("started").elements().asScala.toList
+          val f = node.path("finished").elements().asScala.toList
+          (c ++ s ++ f).foreach(t => registry.bindTournament(t.path("id").asText(), url))
+          (ac ++ c, as ++ s, af ++ f)
+        }
+      }
+
+    val merged      = objectMapper.createObjectNode()
+    val createdArr  = objectMapper.createArrayNode()
+    val startedArr  = objectMapper.createArrayNode()
+    val finishedArr = objectMapper.createArrayNode()
+    (internalCreated ++ extCreated).foreach(createdArr.add)
+    (internalStarted ++ extStarted).foreach(startedArr.add)
+    (internalFinished ++ extFinished).foreach(finishedArr.add)
+    merged.set("created", createdArr)
+    merged.set("started", startedArr)
+    merged.set("finished", finishedArr)
+    Response.ok(merged).build()
 
   @POST
   @RolesAllowed(Array("**"))
@@ -58,10 +92,13 @@ class TournamentResource:
   @PermitAll
   def get(@PathParam("id") id: String): Response =
     tournamentService.get(id) match
-      case None => Response.status(Response.Status.NOT_FOUND).entity(ErrorDto(s"Tournament $id not found")).build()
       case Some(t) =>
         val standings = tournamentService.getStandings(id)
         Response.ok(tournamentService.toDto(t, standings)).build()
+      case None =>
+        resolveServer(id)
+          .flatMap(url => externalClient.fetch(url, id).map(node => Response.ok(node).build()))
+          .getOrElse(Response.status(Response.Status.NOT_FOUND).entity(ErrorDto(s"Tournament $id not found")).build())
 
   @DELETE
   @Path("/{id}")
@@ -78,8 +115,18 @@ class TournamentResource:
   def start(@PathParam("id") id: String): Response =
     val userId = Option(jwt.getSubject).getOrElse("")
     tournamentService.start(id, userId) match
-      case Right(t)    => Response.ok(tournamentService.toDto(t)).build()
-      case Left(error) => errorResponse(error)
+      case Right(t) => Response.ok(tournamentService.toDto(t)).build()
+      case Left(error) =>
+        error match
+          case TournamentError.NotFound(_) =>
+            val auth = Option(headers.getHeaderString("Authorization"))
+            resolveServer(id)
+              .map { url =>
+                val (status, body) = externalClient.proxyPost(url, s"api/tournament/$id/start", auth)
+                Response.status(status).entity(body).build()
+              }
+              .getOrElse(errorResponse(error))
+          case _ => errorResponse(error)
 
   @POST
   @Path("/{id}/join")
@@ -92,8 +139,18 @@ class TournamentResource:
       val botId   = Option(jwt.getSubject).getOrElse("")
       val botName = Option(jwt.getClaim[AnyRef]("name")).map(_.toString).getOrElse(botId)
       tournamentService.join(id, botId, botName) match
-        case Right(_)    => Response.ok(OkDto()).build()
-        case Left(error) => errorResponse(error)
+        case Right(_) => Response.ok(OkDto()).build()
+        case Left(error) =>
+          error match
+            case TournamentError.NotFound(_) =>
+              val auth = Option(headers.getHeaderString("Authorization"))
+              resolveServer(id)
+                .map { url =>
+                  val (status, body) = externalClient.proxyPost(url, s"api/tournament/$id/join", auth)
+                  Response.status(status).entity(body).build()
+                }
+                .getOrElse(errorResponse(error))
+            case _ => errorResponse(error)
 
   @POST
   @Path("/{id}/withdraw")
@@ -105,8 +162,18 @@ class TournamentResource:
     else
       val botId = Option(jwt.getSubject).getOrElse("")
       tournamentService.withdraw(id, botId) match
-        case Right(_)    => Response.ok(OkDto()).build()
-        case Left(error) => errorResponse(error)
+        case Right(_) => Response.ok(OkDto()).build()
+        case Left(error) =>
+          error match
+            case TournamentError.NotFound(_) =>
+              val auth = Option(headers.getHeaderString("Authorization"))
+              resolveServer(id)
+                .map { url =>
+                  val (status, body) = externalClient.proxyPost(url, s"api/tournament/$id/withdraw", auth)
+                  Response.status(status).entity(body).build()
+                }
+                .getOrElse(errorResponse(error))
+            case _ => errorResponse(error)
 
   @GET
   @Path("/{id}/results")
@@ -133,20 +200,23 @@ class TournamentResource:
   @PermitAll
   def roundPairings(@PathParam("id") id: String, @PathParam("round") round: Int): Response =
     tournamentService.get(id) match
-      case None => Response.status(Response.Status.NOT_FOUND).entity(ErrorDto(s"Tournament $id not found")).build()
       case Some(_) =>
         val pairings = tournamentService.getPairings(id, round)
         Response.ok(RoundPairingsDto(round, pairings)).build()
+      case None =>
+        resolveServer(id)
+          .flatMap(url => externalClient.fetchPairings(url, id, round).map(node => Response.ok(node).build()))
+          .getOrElse(Response.status(Response.Status.NOT_FOUND).entity(ErrorDto(s"Tournament $id not found")).build())
 
   @GET
   @Path("/{id}/export/games")
   @PermitAll
   @Produces(Array(MediaType.APPLICATION_JSON, MediaType.WILDCARD, "application/x-ndjson", "application/x-chess-pgn"))
-  def exportGames(@PathParam("id") id: String, @Context headers: HttpHeaders): Response =
+  def exportGames(@PathParam("id") id: String, @Context reqHeaders: HttpHeaders): Response =
     tournamentService.get(id) match
       case None => Response.status(Response.Status.NOT_FOUND).entity(ErrorDto(s"Tournament $id not found")).build()
       case Some(_) =>
-        val acceptHeader = Option(headers.getHeaderString("Accept")).getOrElse("")
+        val acceptHeader = Option(reqHeaders.getHeaderString("Accept")).getOrElse("")
         val pairings     = tournamentService.getAllPairings(id)
         if acceptHeader.contains("application/x-ndjson") then
           val ndjson = pairings
@@ -175,6 +245,67 @@ class TournamentResource:
           streamManager.register(id, botId, emitter)
           emitter.onTermination(() => streamManager.unregister(id, botId, emitter))
         }
+
+  @GET
+  @Path("/{id}/game/{gameId}")
+  @PermitAll
+  def getGame(@PathParam("id") id: String, @PathParam("gameId") gameId: String): Response =
+    resolveServer(id)
+      .flatMap(url => externalClient.fetch(url, s"$id/game/$gameId").map(node => Response.ok(node).build()))
+      .getOrElse(Response.status(Response.Status.NOT_FOUND).build())
+
+  @GET
+  @Path("/{id}/game/{gameId}/stream")
+  @PermitAll
+  @Produces(Array("application/x-ndjson"))
+  def streamGame(@PathParam("id") id: String, @PathParam("gameId") gameId: String): Response =
+    val auth = Option(headers.getHeaderString("Authorization"))
+    resolveServer(id)
+      .flatMap(url => externalClient.proxyGetStream(url, s"api/tournament/$id/game/$gameId/stream", auth))
+      .map { stream =>
+        Response
+          .ok(new StreamingOutput {
+            def write(output: java.io.OutputStream): Unit =
+              val buf = new Array[Byte](4096)
+              // scalafix:off DisableSyntax.var
+              var n = stream.read(buf)
+              while n >= 0 do
+                output.write(buf, 0, n)
+                output.flush()
+                n = stream.read(buf)
+            // scalafix:on
+          })
+          .`type`("application/x-ndjson")
+          .build()
+      }
+      .getOrElse(Response.status(Response.Status.NOT_FOUND).build())
+
+  @POST
+  @Path("/{id}/game/{gameId}/move/{uci}")
+  @RolesAllowed(Array("**"))
+  def makeMove(
+      @PathParam("id") id: String,
+      @PathParam("gameId") gameId: String,
+      @PathParam("uci") uci: String,
+  ): Response =
+    val auth = Option(headers.getHeaderString("Authorization"))
+    resolveServer(id)
+      .map { url =>
+        val (status, body) = externalClient.proxyPost(url, s"api/tournament/$id/game/$gameId/move/$uci", auth)
+        Response.status(status).entity(body).build()
+      }
+      .getOrElse(Response.status(Response.Status.NOT_FOUND).build())
+
+  private def resolveServer(tournamentId: String): Option[String] =
+    registry.findServerUrl(tournamentId).orElse {
+      registry
+        .serverUrls()
+        .find(url => externalClient.fetch(url, tournamentId).isDefined)
+        .map { url =>
+          registry.bindTournament(tournamentId, url)
+          url
+        }
+    }
 
   private def errorResponse(error: TournamentError): Response =
     val status = error match

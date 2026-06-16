@@ -31,6 +31,9 @@ import io.quarkus.runtime.annotations.RegisterForReflection
     classOf[CoreCreateGameRequest],
     classOf[CoreGameResponse],
     classOf[GameWritebackEventDto],
+    classOf[ExternalTournamentServer],
+    classOf[RegisterServerRequest],
+    classOf[ExternalTournamentServerList],
   ),
 )
 class NativeReflectionConfig
