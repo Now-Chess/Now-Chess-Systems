@@ -1,0 +1,4 @@
+quarkus:
+  rest-client:
+    chess-api:
+      url: http://localhost:9999
