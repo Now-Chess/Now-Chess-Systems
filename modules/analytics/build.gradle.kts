@@ -42,7 +42,7 @@ scala {
     scalaVersion = versions["SCALA3"]!!
 }
 
-val sparkVersion = "3.5.4"
+val sparkVersion = "4.0.3"
 
 dependencies {
     compileOnly("org.scala-lang:scala3-compiler_3") {
