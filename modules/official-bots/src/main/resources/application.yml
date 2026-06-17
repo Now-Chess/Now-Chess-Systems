@@ -12,6 +12,12 @@ quarkus:
     enabled: true
   log:
     level: INFO
+  mp:
+    jwt:
+      verify:
+        publickey:
+          location: ${JWT_PUBLIC_KEY_PATH:keys/public.pem}
+        issuer: nowchess
 
 nowchess:
   redis:
