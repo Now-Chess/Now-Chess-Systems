@@ -32,6 +32,7 @@ class UserWebSocketResource:
   private val maxStreamLen = 1000L
 
   private val connections = new ConcurrentHashMap[String, (String, WebSocketConnection)]()
+  private val pendingAuth = ConcurrentHashMap.newKeySet[String]()
 
   private def userStreamKey(userId: String): String =
     s"${redisConfig.prefix}:user:$userId:events:stream"
@@ -39,29 +40,34 @@ class UserWebSocketResource:
   private def dlqKey: String = s"${redisConfig.prefix}:dlq"
 
   @OnOpen
-  def onOpen(connection: WebSocketConnection, handshake: HandshakeRequest): Unit =
-    val userIdOpt = Option(handshake.header("Authorization"))
-      .filter(_.nonEmpty)
-      .flatMap(token => Try(jwtParser.parse(token)).toOption)
-      .map(_.getSubject)
+  def onOpen(connection: WebSocketConnection): Unit =
+    pendingAuth.add(connection.id())
 
-    userIdOpt match
-      case None =>
-        log.warn("WebSocket opened with no valid JWT — closing connection")
-        connection.close().subscribe().`with`(_ => (), _ => ())
-      case Some(userId) =>
-        log.infof("User WebSocket opened — userId=%s connId=%s", userId, connection.id())
-        createGroupIfAbsent(userId, connection.id())
-        connections.put(connection.id(), (userId, connection))
-        executor.submit(
-          new Runnable:
-            def run(): Unit = pollLoop(connection.id(), userId, connection),
-        )
-        val connectedMsg = s"""{"type":"CONNECTED","userId":"$userId"}"""
-        connection.sendText(connectedMsg).subscribe().`with`(_ => (), _ => ())
+  @OnTextMessage
+  def onTextMessage(connection: WebSocketConnection, message: String): Unit =
+    if pendingAuth.remove(connection.id()) then
+      val userIdOpt =
+        parseAuthToken(message)
+          .flatMap(token => Try(jwtParser.parse(token)).toOption)
+          .map(_.getSubject)
+      userIdOpt match
+        case None =>
+          log.warn("WebSocket opened with no valid JWT — closing connection")
+          connection.close().subscribe().`with`(_ => (), _ => ())
+        case Some(userId) =>
+          log.infof("User WebSocket opened — userId=%s connId=%s", userId, connection.id())
+          createGroupIfAbsent(userId, connection.id())
+          connections.put(connection.id(), (userId, connection))
+          executor.submit(
+            new Runnable:
+              def run(): Unit = pollLoop(connection.id(), userId, connection),
+          )
+          val connectedMsg = s"""{"type":"CONNECTED","userId":"$userId"}"""
+          connection.sendText(connectedMsg).subscribe().`with`(_ => (), _ => ())
 
   @OnClose
   def onClose(connection: WebSocketConnection): Unit =
+    pendingAuth.remove(connection.id())
     log.infof("User WebSocket closed — connectionId=%s", connection.id())
     val userIdOpt = Option(connections.remove(connection.id())).map(_._1)
     userIdOpt.foreach { userId =>
@@ -128,3 +134,14 @@ class UserWebSocketResource:
     ) match
       case Failure(ex) => log.warnf(ex, "Failed to publish to stream %s", key)
       case Success(_)  => ()
+
+  private def parseAuthToken(message: String): Option[String] =
+    val trimmed = message.trim
+    if !trimmed.contains("\"type\":\"auth\"") then None
+    else
+      val start = trimmed.indexOf("\"token\":\"")
+      if start < 0 then None
+      else
+        val valueStart = start + 9
+        val end        = trimmed.indexOf('"', valueStart)
+        if end < 0 then None else Some(trimmed.substring(valueStart, end)).filter(_.nonEmpty)
