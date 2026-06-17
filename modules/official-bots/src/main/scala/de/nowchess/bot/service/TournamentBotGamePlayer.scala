@@ -50,11 +50,16 @@ class TournamentBotGamePlayer:
         log.infof("Tournament bot enabled — server=%s tournament=%s bot=%s", cfg.serverUrl, cfg.tournamentId, cfg.botId)
         startAsync(cfg)
 
-  def joinTournament(tournamentId: String, difficulty: String, serverUrl: String): Either[String, String] =
-    registerBot(serverUrl, difficulty) match
-      case None => Left("Failed to register bot with tournament server")
-      case Some((botId, token)) =>
-        val cfg = TournamentBotConfig(serverUrl, tournamentId, token, botId, difficulty)
+  def joinTournament(
+      tournamentId: String,
+      botToken: String,
+      difficulty: String,
+      serverUrl: String,
+  ): Either[String, String] =
+    TournamentBotConfig.jwtSubject(botToken) match
+      case None => Left("Invalid bot token — could not extract subject")
+      case Some(botId) =>
+        val cfg = TournamentBotConfig(serverUrl, tournamentId, botToken, botId, difficulty)
         if join(cfg) then
           startAsync(cfg)
           Right(botId)
@@ -64,26 +69,6 @@ class TournamentBotGamePlayer:
     val thread = new Thread(() => streamLoop(cfg), s"TournamentBot-${cfg.tournamentId}")
     thread.setDaemon(true)
     thread.start()
-
-  private def registerBot(serverUrl: String, difficulty: String): Option[(String, String)] =
-    Try {
-      val name = s"NowChess ${difficulty.capitalize}"
-      val body = s"""{"name":"$name","isBot":true}"""
-      val response = client
-        .target(serverUrl)
-        .path("api")
-        .path("auth")
-        .path("register")
-        .request(MediaType.APPLICATION_JSON)
-        .post(Entity.entity(body, MediaType.APPLICATION_JSON))
-      if response.getStatus == 201 then
-        val node  = objectMapper.readTree(response.readEntity(classOf[String]))
-        val id    = node.path("id").asText()
-        val token = node.path("token").asText()
-        response.close()
-        if id.nonEmpty && token.nonEmpty then Some((id, token)) else None
-      else { log.warnf("Bot registration returned status %d", response.getStatus); response.close(); None }
-    }.getOrElse(None)
 
   @PreDestroy
   def cleanup(): Unit =

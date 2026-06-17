@@ -33,7 +33,7 @@ class TournamentJoinResource:
       difficulty,
       serverUrl,
     )
-    player.joinTournament(req.tournamentId, difficulty, serverUrl) match
+    player.joinTournament(req.tournamentId, req.botToken, difficulty, serverUrl) match
       case Right(botId) =>
         val resp = JoinTournamentResponse(botId, difficulty, "joining")
         Response.ok(resp).build()

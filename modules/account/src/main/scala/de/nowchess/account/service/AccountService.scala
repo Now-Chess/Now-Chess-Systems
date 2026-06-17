@@ -239,6 +239,7 @@ class AccountService:
       .subject(botId.toString)
       .expiresAt(Long.MaxValue)
       .claim("type", "bot")
+      .claim("isBot", true)
       .claim("name", botName)
       .sign()
 
