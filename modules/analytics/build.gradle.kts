@@ -22,6 +22,9 @@
 //   NOWCHESS_JDBC_URL  (default: jdbc:postgresql://localhost:5432/nowchess)
 //   NOWCHESS_DB_USER   (default: nowchess)
 //   NOWCHESS_DB_PASS   (default: nowchess)
+//   NOWCHESS_PGN_PATH  (optional) — file or http(s) URL of a Lichess PGN dump (.pgn or .pgn.zst).
+//                      When set, all batch jobs read games from the dump instead of PostgreSQL and
+//                      skip JDBC write-back (Parquet/CSV output only). Demo data source.
 
 plugins {
     id("scala")
@@ -71,6 +74,10 @@ dependencies {
 
     // PostgreSQL JDBC driver bundled so it is available on executor classpath.
     implementation("org.postgresql:postgresql:42.7.4")
+
+    // zstd-jni: decompress Lichess .pgn.zst dumps in-process. Provided at runtime by Spark
+    // (it uses zstd-jni internally for shuffle/event-log compression), so compile-only here.
+    compileOnly("com.github.luben:zstd-jni:1.5.6-9")
 }
 
 application {

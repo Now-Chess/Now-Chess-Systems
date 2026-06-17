@@ -53,15 +53,8 @@ object PlayerGraphJob:
       dbPass: String,
       outputDir: String,
   ): Unit =
-    val gamesRdd: RDD[Row] = spark.read
-      .format("jdbc")
-      .option("url", jdbcUrl)
-      .option("dbtable", "game_records")
-      .option("user", dbUser)
-      .option("password", dbPass)
-      .option("driver", "org.postgresql.Driver")
-      .option("fetchsize", "10000")
-      .load()
+    val gamesRdd: RDD[Row] = GameSource
+      .load(spark, jdbcUrl, dbUser, dbPass)
       .select("white_id", "black_id", "result")
       .filter(F.col("result").isNotNull)
       .rdd
@@ -116,15 +109,16 @@ object PlayerGraphJob:
       .mode("overwrite")
       .parquet(s"$outputDir/player_graph")
 
-    result.write
-      .mode("overwrite")
-      .format("jdbc")
-      .option("url", jdbcUrl)
-      .option("dbtable", "analytics_player_graph")
-      .option("user", dbUser)
-      .option("password", dbPass)
-      .option("driver", "org.postgresql.Driver")
-      .save()
+    if !GameSource.isPgnMode then
+      result.write
+        .mode("overwrite")
+        .format("jdbc")
+        .option("url", jdbcUrl)
+        .option("dbtable", "analytics_player_graph")
+        .option("user", dbUser)
+        .option("password", dbPass)
+        .option("driver", "org.postgresql.Driver")
+        .save()
 
     // How many players belong to each connected component?
     // A large dominant component + many singletons is the expected shape.

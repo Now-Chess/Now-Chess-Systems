@@ -34,15 +34,8 @@ object PlayerStatsJob:
       dbPass: String,
       outputDir: String,
   ): Unit =
-    val games = spark.read
-      .format("jdbc")
-      .option("url", jdbcUrl)
-      .option("dbtable", "game_records")
-      .option("user", dbUser)
-      .option("password", dbPass)
-      .option("driver", "org.postgresql.Driver")
-      .option("fetchsize", "10000")
-      .load()
+    val games = GameSource
+      .load(spark, jdbcUrl, dbUser, dbPass)
       .select("white_id", "black_id", "result", "move_count")
       .filter(F.col("result").isNotNull)
 
@@ -84,12 +77,13 @@ object PlayerStatsJob:
       .mode("overwrite")
       .parquet(s"$outputDir/player_stats")
 
-    stats.write
-      .mode("overwrite")
-      .format("jdbc")
-      .option("url", jdbcUrl)
-      .option("dbtable", "analytics_player_stats")
-      .option("user", dbUser)
-      .option("password", dbPass)
-      .option("driver", "org.postgresql.Driver")
-      .save()
+    if !GameSource.isPgnMode then
+      stats.write
+        .mode("overwrite")
+        .format("jdbc")
+        .option("url", jdbcUrl)
+        .option("dbtable", "analytics_player_stats")
+        .option("user", dbUser)
+        .option("password", dbPass)
+        .option("driver", "org.postgresql.Driver")
+        .save()

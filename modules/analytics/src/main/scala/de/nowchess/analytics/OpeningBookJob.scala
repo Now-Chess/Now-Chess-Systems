@@ -37,15 +37,8 @@ object OpeningBookJob:
       outputDir: String,
       maxPlies: Int,
   ): Unit =
-    val games = spark.read
-      .format("jdbc")
-      .option("url", jdbcUrl)
-      .option("dbtable", "game_records")
-      .option("user", dbUser)
-      .option("password", dbPass)
-      .option("driver", "org.postgresql.Driver")
-      .option("fetchsize", "10000")
-      .load()
+    val games = GameSource
+      .load(spark, jdbcUrl, dbUser, dbPass)
       .select("pgn", "result")
       .filter(F.col("result").isNotNull.and(F.col("pgn").isNotNull))
 
@@ -79,15 +72,16 @@ object OpeningBookJob:
       .option("header", "true")
       .csv(s"$outputDir/opening_book_top1000")
 
-    top1000.write
-      .mode("overwrite")
-      .format("jdbc")
-      .option("url", jdbcUrl)
-      .option("dbtable", "analytics_opening_stats")
-      .option("user", dbUser)
-      .option("password", dbPass)
-      .option("driver", "org.postgresql.Driver")
-      .save()
+    if !GameSource.isPgnMode then
+      top1000.write
+        .mode("overwrite")
+        .format("jdbc")
+        .option("url", jdbcUrl)
+        .option("dbtable", "analytics_opening_stats")
+        .option("user", dbUser)
+        .option("password", dbPass)
+        .option("driver", "org.postgresql.Driver")
+        .save()
 
   /** Extracts the first `maxPlies` moves from a PGN column as a space-separated string.
     *
