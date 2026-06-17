@@ -39,16 +39,43 @@ class TournamentBotGamePlayer:
   // scalafix:on DisableSyntax.var
 
   val defaultServerUrl: String =
-    System.getenv().asScala.getOrElse("TOURNAMENT_SERVER_URL", "http://localhost:8089")
+    System.getenv().asScala.getOrElse("TOURNAMENT_SERVER_URL", "http://141.37.123.132:8086")
 
   @PostConstruct
   def initialize(): Unit =
+    parkOnStartup()
     config match
       case None =>
         log.info("Tournament bot disabled — set TOURNAMENT_ID and TOURNAMENT_BOT_TOKEN to enable")
       case Some(cfg) =>
         log.infof("Tournament bot enabled — server=%s tournament=%s bot=%s", cfg.serverUrl, cfg.tournamentId, cfg.botId)
         startAsync(cfg)
+
+  private def parkOnStartup(): Unit =
+    park(defaultServerUrl, "expert") match
+      case Some(id) => log.infof("Parked expert bot on %s as id %s", defaultServerUrl, id)
+      case None     => log.warnf("Failed to park expert bot on %s", defaultServerUrl)
+
+  private def park(serverUrl: String, difficulty: String): Option[String] =
+    System.getenv().asScala.get("TOURNAMENT_BOT_TOKEN").filter(_.nonEmpty).flatMap { token =>
+      Try {
+        val body = s"""{"name":"${botName(difficulty)}"}"""
+        val response = client
+          .target(serverUrl)
+          .path("api")
+          .path("bots")
+          .request(MediaType.APPLICATION_JSON)
+          .header("Authorization", s"Bearer $token")
+          .post(Entity.entity(body, MediaType.APPLICATION_JSON))
+        if response.getStatus == 201 || response.getStatus == 200 then
+          val id = objectMapper.readTree(response.readEntity(classOf[String])).path("id").asText()
+          response.close()
+          Option(id).filter(_.nonEmpty)
+        else { log.warnf("Parking bot %s returned status %d", botName(difficulty), response.getStatus); response.close(); None }
+      }.getOrElse(None)
+    }
+
+  private def botName(difficulty: String): String = s"NowChess ${difficulty.capitalize}"
 
   def joinTournament(
       tournamentId: String,

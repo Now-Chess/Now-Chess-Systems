@@ -20,7 +20,7 @@ object TournamentBotConfig:
       tournamentId <- env.get("TOURNAMENT_ID").filter(_.nonEmpty)
       token        <- env.get("TOURNAMENT_BOT_TOKEN").filter(_.nonEmpty)
       botId        <- jwtSubject(token)
-      serverUrl  = env.getOrElse("TOURNAMENT_SERVER_URL", "http://localhost:8089")
+      serverUrl  = env.getOrElse("TOURNAMENT_SERVER_URL", "http://141.37.123.132:8086")
       difficulty = env.getOrElse("TOURNAMENT_BOT_DIFFICULTY", "medium")
     yield TournamentBotConfig(serverUrl, tournamentId, token, botId, difficulty)
 
