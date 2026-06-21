@@ -71,7 +71,10 @@ class TournamentBotGamePlayer:
           val id = objectMapper.readTree(response.readEntity(classOf[String])).path("id").asText()
           response.close()
           Option(id).filter(_.nonEmpty)
-        else { log.warnf("Parking bot %s returned status %d", botName(difficulty), response.getStatus); response.close(); None }
+        else {
+          log.warnf("Parking bot %s returned status %d", botName(difficulty), response.getStatus); response.close();
+          None
+        }
       }.getOrElse(None)
     }
 

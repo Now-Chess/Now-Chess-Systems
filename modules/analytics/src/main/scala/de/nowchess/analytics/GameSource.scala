@@ -9,17 +9,17 @@ import org.apache.spark.sql.functions as F
   *
   * Every batch job consumes the same five-column shape:
   *   - white_id, black_id : player identifiers
-  *   - result             : one of "white", "black", "draw"
-  *   - move_count         : number of plies
-  *   - pgn                : full PGN ("[Event …]…\n\n1. e4 …"), header and movetext separated by a blank line
+  *   - result : one of "white", "black", "draw"
+  *   - move_count : number of plies
+  *   - pgn : full PGN ("[Event …]…\n\n1. e4 …"), header and movetext separated by a blank line
   *
   * Two backends, selected by the `NOWCHESS_PGN_PATH` environment variable:
   *   - unset → PostgreSQL `game_records` table (production)
-  *   - set   → a Lichess PGN dump file/URL (demo). Point it at a `lichess_db_standard_rated_*.pgn[.zst]`
-  *             to drive every batch job from real Lichess games.
+  *   - set → a Lichess PGN dump file/URL (demo). Point it at a `lichess_db_standard_rated_*.pgn[.zst]` to drive every
+  *     batch job from real Lichess games.
   *
-  * Lichess parsing uses only Spark SQL string functions — no UDFs — so Catalyst can push predicates,
-  * matching the no-UDF approach already used in OpeningBookJob.
+  * Lichess parsing uses only Spark SQL string functions — no UDFs — so Catalyst can push predicates, matching the
+  * no-UDF approach already used in OpeningBookJob.
   */
 object GameSource:
 
@@ -48,16 +48,16 @@ object GameSource:
   /** Parses a Lichess PGN dump into the normalised game shape.
     *
     * `path` may be:
-    *   - an http(s)/ftp URL — fetched once via SparkContext.addFile and distributed to executors, then read
-    *     from the local replica (no S3/PVC needed; handy for a staging demo)
+    *   - an http(s)/ftp URL — fetched once via SparkContext.addFile and distributed to executors, then read from the
+    *     local replica (no S3/PVC needed; handy for a staging demo)
     *   - any Hadoop-readable path (file://, hdfs://, s3a://, …)
     *
-    * `.zst` dumps (Lichess' native format) are decompressed in-process via zstd-jni; `.gz`/`.bz2` are
-    * handled by Spark's text reader codecs.
+    * `.zst` dumps (Lichess' native format) are decompressed in-process via zstd-jni; `.gz`/`.bz2` are handled by
+    * Spark's text reader codecs.
     *
-    * Records are split on the "[Event " tag that opens every game, so each row holds one complete game
-    * (the empty fragment before the first game is filtered out). Header tags are read with regexp_extract;
-    * the movetext (after the blank line) is cleaned of clock/eval comments and move numbers to count plies.
+    * Records are split on the "[Event " tag that opens every game, so each row holds one complete game (the empty
+    * fragment before the first game is filtered out). Header tags are read with regexp_extract; the movetext (after the
+    * blank line) is cleaned of clock/eval comments and move numbers to count plies.
     */
   def fromLichessPgn(spark: SparkSession, path: String): DataFrame =
     val resolved = resolvePath(spark, path)
@@ -89,9 +89,9 @@ object GameSource:
       )
       .filter((F.col("white_id") =!= "").and(F.col("black_id") =!= ""))
 
-  /** Turns an http(s)/ftp URL into a cluster-local path by fetching it once with SparkContext.addFile,
-    * which distributes the file to every executor. `.zst` is decompressed in-process and the plain `.pgn`
-    * is redistributed. Non-URL paths are returned unchanged.
+  /** Turns an http(s)/ftp URL into a cluster-local path by fetching it once with SparkContext.addFile, which
+    * distributes the file to every executor. `.zst` is decompressed in-process and the plain `.pgn` is redistributed.
+    * Non-URL paths are returned unchanged.
     */
   private def resolvePath(spark: SparkSession, path: String): String =
     if !path.matches("^(https?|ftp)://.*") then path

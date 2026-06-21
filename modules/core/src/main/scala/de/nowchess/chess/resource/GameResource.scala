@@ -343,10 +343,10 @@ class GameResource:
   @Path("/{gameId}/fen-history")
   @Produces(Array(MediaType.APPLICATION_JSON))
   def getFenHistory(@PathParam("gameId") gameId: String): Response =
-    val entry   = registry.get(gameId).getOrElse(throw GameNotFoundException(gameId))
-    val engine  = entry.engine
-    val initial = engine.initialContext
-    val moves   = engine.context.moves
+    val entry    = registry.get(gameId).getOrElse(throw GameNotFoundException(gameId))
+    val engine   = entry.engine
+    val initial  = engine.initialContext
+    val moves    = engine.context.moves
     val contexts = moves.scanLeft(initial)((ctx, move) => engine.ruleSet.applyMove(ctx)(move))
     val fens     = contexts.map(ctx => ioClient.exportFen(ctx))
     ok(FenHistoryDto(fens))
