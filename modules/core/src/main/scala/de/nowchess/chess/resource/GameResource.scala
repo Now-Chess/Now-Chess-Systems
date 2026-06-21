@@ -340,6 +340,18 @@ class GameResource:
     created(GameDtoMapper.toGameFullDto(entry, ioClient))
 
   @GET
+  @Path("/{gameId}/fen-history")
+  @Produces(Array(MediaType.APPLICATION_JSON))
+  def getFenHistory(@PathParam("gameId") gameId: String): Response =
+    val entry   = registry.get(gameId).getOrElse(throw GameNotFoundException(gameId))
+    val engine  = entry.engine
+    val initial = engine.initialContext
+    val moves   = engine.context.moves
+    val contexts = moves.scanLeft(initial)((ctx, move) => engine.ruleSet.applyMove(ctx)(move))
+    val fens     = contexts.map(ctx => ioClient.exportFen(ctx))
+    ok(FenHistoryDto(fens))
+
+  @GET
   @Path("/{gameId}/export/fen")
   @Produces(Array(MediaType.TEXT_PLAIN))
   def exportFen(@PathParam("gameId") gameId: String): Response =
