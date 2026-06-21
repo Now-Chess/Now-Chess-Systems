@@ -77,6 +77,11 @@ object PlayerStatsJob:
       .mode("overwrite")
       .parquet(s"$outputDir/player_stats")
 
+    stats.write
+      .mode("overwrite")
+      .option("header", "true")
+      .csv(s"$outputDir/player_stats_csv")
+
     if !GameSource.isPgnMode then
       stats.write
         .mode("overwrite")

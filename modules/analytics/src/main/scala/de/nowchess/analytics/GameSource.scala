@@ -33,6 +33,19 @@ object GameSource:
       case Some(path) => fromLichessPgn(spark, path)
       case None       => fromJdbc(spark, jdbcUrl, dbUser, dbPass)
 
+  def loadExtended(spark: SparkSession, jdbcUrl: String, dbUser: String, dbPass: String): DataFrame =
+    sys.env.get(PgnPathEnv) match
+      case Some(path) => fromLichessPgnExtended(spark, path)
+      case None =>
+        fromJdbc(spark, jdbcUrl, dbUser, dbPass)
+          .withColumn("white_elo", F.lit(null).cast("int"))
+          .withColumn("black_elo", F.lit(null).cast("int"))
+          .withColumn("time_control", F.lit(null).cast("string"))
+          .withColumn("utc_date", F.lit(null).cast("string"))
+          .withColumn("utc_time", F.lit(null).cast("string"))
+          .withColumn("termination", F.lit(null).cast("string"))
+          .withColumn("eco", F.lit(null).cast("string"))
+
   def fromJdbc(spark: SparkSession, jdbcUrl: String, dbUser: String, dbPass: String): DataFrame =
     spark.read
       .format("jdbc")
@@ -86,6 +99,49 @@ object GameSource:
         result.as("result"),
         plies.as("move_count"),
         F.concat(F.lit("[Event "), record).as("pgn"),
+      )
+      .filter((F.col("white_id") =!= "").and(F.col("black_id") =!= ""))
+
+  private def fromLichessPgnExtended(spark: SparkSession, path: String): DataFrame =
+    val resolved = resolvePath(spark, path)
+    val record   = F.col("value")
+
+    val resultTag = F.regexp_extract(record, "Result \"([^\"]*)\"", 1)
+    val result = F
+      .when(resultTag === "1-0", "white")
+      .when(resultTag === "0-1", "black")
+      .when(resultTag === "1/2-1/2", "draw")
+      .otherwise(F.lit(null).cast("string"))
+
+    val moveText  = F.coalesce(F.split(record, "\n\n").getItem(1), F.lit(""))
+    val noComment = F.regexp_replace(moveText, "\\{[^}]*\\}", "")
+    val noResult  = F.regexp_replace(noComment, "(1-0|0-1|1/2-1/2|\\*)", "")
+    val noNumbers = F.regexp_replace(noResult, "\\d+\\.+", " ")
+    val plies     = F.size(F.filter(F.split(F.trim(noNumbers), "\\s+"), tok => F.length(tok) > 0))
+
+    def nullable(extracted: org.apache.spark.sql.Column): org.apache.spark.sql.Column =
+      F.when(F.length(extracted) > 0, extracted).otherwise(F.lit(null).cast("string"))
+
+    val whiteElo = nullable(F.regexp_extract(record, "WhiteElo \"([^\"]*)\"", 1)).cast("int")
+    val blackElo = nullable(F.regexp_extract(record, "BlackElo \"([^\"]*)\"", 1)).cast("int")
+
+    spark.read
+      .option("lineSep", "[Event ")
+      .text(resolved)
+      .filter(F.length(F.trim(record)) > 0)
+      .select(
+        F.regexp_extract(record, "White \"([^\"]*)\"", 1).as("white_id"),
+        F.regexp_extract(record, "Black \"([^\"]*)\"", 1).as("black_id"),
+        result.as("result"),
+        plies.as("move_count"),
+        F.concat(F.lit("[Event "), record).as("pgn"),
+        whiteElo.as("white_elo"),
+        blackElo.as("black_elo"),
+        nullable(F.regexp_extract(record, "TimeControl \"([^\"]*)\"", 1)).as("time_control"),
+        nullable(F.regexp_extract(record, "UTCDate \"([^\"]*)\"", 1)).as("utc_date"),
+        nullable(F.regexp_extract(record, "UTCTime \"([^\"]*)\"", 1)).as("utc_time"),
+        nullable(F.regexp_extract(record, "Termination \"([^\"]*)\"", 1)).as("termination"),
+        nullable(F.regexp_extract(record, "ECO \"([^\"]*)\"", 1)).as("eco"),
       )
       .filter((F.col("white_id") =!= "").and(F.col("black_id") =!= ""))
 
