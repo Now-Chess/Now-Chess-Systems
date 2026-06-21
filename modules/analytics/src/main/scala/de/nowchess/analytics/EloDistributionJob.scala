@@ -46,3 +46,13 @@ object EloDistributionJob:
       .mode("overwrite")
       .option("header", "true")
       .csv(s"$outputDir/elo_distribution")
+
+    distribution.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_elo_distribution")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()

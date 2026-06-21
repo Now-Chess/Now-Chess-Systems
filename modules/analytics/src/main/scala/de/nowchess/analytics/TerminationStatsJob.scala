@@ -42,3 +42,13 @@ object TerminationStatsJob:
       .mode("overwrite")
       .option("header", "true")
       .csv(s"$outputDir/termination_stats")
+
+    stats.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_termination_stats")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()

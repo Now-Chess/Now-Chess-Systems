@@ -60,3 +60,13 @@ object ColorAdvantageJob:
       .mode("overwrite")
       .option("header", "true")
       .csv(s"$outputDir/color_advantage")
+
+    stats.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_color_advantage")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()

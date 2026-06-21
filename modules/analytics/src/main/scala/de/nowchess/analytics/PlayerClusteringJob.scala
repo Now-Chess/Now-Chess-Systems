@@ -119,26 +119,25 @@ object PlayerClusteringJob:
       .option("header", "true")
       .csv(s"$outputDir/cluster_archetypes")
 
-    if !GameSource.isPgnMode then
-      clustersDf.write
-        .mode("overwrite")
-        .format("jdbc")
-        .option("url", jdbcUrl)
-        .option("dbtable", "analytics_player_clusters")
-        .option("user", dbUser)
-        .option("password", dbPass)
-        .option("driver", "org.postgresql.Driver")
-        .save()
+    clustersDf.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_player_clusters")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()
 
-      archetypes.write
-        .mode("overwrite")
-        .format("jdbc")
-        .option("url", jdbcUrl)
-        .option("dbtable", "analytics_cluster_archetypes")
-        .option("user", dbUser)
-        .option("password", dbPass)
-        .option("driver", "org.postgresql.Driver")
-        .save()
+    archetypes.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_cluster_archetypes")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()
 
   private def buildPlayerStats(games: org.apache.spark.sql.DataFrame): org.apache.spark.sql.DataFrame =
     val asWhite = games.select(

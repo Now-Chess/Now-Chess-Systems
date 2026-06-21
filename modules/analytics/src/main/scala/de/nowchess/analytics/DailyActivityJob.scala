@@ -49,6 +49,16 @@ object DailyActivityJob:
       .option("header", "true")
       .csv(s"$outputDir/hourly_activity")
 
+    hourly.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_hourly_activity")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()
+
     val dayName = F
       .when(F.col("dow") === 1, "Sunday")
       .when(F.col("dow") === 2, "Monday")
@@ -77,3 +87,13 @@ object DailyActivityJob:
       .mode("overwrite")
       .option("header", "true")
       .csv(s"$outputDir/weekly_activity")
+
+    weekly.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_weekly_activity")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()

@@ -76,6 +76,16 @@ object GameLengthJob:
       .option("header", "true")
       .csv(s"$outputDir/game_length_distribution")
 
+    distribution.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_game_length_distribution")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()
+
     val byResult = games
       .groupBy("result")
       .agg(
@@ -89,3 +99,13 @@ object GameLengthJob:
       .mode("overwrite")
       .option("header", "true")
       .csv(s"$outputDir/game_length_by_result")
+
+    byResult.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_game_length_by_result")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()

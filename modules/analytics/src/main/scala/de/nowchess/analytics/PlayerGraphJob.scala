@@ -109,16 +109,15 @@ object PlayerGraphJob:
       .mode("overwrite")
       .parquet(s"$outputDir/player_graph")
 
-    if !GameSource.isPgnMode then
-      result.write
-        .mode("overwrite")
-        .format("jdbc")
-        .option("url", jdbcUrl)
-        .option("dbtable", "analytics_player_graph")
-        .option("user", dbUser)
-        .option("password", dbPass)
-        .option("driver", "org.postgresql.Driver")
-        .save()
+    result.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_player_graph")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()
 
     // How many players belong to each connected component?
     // A large dominant component + many singletons is the expected shape.
@@ -134,6 +133,16 @@ object PlayerGraphJob:
       .mode("overwrite")
       .option("header", "true")
       .csv(s"$outputDir/component_sizes")
+
+    componentSizes.write
+      .mode("overwrite")
+      .format("jdbc")
+      .option("url", jdbcUrl)
+      .option("dbtable", "analytics_component_sizes")
+      .option("user", dbUser)
+      .option("password", dbPass)
+      .option("driver", "org.postgresql.Driver")
+      .save()
 
   // Build a two-column DataFrame (vertex_id: Long, valueCol: valueType) from an RDD.
   // Used to bridge GraphX RDD results into the DataFrame API without implicits.
