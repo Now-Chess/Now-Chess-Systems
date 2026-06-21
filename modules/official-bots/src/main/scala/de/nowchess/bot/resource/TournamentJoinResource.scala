@@ -25,15 +25,13 @@ class TournamentJoinResource:
   @POST
   @Path("/join-tournament")
   def joinTournament(req: JoinTournamentRequest): Response =
-    val serverUrl  = req.serverUrl.filter(_.nonEmpty).getOrElse(player.defaultServerUrl)
     val difficulty = if req.difficulty.nonEmpty then req.difficulty else "medium"
     log.infof(
-      "Official bot join requested — tournament=%s difficulty=%s server=%s",
+      "Official bot join requested — tournament=%s difficulty=%s",
       req.tournamentId,
       difficulty,
-      serverUrl,
     )
-    player.joinTournament(req.tournamentId, req.botToken, difficulty, serverUrl) match
+    player.joinTournament(req.tournamentId, req.botToken, difficulty) match
       case Right(botId) =>
         val resp = JoinTournamentResponse(botId, difficulty, "joining")
         Response.ok(resp).build()

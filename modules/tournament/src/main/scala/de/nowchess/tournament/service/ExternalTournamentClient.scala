@@ -1,6 +1,7 @@
 package de.nowchess.tournament.service
 
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
+import de.nowchess.tournament.dto.ReplicateTournamentRequest
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.ws.rs.client.{Client, ClientBuilder, Entity}
@@ -65,6 +66,21 @@ class ExternalTournamentClient:
         response.close()
         client.close()
     }.getOrElse((502, """{"error":"External server unreachable"}"""))
+
+  def replicateTournament(serverUrl: String, req: ReplicateTournamentRequest, selfUrl: String): Boolean =
+    Try {
+      val client  = buildClient()
+      val body    = objectMapper.writeValueAsString(req)
+      val response = client
+        .target(s"$serverUrl/api/tournament/replicate")
+        .request(MediaType.APPLICATION_JSON)
+        .header("X-Origin-Url", selfUrl)
+        .post(Entity.entity(body, MediaType.APPLICATION_JSON))
+      try response.getStatus / 100 == 2
+      finally
+        response.close()
+        client.close()
+    }.getOrElse(false)
 
   def proxyGetStream(serverUrl: String, path: String, authHeader: Option[String]): Option[java.io.InputStream] =
     Try {

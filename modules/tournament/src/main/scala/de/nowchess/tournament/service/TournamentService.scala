@@ -9,6 +9,7 @@ import de.nowchess.tournament.dto.{
   Clock,
   CreateTournamentForm,
   PairingDto,
+  ReplicateTournamentRequest,
   ResultDto,
   Standing,
   TournamentDto,
@@ -58,6 +59,23 @@ class TournamentService:
     t.status = "created"
     t.currentRound = 0
     t.createdBy = createdBy
+    tournamentRepository.persist(t)
+    t
+
+  @Transactional
+  def replicate(req: ReplicateTournamentRequest, originServerUrl: String): Tournament =
+    val t = new Tournament()
+    t.id = req.id
+    t.fullName = req.fullName
+    t.nbRounds = req.nbRounds
+    t.clockLimit = req.clockLimit
+    t.clockIncrement = req.clockIncrement
+    t.rated = req.rated
+    t.status = req.status
+    t.currentRound = 0
+    t.createdBy = req.createdBy
+    t.startsAt = req.startsAt
+    t.originServerUrl = originServerUrl
     tournamentRepository.persist(t)
     t
 

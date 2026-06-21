@@ -26,6 +26,8 @@ nowchess:
     prefix: nowchess
   internal:
     secret: 123abc
+  tournament:
+    service-url: http://localhost:8086
 
 "%deployed":
   quarkus:
@@ -49,3 +51,5 @@ nowchess:
       prefix: ${REDIS_PREFIX:nowchess}
     internal:
       secret: ${INTERNAL_SECRET}
+    tournament:
+      service-url: ${TOURNAMENT_SERVICE_URL:http://localhost:8086}

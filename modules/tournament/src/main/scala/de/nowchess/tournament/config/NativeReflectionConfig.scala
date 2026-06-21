@@ -26,6 +26,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection
     classOf[RoundPairingsDto],
     classOf[ErrorDto],
     classOf[OkDto],
+    classOf[ReplicateTournamentRequest],
     classOf[CorePlayerInfo],
     classOf[CoreTimeControl],
     classOf[CoreCreateGameRequest],

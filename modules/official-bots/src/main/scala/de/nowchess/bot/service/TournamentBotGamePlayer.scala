@@ -38,8 +38,8 @@ class TournamentBotGamePlayer:
   @volatile private var running = true
   // scalafix:on DisableSyntax.var
 
-  val defaultServerUrl: String =
-    System.getenv().asScala.getOrElse("TOURNAMENT_SERVER_URL", "http://141.37.123.132:8086")
+  val tournamentServiceUrl: String =
+    System.getenv().asScala.getOrElse("TOURNAMENT_SERVICE_URL", "http://localhost:8086")
 
   @PostConstruct
   def initialize(): Unit =
@@ -52,31 +52,41 @@ class TournamentBotGamePlayer:
         startAsync(cfg)
 
   private def parkOnStartup(): Unit =
-    park(defaultServerUrl, "expert") match
-      case Some(id) => log.infof("Parked expert bot on %s as id %s", defaultServerUrl, id)
-      case None     => log.warnf("Failed to park expert bot on %s", defaultServerUrl)
-
-  private def park(serverUrl: String, difficulty: String): Option[String] =
-    System.getenv().asScala.get("TOURNAMENT_BOT_TOKEN").filter(_.nonEmpty).flatMap { token =>
-      Try {
-        val body = s"""{"name":"${botName(difficulty)}"}"""
-        val response = client
-          .target(serverUrl)
-          .path("api")
-          .path("bots")
-          .request(MediaType.APPLICATION_JSON)
-          .header("Authorization", s"Bearer $token")
-          .post(Entity.entity(body, MediaType.APPLICATION_JSON))
-        if response.getStatus == 201 || response.getStatus == 200 then
-          val id = objectMapper.readTree(response.readEntity(classOf[String])).path("id").asText()
-          response.close()
-          Option(id).filter(_.nonEmpty)
-        else {
-          log.warnf("Parking bot %s returned status %d", botName(difficulty), response.getStatus); response.close();
-          None
+    val token = System.getenv().asScala.get("TOURNAMENT_BOT_TOKEN").filter(_.nonEmpty)
+    token match
+      case None => log.warn("TOURNAMENT_BOT_TOKEN not set — skipping park")
+      case Some(tok) =>
+        val localAccountUrl = System.getenv().asScala.getOrElse("ACCOUNT_SERVICE_URL", "http://localhost:8083")
+        BotController.listBots.foreach(diff => parkOn(localAccountUrl, diff, tok))
+        fetchRemoteServers().foreach { serverUrl =>
+          BotController.listBots.foreach(diff => parkOn(serverUrl, diff, tok))
         }
-      }.getOrElse(None)
-    }
+
+  private def fetchRemoteServers(): List[String] =
+    Try {
+      val response = client.target(tournamentServiceUrl)
+        .path("api").path("tournament").path("servers")
+        .request(MediaType.APPLICATION_JSON).get()
+      if response.getStatus == 200 then
+        val node = objectMapper.readTree(response.readEntity(classOf[String]))
+        response.close()
+        node.path("servers").elements().asScala.toList.map(_.path("url").asText()).filter(_.nonEmpty)
+      else { response.close(); Nil }
+    }.getOrElse(Nil)
+
+  private def parkOn(serverUrl: String, difficulty: String, token: String): Unit =
+    Try {
+      val body = s"""{"name":"${botName(difficulty)}"}"""
+      val response = client.target(serverUrl).path("api").path("bots")
+        .request(MediaType.APPLICATION_JSON)
+        .header("Authorization", s"Bearer $token")
+        .post(Entity.entity(body, MediaType.APPLICATION_JSON))
+      if response.getStatus == 201 || response.getStatus == 200 then
+        val id = objectMapper.readTree(response.readEntity(classOf[String])).path("id").asText()
+        log.infof("Parked bot %s on %s as id %s", botName(difficulty), serverUrl, id)
+      else log.warnf("Park %s on %s returned status %d", botName(difficulty), serverUrl, response.getStatus)
+      response.close()
+    }.failed.foreach(ex => log.warnf(ex, "Failed to park %s on %s", botName(difficulty), serverUrl))
 
   private def botName(difficulty: String): String = s"NowChess ${difficulty.capitalize}"
 
@@ -84,7 +94,6 @@ class TournamentBotGamePlayer:
       tournamentId: String,
       botToken: Option[String],
       difficulty: String,
-      serverUrl: String,
   ): Either[String, String] =
     val resolvedToken = botToken.filter(_.nonEmpty)
       .orElse(System.getenv().asScala.get("TOURNAMENT_BOT_TOKEN").filter(_.nonEmpty))
@@ -94,7 +103,7 @@ class TournamentBotGamePlayer:
         TournamentBotConfig.jwtSubject(token) match
           case None => Left("Invalid bot token — could not extract subject")
           case Some(botId) =>
-            val cfg = TournamentBotConfig(serverUrl, tournamentId, token, botId, difficulty)
+            val cfg = TournamentBotConfig(tournamentServiceUrl, tournamentId, token, botId, difficulty)
             if join(cfg) then
               startAsync(cfg)
               Right(botId)

@@ -30,4 +30,7 @@ class Tournament:
   var startsAt: Instant  = uninitialized
   var winnerId: String   = uninitialized
   var winnerName: String = uninitialized
+
+  @Column(nullable = true)
+  var originServerUrl: String = null
   // scalafix:on

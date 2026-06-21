@@ -1,5 +1,7 @@
 package de.nowchess.tournament.dto
 
+import java.time.Instant
+
 case class BotRef(id: String, name: String)
 
 case class Clock(limit: Int, increment: Int)
@@ -72,3 +74,15 @@ case class RoundPairingsDto(round: Int, pairings: List[PairingDto])
 case class ErrorDto(error: String)
 
 case class OkDto(ok: Boolean = true)
+
+case class ReplicateTournamentRequest(
+    id: String,
+    fullName: String,
+    nbRounds: Int,
+    clockLimit: Int,
+    clockIncrement: Int,
+    rated: Boolean,
+    createdBy: String,
+    startsAt: Instant,
+    status: String,
+)

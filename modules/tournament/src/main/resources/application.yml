@@ -27,6 +27,8 @@ nowchess:
     prefix: ${REDIS_PREFIX:nowchess}
   internal:
     secret: ${INTERNAL_SECRET:123abc}
+  tournament:
+    self-url: ""
 
 mp:
   jwt:
@@ -46,6 +48,9 @@ mp:
     hibernate-orm:
       schema-management:
         strategy: update
+  nowchess:
+    tournament:
+      self-url: ${TOURNAMENT_SELF_URL:}
 
 "%test":
   quarkus:
