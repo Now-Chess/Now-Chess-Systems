@@ -16,6 +16,7 @@ import jakarta.ws.rs.*
 import jakarta.ws.rs.core.{Context, HttpHeaders, MediaType, Response, StreamingOutput}
 import org.eclipse.microprofile.config.inject.ConfigProperty
 import org.eclipse.microprofile.jwt.JsonWebToken
+import java.util.Optional
 import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
@@ -37,8 +38,8 @@ class TournamentResource:
   @Inject var objectMapper: ObjectMapper               = uninitialized
   @Context var headers: HttpHeaders                    = uninitialized
 
-  @ConfigProperty(name = "nowchess.tournament.self-url", defaultValue = "")
-  var selfUrl: String = uninitialized
+  @ConfigProperty(name = "nowchess.tournament.self-url")
+  var selfUrl: Optional[String] = uninitialized
   // scalafix:on
 
   @GET
@@ -88,11 +89,12 @@ class TournamentResource:
     val userId = Option(jwt.getSubject).getOrElse("")
     val form   = CreateTournamentForm(name, nbRounds, clockLimit, clockIncrement, rated)
     val t      = tournamentService.create(userId, form)
-    if selfUrl.nonEmpty then
+    selfUrl.ifPresent { url =>
       registry.serverUrls().foreach { remoteUrl =>
-        if !externalClient.replicateTournament(remoteUrl, toReplicateRequest(t), selfUrl) then
+        if !externalClient.replicateTournament(remoteUrl, toReplicateRequest(t), url) then
           log.warnf("Failed to replicate tournament %s to %s", t.id, remoteUrl)
       }
+    }
     Response.status(Response.Status.CREATED).entity(tournamentService.toDto(t)).build()
 
   @GET
