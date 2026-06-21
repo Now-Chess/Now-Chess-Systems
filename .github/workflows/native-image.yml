@@ -127,7 +127,7 @@ jobs:
           if [ -n "$MARCH" ]; then
             MARCH_ARG="-Dquarkus.native.additional-build-args=$MARCH"
           fi
-          ./gradlew :modules:${{ matrix.module }}:build -x test -Dquarkus.native.enabled=true -Dquarkus.package.jar.enabled=false -Dquarkus.profile=deployed $MARCH_ARG --no-daemon
+          ./gradlew :modules:${{ matrix.module }}:build -x test -x spotlessScalaCheck -x checkScalafix -Dquarkus.native.enabled=true -Dquarkus.package.jar.enabled=false -Dquarkus.profile=deployed $MARCH_ARG --no-daemon
 
       - name: Set up Docker Buildx
         if: steps.image-check.outputs.exists == 'false'
