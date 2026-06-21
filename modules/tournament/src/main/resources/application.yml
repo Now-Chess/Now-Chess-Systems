@@ -29,6 +29,7 @@ nowchess:
     secret: ${INTERNAL_SECRET:123abc}
   tournament:
     self-url: ""
+    external-servers: ""
 
 mp:
   jwt:
@@ -51,6 +52,7 @@ mp:
   nowchess:
     tournament:
       self-url: ${TOURNAMENT_SELF_URL:}
+      external-servers: ${TOURNAMENT_EXTERNAL_SERVERS:}
 
 "%test":
   quarkus:

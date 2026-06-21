@@ -27,7 +27,7 @@ nowchess:
   internal:
     secret: 123abc
   tournament:
-    service-url: http://localhost:8086
+    service-url: http://localhost:8088
 
 "%deployed":
   quarkus:
@@ -52,4 +52,4 @@ nowchess:
     internal:
       secret: ${INTERNAL_SECRET}
     tournament:
-      service-url: ${TOURNAMENT_SERVICE_URL:http://localhost:8086}
+      service-url: ${TOURNAMENT_SERVICE_URL:http://localhost:8088}
