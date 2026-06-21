@@ -1,6 +1,6 @@
 package de.nowchess.tournament.resource
 
-import de.nowchess.tournament.dto.{ErrorDto, ExternalTournamentServerList, RegisterServerRequest}
+import de.nowchess.tournament.dto.ExternalTournamentServerList
 import de.nowchess.tournament.service.TournamentServerRegistry
 import jakarta.annotation.security.RolesAllowed
 import jakarta.enterprise.context.ApplicationScoped
@@ -23,13 +23,3 @@ class TournamentServerResource:
   @GET
   def list(): Response =
     Response.ok(ExternalTournamentServerList(registry.list())).build()
-
-  @POST
-  def register(req: RegisterServerRequest): Response =
-    Response.status(201).entity(registry.register(req.label, req.url)).build()
-
-  @DELETE
-  @Path("/{id}")
-  def remove(@PathParam("id") id: String): Response =
-    if registry.remove(id) then Response.noContent().build()
-    else Response.status(Response.Status.NOT_FOUND).entity(ErrorDto(s"Server $id not found")).build()

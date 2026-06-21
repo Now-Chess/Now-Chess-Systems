@@ -33,7 +33,6 @@ import io.quarkus.runtime.annotations.RegisterForReflection
     classOf[CoreGameResponse],
     classOf[GameWritebackEventDto],
     classOf[ExternalTournamentServer],
-    classOf[RegisterServerRequest],
     classOf[ExternalTournamentServerList],
   ),
 )
