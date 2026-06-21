@@ -77,7 +77,7 @@ class TournamentBotGamePlayer:
   private def parkOn(serverUrl: String, difficulty: String, token: String): Unit =
     Try {
       val body = s"""{"name":"${botName(difficulty)}"}"""
-      val response = client.target(serverUrl).path("api").path("bots")
+      val response = client.target(serverUrl).path("api").path("account").path("bots")
         .request(MediaType.APPLICATION_JSON)
         .header("Authorization", s"Bearer $token")
         .post(Entity.entity(body, MediaType.APPLICATION_JSON))
