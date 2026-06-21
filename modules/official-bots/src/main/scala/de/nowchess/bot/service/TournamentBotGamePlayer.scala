@@ -82,18 +82,23 @@ class TournamentBotGamePlayer:
 
   def joinTournament(
       tournamentId: String,
-      botToken: String,
+      botToken: Option[String],
       difficulty: String,
       serverUrl: String,
   ): Either[String, String] =
-    TournamentBotConfig.jwtSubject(botToken) match
-      case None => Left("Invalid bot token — could not extract subject")
-      case Some(botId) =>
-        val cfg = TournamentBotConfig(serverUrl, tournamentId, botToken, botId, difficulty)
-        if join(cfg) then
-          startAsync(cfg)
-          Right(botId)
-        else Left("Failed to join tournament")
+    val resolvedToken = botToken.filter(_.nonEmpty)
+      .orElse(System.getenv().asScala.get("TOURNAMENT_BOT_TOKEN").filter(_.nonEmpty))
+    resolvedToken match
+      case None => Left("No bot token provided and TOURNAMENT_BOT_TOKEN not configured")
+      case Some(token) =>
+        TournamentBotConfig.jwtSubject(token) match
+          case None => Left("Invalid bot token — could not extract subject")
+          case Some(botId) =>
+            val cfg = TournamentBotConfig(serverUrl, tournamentId, token, botId, difficulty)
+            if join(cfg) then
+              startAsync(cfg)
+              Right(botId)
+            else Left("Failed to join tournament")
 
   private def startAsync(cfg: TournamentBotConfig): Unit =
     val thread = new Thread(() => streamLoop(cfg), s"TournamentBot-${cfg.tournamentId}")

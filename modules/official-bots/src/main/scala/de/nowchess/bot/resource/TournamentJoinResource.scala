@@ -39,6 +39,6 @@ class TournamentJoinResource:
         Response.ok(resp).build()
       case Left(err) =>
         Response
-          .status(Response.Status.BAD_GATEWAY)
+          .status(Response.Status.BAD_REQUEST)
           .entity(s"""{"error":"$err"}""")
           .build()
