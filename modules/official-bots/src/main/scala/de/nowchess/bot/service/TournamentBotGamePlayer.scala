@@ -62,10 +62,11 @@ class TournamentBotGamePlayer:
   private def resolveToken(difficulty: String): Option[String] =
     val name     = botName(difficulty)
     val redisKey = s"${redisConfig.prefix}:tournament-bot:token:$name"
-    fetchTokenFromAccountService(name)
+    registerWithTournamentServer(name)
+      .orElse(fetchTokenFromAccountService(name))
       .map { token =>
         redis.value(classOf[String]).set(redisKey, token)
-        log.infof("Fetched fresh bot token for %s from account service", name)
+        log.infof("Refreshed bot token for %s — stored in Redis", name)
         token
       }
       .orElse {
@@ -80,6 +81,21 @@ class TournamentBotGamePlayer:
           token
         }
       }
+
+  private def registerWithTournamentServer(name: String): Option[String] =
+    Try {
+      val body = s"""{"name":"${name.replace("\"", "\\\"")}","isBot":true}"""
+      val response = client.target(tournamentServiceUrl)
+        .path("api").path("auth").path("register")
+        .request(MediaType.APPLICATION_JSON)
+        .post(Entity.entity(body, MediaType.APPLICATION_JSON))
+      val status = response.getStatus
+      if status == 200 || status == 201 then
+        val token = objectMapper.readTree(response.readEntity(classOf[String])).path("token").asText()
+        response.close()
+        Option(token).filter(_.nonEmpty)
+      else { response.close(); None }
+    }.toOption.flatten
 
   private def fetchTokenFromAccountService(name: String): Option[String] =
     Try(accountServiceClient.getBotToken(name).token).toOption.filter(_.nonEmpty)
