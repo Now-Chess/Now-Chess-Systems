@@ -62,7 +62,7 @@ class TournamentBotGamePlayer:
   private def resolveToken(difficulty: String): Option[String] =
     val name     = botName(difficulty)
     val redisKey = s"${redisConfig.prefix}:tournament-bot:token:$name"
-    registerWithTournamentServer(name)
+    registerWithServer(tournamentServiceUrl, name)
       .orElse(fetchTokenFromAccountService(name))
       .map { token =>
         redis.value(classOf[String]).set(redisKey, token)
@@ -82,10 +82,10 @@ class TournamentBotGamePlayer:
         }
       }
 
-  private def registerWithTournamentServer(name: String): Option[String] =
+  private def registerWithServer(serverUrl: String, name: String): Option[String] =
     Try {
       val body = s"""{"name":"${name.replace("\"", "\\\"")}","isBot":true}"""
-      val response = client.target(tournamentServiceUrl)
+      val response = client.target(serverUrl)
         .path("api").path("auth").path("register")
         .request(MediaType.APPLICATION_JSON)
         .post(Entity.entity(body, MediaType.APPLICATION_JSON))
@@ -108,14 +108,19 @@ class TournamentBotGamePlayer:
       }
 
   private def parkOnStartup(token: Option[String]): Unit =
+    val localAccountUrl = System.getenv().asScala.getOrElse("ACCOUNT_SERVICE_URL", "http://localhost:8083")
     token match
-      case None => log.warn("No bot token resolved — skipping park")
+      case None => log.warn("No bot token resolved — skipping local park")
       case Some(tok) =>
-        val localAccountUrl = System.getenv().asScala.getOrElse("ACCOUNT_SERVICE_URL", "http://localhost:8083")
-        BotController.listBots.foreach(diff => parkOn(localAccountUrl, diff, tok))
-        fetchRemoteServers().foreach { serverUrl =>
-          BotController.listBots.foreach(diff => parkOn(serverUrl, diff, tok))
-        }
+        BotController.listBots.foreach(diff => parkOnAccountService(localAccountUrl, diff, tok))
+    fetchRemoteServers().foreach { serverUrl =>
+      BotController.listBots.foreach { diff =>
+        val name = botName(diff)
+        registerWithServer(serverUrl, name) match
+          case None      => log.warnf("Could not register %s on %s — skipping park", name, serverUrl)
+          case Some(tok) => parkOnTournamentServer(serverUrl, name, tok)
+      }
+    }
 
   private def fetchRemoteServers(): List[String] =
     Try {
@@ -129,7 +134,7 @@ class TournamentBotGamePlayer:
       else { response.close(); Nil }
     }.getOrElse(Nil)
 
-  private def parkOn(serverUrl: String, difficulty: String, token: String): Unit =
+  private def parkOnAccountService(serverUrl: String, difficulty: String, token: String): Unit =
     Try {
       val body = s"""{"name":"${botName(difficulty)}"}"""
       val response = client.target(serverUrl).path("api").path("account").path("bots")
@@ -142,6 +147,20 @@ class TournamentBotGamePlayer:
       else log.warnf("Park %s on %s returned status %d", botName(difficulty), serverUrl, response.getStatus)
       response.close()
     }.failed.foreach(ex => log.warnf(ex, "Failed to park %s on %s", botName(difficulty), serverUrl))
+
+  private def parkOnTournamentServer(serverUrl: String, name: String, token: String): Unit =
+    Try {
+      val body = s"""{"name":"${name.replace("\"", "\\\"")}"}"""
+      val response = client.target(serverUrl).path("api").path("bots")
+        .request(MediaType.APPLICATION_JSON)
+        .header("Authorization", s"Bearer $token")
+        .post(Entity.entity(body, MediaType.APPLICATION_JSON))
+      if response.getStatus == 201 || response.getStatus == 200 then
+        val id = objectMapper.readTree(response.readEntity(classOf[String])).path("id").asText()
+        log.infof("Parked bot %s on tournament server %s as id %s", name, serverUrl, id)
+      else log.warnf("Park %s on tournament server %s returned status %d", name, serverUrl, response.getStatus)
+      response.close()
+    }.failed.foreach(ex => log.warnf(ex, "Failed to park %s on tournament server %s", name, serverUrl))
 
   private def botName(difficulty: String): String = s"NowChess ${difficulty.capitalize}"
 
