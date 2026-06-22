@@ -193,6 +193,14 @@ class AccountResource:
     val bots = accountService.getOfficialBotAccounts()
     Response.ok(bots.map(toOfficialBotDto)).build()
 
+  @GET
+  @Path("/official-bots/{name}/token")
+  @InternalOnly
+  def getOfficialBotToken(@PathParam("name") name: String): Response =
+    accountService.getOfficialBotTokenByName(name) match
+      case None        => Response.status(Response.Status.NOT_FOUND).build()
+      case Some(token) => Response.ok(RotatedTokenDto(token)).build()
+
   @POST
   @Path("/official-bots")
   @RolesAllowed(Array("Admin"))

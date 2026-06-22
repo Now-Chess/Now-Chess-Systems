@@ -7,6 +7,7 @@ import org.eclipse.microprofile.rest.client.annotation.{RegisterClientHeaders, R
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient
 
 case class SyncOfficialBotsRequest(bots: List[String])
+case class BotTokenResponse(token: String)
 
 @Path("/api/account/official-bots")
 @RegisterRestClient(configKey = "account-service")
@@ -18,3 +19,8 @@ trait AccountServiceClient:
   @Path("/sync")
   @Consumes(Array(MediaType.APPLICATION_JSON))
   def syncBots(req: SyncOfficialBotsRequest): Unit
+
+  @GET
+  @Path("/{name}/token")
+  @Produces(Array(MediaType.APPLICATION_JSON))
+  def getBotToken(@PathParam("name") name: String): BotTokenResponse

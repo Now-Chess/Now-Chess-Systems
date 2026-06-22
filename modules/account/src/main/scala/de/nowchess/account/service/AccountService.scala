@@ -225,6 +225,9 @@ class AccountService:
   def getOfficialBotAccounts(): List[OfficialBotAccount] =
     officialBotAccountRepository.findAll()
 
+  def getOfficialBotTokenByName(name: String): Option[String] =
+    officialBotAccountRepository.findByName(name).map(_.token)
+
   @Transactional
   def deleteOfficialBotAccount(botId: UUID): Either[AccountError, Unit] =
     officialBotAccountRepository.findById(botId) match

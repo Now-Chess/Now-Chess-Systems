@@ -3,13 +3,17 @@ package de.nowchess.bot.service
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 import de.nowchess.bot.{Bot, BotController}
+import de.nowchess.bot.client.AccountServiceClient
+import de.nowchess.bot.config.RedisConfig
 import de.nowchess.io.fen.FenParser
+import io.quarkus.redis.datasource.RedisDataSource
 import io.quarkus.runtime.Startup
 import jakarta.annotation.{PostConstruct, PreDestroy}
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.ws.rs.client.{Client, ClientBuilder, Entity}
 import jakarta.ws.rs.core.MediaType
+import org.eclipse.microprofile.rest.client.inject.RestClient
 import org.jboss.logging.Logger
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
@@ -26,13 +30,14 @@ class TournamentBotGamePlayer:
   // scalafix:off DisableSyntax.var
   @Inject var objectMapper: ObjectMapper   = uninitialized
   @Inject var botController: BotController = uninitialized
+  @Inject var redis: RedisDataSource       = uninitialized
+  @Inject var redisConfig: RedisConfig     = uninitialized
+  @Inject @RestClient var accountServiceClient: AccountServiceClient = uninitialized
   // scalafix:on DisableSyntax.var
 
   private val client: Client           = ClientBuilder.newClient()
   private val workers: ExecutorService = Executors.newCachedThreadPool()
   private val activeGames              = ConcurrentHashMap.newKeySet[String]()
-
-  private val config = TournamentBotConfig.fromEnv(System.getenv().asScala.toMap)
 
   // scalafix:off DisableSyntax.var
   @volatile private var running = true
@@ -43,18 +48,44 @@ class TournamentBotGamePlayer:
 
   @PostConstruct
   def initialize(): Unit =
-    parkOnStartup()
-    config match
+    val env        = System.getenv().asScala.toMap
+    val difficulty = env.getOrElse("TOURNAMENT_BOT_DIFFICULTY", "medium")
+    val token      = resolveToken(difficulty)
+    parkOnStartup(token)
+    TournamentBotConfig.fromEnvWithToken(env, token) match
       case None =>
-        log.info("Tournament bot disabled — set TOURNAMENT_ID and TOURNAMENT_BOT_TOKEN to enable")
+        log.info("Tournament bot disabled — set TOURNAMENT_ID to enable")
       case Some(cfg) =>
         log.infof("Tournament bot enabled — server=%s tournament=%s bot=%s", cfg.serverUrl, cfg.tournamentId, cfg.botId)
         startAsync(cfg)
 
-  private def parkOnStartup(): Unit =
-    val token = System.getenv().asScala.get("TOURNAMENT_BOT_TOKEN").filter(_.nonEmpty)
+  private def resolveToken(difficulty: String): Option[String] =
+    val name     = botName(difficulty)
+    val redisKey = s"${redisConfig.prefix}:tournament-bot:token:$name"
+    Try(accountServiceClient.getBotToken(name).token)
+      .toOption
+      .filter(_.nonEmpty)
+      .map { token =>
+        redis.value(classOf[String]).set(redisKey, token)
+        log.infof("Fetched fresh bot token for %s from account service", name)
+        token
+      }
+      .orElse {
+        Option(redis.value(classOf[String]).get(redisKey)).filter(_.nonEmpty).map { token =>
+          log.infof("Using cached bot token for %s from Redis", name)
+          token
+        }
+      }
+      .orElse {
+        System.getenv().asScala.get("TOURNAMENT_BOT_TOKEN").filter(_.nonEmpty).map { token =>
+          log.infof("Using TOURNAMENT_BOT_TOKEN env var for %s", name)
+          token
+        }
+      }
+
+  private def parkOnStartup(token: Option[String]): Unit =
     token match
-      case None => log.warn("TOURNAMENT_BOT_TOKEN not set — skipping park")
+      case None => log.warn("No bot token resolved — skipping park")
       case Some(tok) =>
         val localAccountUrl = System.getenv().asScala.getOrElse("ACCOUNT_SERVICE_URL", "http://localhost:8083")
         BotController.listBots.foreach(diff => parkOn(localAccountUrl, diff, tok))
@@ -95,8 +126,10 @@ class TournamentBotGamePlayer:
       botToken: Option[String],
       difficulty: String,
   ): Either[String, String] =
+    val redisKey      = s"${redisConfig.prefix}:tournament-bot:token:${botName(difficulty)}"
     val resolvedToken = botToken.filter(_.nonEmpty)
       .orElse(System.getenv().asScala.get("TOURNAMENT_BOT_TOKEN").filter(_.nonEmpty))
+      .orElse(Option(redis.value(classOf[String]).get(redisKey)).filter(_.nonEmpty))
     resolvedToken match
       case None => Left("No bot token provided and TOURNAMENT_BOT_TOKEN not configured")
       case Some(token) =>

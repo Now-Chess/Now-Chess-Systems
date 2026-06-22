@@ -16,13 +16,17 @@ object TournamentBotConfig:
   private val mapper = new ObjectMapper()
 
   def fromEnv(env: Map[String, String]): Option[TournamentBotConfig] =
+    fromEnvWithToken(env, None)
+
+  def fromEnvWithToken(env: Map[String, String], resolvedToken: Option[String]): Option[TournamentBotConfig] =
+    val token = env.get("TOURNAMENT_BOT_TOKEN").filter(_.nonEmpty).orElse(resolvedToken)
     for
       tournamentId <- env.get("TOURNAMENT_ID").filter(_.nonEmpty)
-      token        <- env.get("TOURNAMENT_BOT_TOKEN").filter(_.nonEmpty)
-      botId        <- jwtSubject(token)
+      tok          <- token
+      botId        <- jwtSubject(tok)
       serverUrl  = env.getOrElse("TOURNAMENT_SERVICE_URL", "http://localhost:8086")
       difficulty = env.getOrElse("TOURNAMENT_BOT_DIFFICULTY", "medium")
-    yield TournamentBotConfig(serverUrl, tournamentId, token, botId, difficulty)
+    yield TournamentBotConfig(serverUrl, tournamentId, tok, botId, difficulty)
 
   def jwtSubject(token: String): Option[String] =
     Try {
