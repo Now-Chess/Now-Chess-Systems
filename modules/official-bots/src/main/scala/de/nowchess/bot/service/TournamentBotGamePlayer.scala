@@ -94,8 +94,13 @@ class TournamentBotGamePlayer:
         val token = objectMapper.readTree(response.readEntity(classOf[String])).path("token").asText()
         response.close()
         Option(token).filter(_.nonEmpty)
-      else { response.close(); None }
-    }.toOption.flatten
+      else
+        val errBody = response.readEntity(classOf[String])
+        log.warnf("Register %s on %s returned status %d: %s", name, serverUrl, status, errBody)
+        response.close()
+        None
+    }.recover { case ex => log.warnf(ex, "Register %s on %s failed", name, serverUrl); None }
+      .toOption.flatten
 
   private def fetchTokenFromAccountService(name: String): Option[String] =
     Try(accountServiceClient.getBotToken(name).token).toOption.filter(_.nonEmpty)
@@ -171,8 +176,8 @@ class TournamentBotGamePlayer:
   ): Either[String, String] =
     val redisKey      = s"${redisConfig.prefix}:tournament-bot:token:${botName(difficulty)}"
     val resolvedToken = botToken.filter(_.nonEmpty)
-      .orElse(System.getenv().asScala.get("TOURNAMENT_BOT_TOKEN").filter(_.nonEmpty))
       .orElse(Option(redis.value(classOf[String]).get(redisKey)).filter(_.nonEmpty))
+      .orElse(System.getenv().asScala.get("TOURNAMENT_BOT_TOKEN").filter(_.nonEmpty))
     resolvedToken match
       case None => Left("No bot token provided and TOURNAMENT_BOT_TOKEN not configured")
       case Some(token) =>
