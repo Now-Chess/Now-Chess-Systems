@@ -62,9 +62,7 @@ class TournamentBotGamePlayer:
   private def resolveToken(difficulty: String): Option[String] =
     val name     = botName(difficulty)
     val redisKey = s"${redisConfig.prefix}:tournament-bot:token:$name"
-    Try(accountServiceClient.getBotToken(name).token)
-      .toOption
-      .filter(_.nonEmpty)
+    fetchTokenFromAccountService(name)
       .map { token =>
         redis.value(classOf[String]).set(redisKey, token)
         log.infof("Fetched fresh bot token for %s from account service", name)
@@ -81,6 +79,16 @@ class TournamentBotGamePlayer:
           log.infof("Using TOURNAMENT_BOT_TOKEN env var for %s", name)
           token
         }
+      }
+
+  private def fetchTokenFromAccountService(name: String): Option[String] =
+    Try(accountServiceClient.getBotToken(name).token).toOption.filter(_.nonEmpty)
+      .orElse {
+        Try {
+          val allNames = BotController.listBots.map(botName)
+          accountServiceClient.syncBots(de.nowchess.bot.client.SyncOfficialBotsRequest(allNames))
+          accountServiceClient.getBotToken(name).token
+        }.toOption.filter(_.nonEmpty)
       }
 
   private def parkOnStartup(token: Option[String]): Unit =
