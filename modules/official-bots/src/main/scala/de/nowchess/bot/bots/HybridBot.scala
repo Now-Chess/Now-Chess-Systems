@@ -24,16 +24,24 @@ object HybridBot:
     val search = AlphaBetaSearch(rules, TranspositionTable(), classicalEvaluation)
     context =>
       val blockedMoves = BotMoveRepetition.blockedMoves(context)
+
+      def nnueScore(move: Move): Int      = nnueEvaluation.evaluate(rules.applyMove(context)(move))
+      def classicalScore(move: Move): Int = classicalEvaluation.evaluate(rules.applyMove(context)(move))
+
+      def refine(move: Move): Move =
+        val moveNnue = nnueScore(move)
+        if (classicalScore(move) - moveNnue).abs <= Config.VETO_THRESHOLD then move
+        else
+          search
+            .bestMoveWithTime(context, Config.TIME_LIMIT_MS, blockedMoves + move)
+            .filterNot(blockedMoves.contains)
+            .filter(alt => nnueScore(alt) < moveNnue)
+            .map { alt =>
+              vetoReporter(f"[Veto] ${move.from}->${move.to} replaced by ${alt.from}->${alt.to} — NNUE prefers it")
+              alt
+            }
+            .getOrElse(move)
+
       book.flatMap(_.probe(context)).filterNot(blockedMoves.contains).orElse {
-        search.bestMoveWithTime(context, Config.TIME_LIMIT_MS, blockedMoves).map { move =>
-          val next       = rules.applyMove(context)(move)
-          val staticNnue = nnueEvaluation.evaluate(next)
-          val classical  = classicalEvaluation.evaluate(next)
-          val diff       = (classical - staticNnue).abs
-          if diff > Config.VETO_THRESHOLD then
-            vetoReporter(
-              f"[Veto] ${move.from}->${move.to}: nnue=$staticNnue  classical=$classical  diff=$diff — flagged but trusted (deep search)",
-            )
-          move
-        }
+        search.bestMoveWithTime(context, Config.TIME_LIMIT_MS, blockedMoves).map(refine)
       }
