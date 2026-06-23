@@ -5,7 +5,7 @@ import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 
 import java.io.{DataInputStream, FileInputStream, InputStream}
-import java.util.Random
+import java.util.concurrent.ThreadLocalRandom
 import scala.collection.mutable
 
 /** Reads a Polyglot opening book (.bin file) and probes it for moves.
@@ -17,8 +17,6 @@ import scala.collection.mutable
   *   - learn: 4 bytes (Int) — learning data (unused)
   */
 final class PolyglotBook private (entries: Map[Long, Vector[BookEntry]]):
-
-  private val rng = Random()
 
   /** Probe the book for a move in the given position. Returns a weighted random move, or None if not in book. */
   def probe(context: GameContext): Option[Move] =
@@ -95,7 +93,7 @@ final class PolyglotBook private (entries: Map[Long, Vector[BookEntry]]):
     if entries.length == 1 then entries.head
     else
       val totalWeight = entries.map(_.weight).sum
-      val pick        = rng.nextInt(totalWeight.max(1)) // NOSONAR
+      val pick        = ThreadLocalRandom.current().nextInt(totalWeight.max(1)) // NOSONAR
 
       @scala.annotation.tailrec
       def select(remaining: Int, idx: Int): BookEntry =
