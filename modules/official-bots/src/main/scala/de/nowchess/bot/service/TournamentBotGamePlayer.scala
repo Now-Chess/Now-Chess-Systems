@@ -414,9 +414,17 @@ class TournamentBotGamePlayer:
           if gameTerminalStatuses.contains(status) then
             log.infof("Game %s ended — status=%s", gameId, status); done = true
           else
+            // TEMP: tournament-server reports wrong color in pairings (everyone white).
+            // The game endpoint white/black ids are correct, so derive our color from it.
+            val whiteId = node.path("white").path("id").asText()
+            val blackId = node.path("black").path("id").asText()
+            val myColor =
+              if whiteId == cfg.botId then "white"
+              else if blackId == cfg.botId then "black"
+              else color
             val turn = node.path("turn").asText()
             val fen  = node.path("fen").asText()
-            if turn == color && status == "ongoing" && fen.nonEmpty && fen != lastFen then
+            if turn == myColor && status == "ongoing" && fen.nonEmpty && fen != lastFen then
               lastFen = fen
               log.infof("Our turn in game %s — computing move (fen=%s)", gameId, fen)
               computeUci(cfg, fen) match
