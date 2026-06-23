@@ -82,14 +82,63 @@ class TournamentBotGamePlayer:
   private def autoJoinScan(): Unit =
     resolveAutoJoinToken().foreach { token =>
       TournamentBotConfig.jwtSubject(token).foreach { botId =>
-        openTournaments().foreach { tournamentId =>
+        val open = openTournaments()
+        log.infof("Auto-join scan — server=%s open tournaments=%d bot=%s", autoJoinServerUrl, open.size, botId)
+        open.foreach { tournamentId =>
           if joinedTournaments.add(tournamentId) then
             val cfg = TournamentBotConfig(autoJoinServerUrl, tournamentId, token, botId, hardestDifficulty)
             if joinedOrParticipating(cfg) then startAsync(cfg)
             else joinedTournaments.remove(tournamentId)
         }
+        playPendingGames(token, botId)
       }
     }
+
+  // The tournament-server does not reliably replay gameStart to late subscribers, so we cannot
+  // depend on the event stream to discover games. Poll each joined tournament for our active game.
+  private def playPendingGames(token: String, botId: String): Unit =
+    joinedTournaments.forEach { tournamentId =>
+      val cfg = TournamentBotConfig(autoJoinServerUrl, tournamentId, token, botId, hardestDifficulty)
+      pendingGame(cfg).foreach { (gameId, color) =>
+        if activeGames.add(gameId) then
+          log.infof("Polled active game %s as %s in tournament %s", gameId, color, tournamentId)
+          workers.submit(new Runnable { def run(): Unit = playGame(cfg, gameId, color) })
+      }
+    }
+
+  private def pendingGame(cfg: TournamentBotConfig): Option[(String, String)] =
+    for
+      detail <- fetchJson(cfg, target(cfg))
+      if detail.path("status").asText() == "started"
+      round = detail.path("round").asInt(0)
+      if round > 0
+      pairings <- fetchJson(cfg, target(cfg).path("round").path(round.toString)).map(_.path("pairings"))
+      result   <- findBotGame(pairings, cfg.botId)
+    yield result
+
+  private def findBotGame(pairings: JsonNode, botId: String): Option[(String, String)] =
+    pairings.elements().asScala
+      .flatMap { p =>
+        val whiteId = p.path("white").path("id").asText()
+        val blackId = p.path("black").path("id").asText()
+        val color   = if whiteId == botId then Some("white") else if blackId == botId then Some("black") else None
+        color.flatMap(c => activeMatch(p.path("matches")).map(gameId => (gameId, c)))
+      }
+      .nextOption()
+
+  private def activeMatch(matches: JsonNode): Option[String] =
+    matches.elements().asScala
+      .find(m => m.path("gameId").asText().nonEmpty && !(m.has("outcome") && !m.path("outcome").isNull))
+      .map(_.path("gameId").asText())
+
+  private def fetchJson(cfg: TournamentBotConfig, t: jakarta.ws.rs.client.WebTarget): Option[JsonNode] =
+    Try {
+      val response = authed(cfg, t).get()
+      try
+        if response.getStatus == 200 then Some(objectMapper.readTree(response.readEntity(classOf[String])))
+        else None
+      finally response.close()
+    }.getOrElse(None)
 
   private def resolveAutoJoinToken(): Option[String] =
     autoJoinToken match
@@ -291,10 +340,12 @@ class TournamentBotGamePlayer:
   private def onGameStart(cfg: TournamentBotConfig, gameId: String): Unit =
     if gameId.isEmpty then ()
     else
+      log.infof("gameStart received — tournament=%s game=%s bot=%s", cfg.tournamentId, gameId, cfg.botId)
       resolveColor(cfg, gameId) match
-        case None => log.debugf("Ignoring game %s — bot %s is not a participant", gameId, cfg.botId)
+        case None => log.infof("Skipping game %s — bot %s is not a participant", gameId, cfg.botId)
         case Some(color) =>
           if activeGames.add(gameId) then
+            log.infof("Joining game %s as %s", gameId, color)
             workers.submit(new Runnable { def run(): Unit = playGame(cfg, gameId, color) })
             ()
 
