@@ -28,10 +28,10 @@ class TournamentBotGamePlayer:
   private val log = Logger.getLogger(classOf[TournamentBotGamePlayer])
 
   // scalafix:off DisableSyntax.var
-  @Inject var objectMapper: ObjectMapper   = uninitialized
-  @Inject var botController: BotController = uninitialized
-  @Inject var redis: RedisDataSource       = uninitialized
-  @Inject var redisConfig: RedisConfig     = uninitialized
+  @Inject var objectMapper: ObjectMapper                             = uninitialized
+  @Inject var botController: BotController                           = uninitialized
+  @Inject var redis: RedisDataSource                                 = uninitialized
+  @Inject var redisConfig: RedisConfig                               = uninitialized
   @Inject @RestClient var accountServiceClient: AccountServiceClient = uninitialized
   // scalafix:on DisableSyntax.var
 
@@ -119,7 +119,9 @@ class TournamentBotGamePlayer:
     yield result
 
   private def findBotGame(pairings: JsonNode, botId: String): Option[(String, String)] =
-    pairings.elements().asScala
+    pairings
+      .elements()
+      .asScala
       .flatMap { p =>
         val whiteId = p.path("white").path("id").asText()
         val blackId = p.path("black").path("id").asText()
@@ -129,7 +131,9 @@ class TournamentBotGamePlayer:
       .nextOption()
 
   private def activeMatch(matches: JsonNode): Option[String] =
-    matches.elements().asScala
+    matches
+      .elements()
+      .asScala
       .find(m => m.path("gameId").asText().nonEmpty && !(m.has("outcome") && !m.path("outcome").isNull))
       .map(_.path("gameId").asText())
 
@@ -151,9 +155,12 @@ class TournamentBotGamePlayer:
 
   private def openTournaments(): List[String] =
     Try {
-      val response = client.target(autoJoinServerUrl)
-        .path("api").path("tournament")
-        .request(MediaType.APPLICATION_JSON).get()
+      val response = client
+        .target(autoJoinServerUrl)
+        .path("api")
+        .path("tournament")
+        .request(MediaType.APPLICATION_JSON)
+        .get()
       if response.getStatus == 200 then
         val node = objectMapper.readTree(response.readEntity(classOf[String]))
         response.close()
@@ -164,8 +171,8 @@ class TournamentBotGamePlayer:
   private def resolveToken(difficulty: String): Option[String] =
     val name     = botName(difficulty)
     val redisKey = s"${redisConfig.prefix}:tournament-bot:token:$name"
-    registerWithServer(tournamentServiceUrl, name)
-      .orElse(fetchTokenFromAccountService(name))
+    fetchTokenFromAccountService(name)
+      .orElse(registerWithServer(tournamentServiceUrl, name))
       .map { token =>
         redis.value(classOf[String]).set(redisKey, token)
         log.infof("Refreshed bot token for %s — stored in Redis", name)
@@ -187,8 +194,11 @@ class TournamentBotGamePlayer:
   private def registerWithServer(serverUrl: String, name: String): Option[String] =
     Try {
       val body = s"""{"name":"${name.replace("\"", "\\\"")}","isBot":true}"""
-      val response = client.target(serverUrl)
-        .path("api").path("auth").path("register")
+      val response = client
+        .target(serverUrl)
+        .path("api")
+        .path("auth")
+        .path("register")
         .request(MediaType.APPLICATION_JSON)
         .post(Entity.entity(body, MediaType.APPLICATION_JSON))
       val status = response.getStatus
@@ -201,11 +211,11 @@ class TournamentBotGamePlayer:
         log.warnf("Register %s on %s returned status %d: %s", name, serverUrl, status, errBody)
         response.close()
         None
-    }.recover { case ex => log.warnf(ex, "Register %s on %s failed", name, serverUrl); None }
-      .toOption.flatten
+    }.recover { case ex => log.warnf(ex, "Register %s on %s failed", name, serverUrl); None }.toOption.flatten
 
   private def fetchTokenFromAccountService(name: String): Option[String] =
-    Try(accountServiceClient.getBotToken(name).token).toOption.filter(_.nonEmpty)
+    Try(accountServiceClient.getBotToken(name).token).toOption
+      .filter(_.nonEmpty)
       .orElse {
         Try {
           val allNames = BotController.listBots.map(botName)
@@ -231,9 +241,13 @@ class TournamentBotGamePlayer:
 
   private def fetchRemoteServers(): List[String] =
     Try {
-      val response = client.target(tournamentServiceUrl)
-        .path("api").path("tournament").path("servers")
-        .request(MediaType.APPLICATION_JSON).get()
+      val response = client
+        .target(tournamentServiceUrl)
+        .path("api")
+        .path("tournament")
+        .path("servers")
+        .request(MediaType.APPLICATION_JSON)
+        .get()
       if response.getStatus == 200 then
         val node = objectMapper.readTree(response.readEntity(classOf[String]))
         response.close()
@@ -244,7 +258,11 @@ class TournamentBotGamePlayer:
   private def parkOnAccountService(serverUrl: String, difficulty: String, token: String): Unit =
     Try {
       val body = s"""{"name":"${botName(difficulty)}"}"""
-      val response = client.target(serverUrl).path("api").path("account").path("bots")
+      val response = client
+        .target(serverUrl)
+        .path("api")
+        .path("account")
+        .path("bots")
         .request(MediaType.APPLICATION_JSON)
         .header("Authorization", s"Bearer $token")
         .post(Entity.entity(body, MediaType.APPLICATION_JSON))
@@ -258,7 +276,10 @@ class TournamentBotGamePlayer:
   private def parkOnTournamentServer(serverUrl: String, name: String, token: String): Unit =
     Try {
       val body = s"""{"name":"${name.replace("\"", "\\\"")}"}"""
-      val response = client.target(serverUrl).path("api").path("bots")
+      val response = client
+        .target(serverUrl)
+        .path("api")
+        .path("bots")
         .request(MediaType.APPLICATION_JSON)
         .header("Authorization", s"Bearer $token")
         .post(Entity.entity(body, MediaType.APPLICATION_JSON))
@@ -276,10 +297,11 @@ class TournamentBotGamePlayer:
       botToken: Option[String],
       difficulty: String,
   ): Either[String, String] =
-    val redisKey      = s"${redisConfig.prefix}:tournament-bot:token:${botName(difficulty)}"
-    val resolvedToken = botToken.filter(_.nonEmpty)
+    val redisKey = s"${redisConfig.prefix}:tournament-bot:token:${botName(difficulty)}"
+    val resolvedToken = botToken
+      .filter(_.nonEmpty)
       .orElse(Option(redis.value(classOf[String]).get(redisKey)).filter(_.nonEmpty))
-      .orElse(System.getenv().asScala.get("TOURNAMENT_BOT_TOKEN").filter(_.nonEmpty))
+      .orElse(resolveToken(difficulty))
     resolvedToken match
       case None => Left("No bot token provided and TOURNAMENT_BOT_TOKEN not configured")
       case Some(token) =>
@@ -336,8 +358,7 @@ class TournamentBotGamePlayer:
       log.infof("Listening to tournament %s event stream", cfg.tournamentId)
       forEachLine(response.readEntity(classOf[InputStream])): line =>
         parse(line).foreach: node =>
-          if node.path("type").asText() == "gameStart" then
-            onGameStart(cfg, node.path("gameId").asText())
+          if node.path("type").asText() == "gameStart" then onGameStart(cfg, node.path("gameId").asText())
 
   private def onGameStart(cfg: TournamentBotConfig, gameId: String): Unit =
     if gameId.isEmpty then ()
