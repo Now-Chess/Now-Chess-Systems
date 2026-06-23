@@ -4,7 +4,7 @@ import de.nowchess.api.board.*
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 
-import java.io.{DataInputStream, FileInputStream}
+import java.io.{DataInputStream, FileInputStream, InputStream}
 import scala.collection.mutable
 import scala.util.Random
 
@@ -16,48 +16,17 @@ import scala.util.Random
   *   - weight: 2 bytes (Short) — move weight (higher = preferred)
   *   - learn: 4 bytes (Int) — learning data (unused)
   */
-final class PolyglotBook(path: String):
-
-  private val entries: Map[Long, Vector[BookEntry]] =
-    try {
-      val r = loadBookFile(path)
-      println(s"Book loaded successfully. ${r.size} entries found.")
-      r
-    } catch
-      case e: Exception =>
-        println(s"Error loading book: $e")
-        // Gracefully fail: return empty map if book cannot be loaded
-        // This allows the bot to work even if the book file is missing
-        scala.collection.immutable.Map.empty
+final class PolyglotBook private (entries: Map[Long, Vector[BookEntry]]):
 
   /** Probe the book for a move in the given position. Returns a weighted random move, or None if not in book. */
   def probe(context: GameContext): Option[Move] =
     val hash = PolyglotHash.hash(context)
-    println(f"0x$hash%016X")
     entries.get(hash).flatMap { bookEntries =>
       if bookEntries.isEmpty then None
       else
         val entry = weightedRandom(bookEntries)
         decodeMove(entry.move, context)
     }
-
-  private def loadBookFile(path: String): Map[Long, Vector[BookEntry]] =
-    val input = DataInputStream(FileInputStream(path))
-    try
-      val result = mutable.Map[Long, Vector[BookEntry]]()
-      while input.available() > 0 do
-        val key    = input.readLong()
-        val move   = input.readShort()
-        val weight = input.readShort()
-        input.readInt() // learning data (unused)
-
-        val entry = BookEntry(key, move, weight)
-        result.updateWith(key) {
-          case Some(entries) => Some(entries :+ entry)
-          case None          => Some(Vector(entry))
-        }
-      result.toMap
-    finally input.close()
 
   /** Decode a packed Polyglot move short into an Option[Move].
     *
@@ -133,5 +102,49 @@ final class PolyglotBook(path: String):
         else select(remaining - entries(idx).weight, idx + 1)
 
       select(pick, 0)
+
+object PolyglotBook:
+
+  /** Load a book from a filesystem path. Fails gracefully to an empty book. */
+  def apply(path: String): PolyglotBook =
+    safeLoad(s"file $path")(FileInputStream(path))
+
+  /** Load a book from a classpath resource (native-image safe: the resource is embedded in the binary, so no file must
+    * be mounted into the pod).
+    */
+  def fromResource(name: String): PolyglotBook =
+    Option(getClass.getResourceAsStream(name)) match
+      case Some(stream) => safeLoad(s"resource $name")(stream)
+      case None =>
+        println(s"Error loading book: resource $name not found on classpath")
+        new PolyglotBook(Map.empty)
+
+  private def safeLoad(source: String)(stream: => InputStream): PolyglotBook =
+    try
+      val entries = parse(stream)
+      println(s"Book loaded successfully from $source. ${entries.size} entries found.")
+      new PolyglotBook(entries)
+    catch
+      case e: Exception =>
+        println(s"Error loading book from $source: $e")
+        new PolyglotBook(Map.empty)
+
+  private def parse(stream: InputStream): Map[Long, Vector[BookEntry]] =
+    val input = DataInputStream(stream)
+    try
+      val result = mutable.Map[Long, Vector[BookEntry]]()
+      while input.available() > 0 do
+        val key    = input.readLong()
+        val move   = input.readShort()
+        val weight = input.readShort()
+        input.readInt() // learning data (unused)
+
+        val entry = BookEntry(key, move, weight)
+        result.updateWith(key) {
+          case Some(entries) => Some(entries :+ entry)
+          case None          => Some(Vector(entry))
+        }
+      result.toMap
+    finally input.close()
 
 private case class BookEntry(key: Long, move: Short, weight: Int)
