@@ -283,12 +283,35 @@ class TournamentBotGamePlayer:
       forEachLine(response.readEntity(classOf[InputStream])): line =>
         parse(line).foreach: node =>
           if node.path("type").asText() == "gameStart" then
-            onGameStart(cfg, node.path("gameId").asText(), node.path("color").asText())
+            onGameStart(cfg, node.path("gameId").asText())
 
-  private def onGameStart(cfg: TournamentBotConfig, gameId: String, color: String): Unit =
-    if gameId.nonEmpty && color.nonEmpty && activeGames.add(gameId) then
-      workers.submit(new Runnable { def run(): Unit = playGame(cfg, gameId, color) })
-      ()
+  private def onGameStart(cfg: TournamentBotConfig, gameId: String): Unit =
+    if gameId.isEmpty then ()
+    else
+      resolveColor(cfg, gameId) match
+        case None => log.debugf("Ignoring game %s — bot %s is not a participant", gameId, cfg.botId)
+        case Some(color) =>
+          if activeGames.add(gameId) then
+            workers.submit(new Runnable { def run(): Unit = playGame(cfg, gameId, color) })
+            ()
+
+  private def resolveColor(cfg: TournamentBotConfig, gameId: String): Option[String] =
+    fetchGame(cfg, gameId).flatMap { node =>
+      val whiteId = node.path("white").path("id").asText()
+      val blackId = node.path("black").path("id").asText()
+      if whiteId == cfg.botId then Some("white")
+      else if blackId == cfg.botId then Some("black")
+      else None
+    }
+
+  private def fetchGame(cfg: TournamentBotConfig, gameId: String): Option[JsonNode] =
+    Try {
+      val response = authed(cfg, target(cfg).path("game").path(gameId)).get()
+      try
+        if response.getStatus == 200 then Some(objectMapper.readTree(response.readEntity(classOf[String])))
+        else { log.warnf("Game detail %s returned status %d", gameId, response.getStatus); None }
+      finally response.close()
+    }.getOrElse(None)
 
   private def playGame(cfg: TournamentBotConfig, gameId: String, color: String): Unit =
     Try {
