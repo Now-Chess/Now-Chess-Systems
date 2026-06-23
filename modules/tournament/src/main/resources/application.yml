@@ -30,6 +30,8 @@ nowchess:
   tournament:
     self-url: ""
     external-servers: ""
+    native-server-url: ${TOURNAMENT_NATIVE_SERVER_URL:http://141.37.123.132:8086}
+    director-name: ${TOURNAMENT_DIRECTOR_NAME:NowChess System}
 
 mp:
   jwt:
@@ -53,6 +55,8 @@ mp:
     tournament:
       self-url: ${TOURNAMENT_SELF_URL:}
       external-servers: ${TOURNAMENT_EXTERNAL_SERVERS:}
+      native-server-url: ${TOURNAMENT_NATIVE_SERVER_URL:http://141.37.123.132:8086}
+      director-name: ${TOURNAMENT_DIRECTOR_NAME:NowChess System}
 
 "%test":
   quarkus:

@@ -40,6 +40,12 @@ class TournamentResource:
 
   @ConfigProperty(name = "nowchess.tournament.self-url")
   var selfUrl: Optional[String] = uninitialized
+
+  @ConfigProperty(name = "nowchess.tournament.native-server-url", defaultValue = "http://141.37.123.132:8086")
+  var nativeServerUrl: String = uninitialized
+
+  @ConfigProperty(name = "nowchess.tournament.director-name", defaultValue = "NowChess System")
+  var directorName: String = uninitialized
   // scalafix:on
 
   @GET
@@ -95,7 +101,30 @@ class TournamentResource:
           log.warnf("Failed to replicate tournament %s to %s", t.id, remoteUrl)
       }
     }
+    publishToNativeServer(t)
     Response.status(Response.Status.CREATED).entity(tournamentService.toDto(t)).build()
+
+  private def publishToNativeServer(t: de.nowchess.tournament.domain.Tournament): Unit =
+    if nativeServerUrl.nonEmpty then
+      val form = encodeForm(
+        Map(
+          "name"           -> t.fullName,
+          "nbRounds"       -> t.nbRounds.toString,
+          "clockLimit"     -> t.clockLimit.toString,
+          "clockIncrement" -> t.clockIncrement.toString,
+          "rated"          -> t.rated.toString,
+        ),
+      )
+      if !externalClient.publishNative(nativeServerUrl, directorName, form) then
+        log.warnf("Failed to publish tournament %s to native server %s", t.id, nativeServerUrl)
+
+  private def encodeForm(params: Map[String, String]): String =
+    params
+      .map((k, v) => s"${enc(k)}=${enc(v)}")
+      .mkString("&")
+
+  private def enc(s: String): String =
+    java.net.URLEncoder.encode(s, "UTF-8")
 
   @GET
   @Path("/{id}")

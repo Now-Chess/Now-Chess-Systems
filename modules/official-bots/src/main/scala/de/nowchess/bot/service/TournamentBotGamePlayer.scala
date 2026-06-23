@@ -38,13 +38,21 @@ class TournamentBotGamePlayer:
   private val client: Client           = ClientBuilder.newClient()
   private val workers: ExecutorService = Executors.newCachedThreadPool()
   private val activeGames              = ConcurrentHashMap.newKeySet[String]()
+  private val joinedTournaments        = ConcurrentHashMap.newKeySet[String]()
+
+  private val hardestDifficulty  = "expert"
+  private val autoJoinIntervalMs = 15000L
 
   // scalafix:off DisableSyntax.var
-  @volatile private var running = true
+  @volatile private var running                       = true
+  @volatile private var autoJoinToken: Option[String] = None
   // scalafix:on DisableSyntax.var
 
   val tournamentServiceUrl: String =
     System.getenv().asScala.getOrElse("TOURNAMENT_SERVICE_URL", "http://localhost:8086")
+
+  val autoJoinServerUrl: String =
+    System.getenv().asScala.getOrElse("TOURNAMENT_AUTO_JOIN_URL", "http://141.37.123.132:8086")
 
   @PostConstruct
   def initialize(): Unit =
@@ -58,6 +66,49 @@ class TournamentBotGamePlayer:
       case Some(cfg) =>
         log.infof("Tournament bot enabled — server=%s tournament=%s bot=%s", cfg.serverUrl, cfg.tournamentId, cfg.botId)
         startAsync(cfg)
+    startAutoJoin()
+
+  private def startAutoJoin(): Unit =
+    val thread = new Thread(() => autoJoinLoop(), "TournamentBot-auto-join")
+    thread.setDaemon(true)
+    thread.start()
+    log.infof("Auto-join enabled — server=%s difficulty=%s", autoJoinServerUrl, hardestDifficulty)
+
+  private def autoJoinLoop(): Unit =
+    while running do
+      Try(autoJoinScan()).failed.foreach(ex => log.warnf(ex, "Auto-join scan failed"))
+      sleep(autoJoinIntervalMs)
+
+  private def autoJoinScan(): Unit =
+    resolveAutoJoinToken().foreach { token =>
+      TournamentBotConfig.jwtSubject(token).foreach { botId =>
+        openTournaments().foreach { tournamentId =>
+          if joinedTournaments.add(tournamentId) then
+            val cfg = TournamentBotConfig(autoJoinServerUrl, tournamentId, token, botId, hardestDifficulty)
+            if join(cfg) then startAsync(cfg)
+            else joinedTournaments.remove(tournamentId)
+        }
+      }
+    }
+
+  private def resolveAutoJoinToken(): Option[String] =
+    autoJoinToken match
+      case some @ Some(_) => some
+      case None =>
+        autoJoinToken = registerWithServer(autoJoinServerUrl, botName(hardestDifficulty))
+        autoJoinToken
+
+  private def openTournaments(): List[String] =
+    Try {
+      val response = client.target(autoJoinServerUrl)
+        .path("api").path("tournament")
+        .request(MediaType.APPLICATION_JSON).get()
+      if response.getStatus == 200 then
+        val node = objectMapper.readTree(response.readEntity(classOf[String]))
+        response.close()
+        node.path("created").elements().asScala.toList.map(_.path("id").asText()).filter(_.nonEmpty)
+      else { response.close(); Nil }
+    }.getOrElse(Nil)
 
   private def resolveToken(difficulty: String): Option[String] =
     val name     = botName(difficulty)
