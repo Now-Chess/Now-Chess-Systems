@@ -43,6 +43,9 @@ class TournamentBotGamePlayer:
   private val hardestDifficulty  = "expert"
   private val autoJoinIntervalMs = 15000L
 
+  private val gameTerminalStatuses =
+    Set("checkmate", "stalemate", "draw", "resigned", "timeout", "aborted", "finished")
+
   // scalafix:off DisableSyntax.var
   @volatile private var running                       = true
   @volatile private var autoJoinToken: Option[String] = None
@@ -87,8 +90,7 @@ class TournamentBotGamePlayer:
         open.foreach { tournamentId =>
           if joinedTournaments.add(tournamentId) then
             val cfg = TournamentBotConfig(autoJoinServerUrl, tournamentId, token, botId, hardestDifficulty)
-            if joinedOrParticipating(cfg) then startAsync(cfg)
-            else joinedTournaments.remove(tournamentId)
+            if !joinedOrParticipating(cfg) then joinedTournaments.remove(tournamentId)
         }
         playPendingGames(token, botId)
       }
@@ -370,58 +372,36 @@ class TournamentBotGamePlayer:
   private def playGame(cfg: TournamentBotConfig, gameId: String, color: String): Unit =
     Try {
       log.infof("Playing game %s as %s", gameId, color)
-      openGameStream(cfg, gameId).foreach(consumeGameStream(cfg, gameId, color, _))
+      pollGameLoop(cfg, gameId, color)
       activeGames.remove(gameId)
     } match
       case Failure(ex) => log.errorf(ex, "Game %s crashed", gameId); activeGames.remove(gameId)
       case Success(_)  => ()
 
-  private def consumeGameStream(cfg: TournamentBotConfig, gameId: String, color: String, stream: InputStream): Unit =
-    val reader = new BufferedReader(new InputStreamReader(stream))
+  // The native JAX-RS client buffers streaming responses, so reading the NDJSON game stream blocks
+  // forever. Poll the game state with plain GETs (which work) and move when it is our turn.
+  private def pollGameLoop(cfg: TournamentBotConfig, gameId: String, color: String): Unit =
     // scalafix:off DisableSyntax.var
-    var done = false
+    var done    = false
+    var lastFen = ""
     // scalafix:on DisableSyntax.var
-    Iterator
-      .continually(reader.readLine())
-      .map(Option(_))
-      .takeWhile(opt => opt.isDefined && running && !done)
-      .flatten
-      .foreach { line =>
-        parse(line).foreach: node =>
-          node.path("type").asText() match
-            case "gameState" =>
-              maybeMove(
-                cfg,
-                gameId,
-                color,
-                node.path("turn").asText(),
-                node.path("status").asText(),
-                node.path("fen").asText(),
-              )
-            case "move" =>
-              maybeMove(cfg, gameId, color, node.path("turn").asText(), "ongoing", node.path("fen").asText())
-            case "gameEnd" =>
-              log.infof(
-                "Game %s ended — status=%s winner=%s",
-                gameId,
-                node.path("status").asText(),
-                node.path("winner").asText(),
-              ); done = true
-            case _ => ()
-      }
-
-  private def maybeMove(
-      cfg: TournamentBotConfig,
-      gameId: String,
-      color: String,
-      turn: String,
-      status: String,
-      fen: String,
-  ): Unit =
-    if turn == color && status == "ongoing" && fen.nonEmpty then
-      computeUci(cfg, fen) match
-        case None      => log.warnf("No move found for game %s (fen=%s)", gameId, fen)
-        case Some(uci) => submitMove(cfg, gameId, uci)
+    while running && !done do
+      fetchJson(cfg, target(cfg).path("game").path(gameId)) match
+        case None => sleep(2000)
+        case Some(node) =>
+          val status = node.path("status").asText()
+          if gameTerminalStatuses.contains(status) then
+            log.infof("Game %s ended — status=%s", gameId, status); done = true
+          else
+            val turn = node.path("turn").asText()
+            val fen  = node.path("fen").asText()
+            if turn == color && status == "ongoing" && fen.nonEmpty && fen != lastFen then
+              lastFen = fen
+              log.infof("Our turn in game %s — computing move (fen=%s)", gameId, fen)
+              computeUci(cfg, fen) match
+                case None      => log.warnf("No move found for game %s (fen=%s)", gameId, fen)
+                case Some(uci) => submitMove(cfg, gameId, uci)
+            sleep(1000)
 
   private def computeUci(cfg: TournamentBotConfig, fen: String): Option[String] =
     FenParser.parseFen(fen) match
@@ -438,15 +418,6 @@ class TournamentBotGamePlayer:
     } match
       case Failure(ex) => log.errorf(ex, "Error submitting move %s in game %s", uci, gameId)
       case Success(_)  => ()
-
-  private def openGameStream(cfg: TournamentBotConfig, gameId: String): Option[InputStream] =
-    Try {
-      val response = authed(cfg, target(cfg).path("game").path(gameId).path("stream"))
-        .header("Accept", "application/x-ndjson")
-        .get()
-      if response.getStatus == 200 then Some(response.readEntity(classOf[InputStream]))
-      else { log.warnf("Game stream %s returned status %d", gameId, response.getStatus); response.close(); None }
-    }.getOrElse(None)
 
   private def engine(cfg: TournamentBotConfig): Bot =
     botController.getBot(cfg.difficulty).orElse(botController.getBot("medium")).get
