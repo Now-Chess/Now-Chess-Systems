@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.ws.rs.client.{Client, ClientBuilder, Entity}
 import jakarta.ws.rs.core.MediaType
+import org.eclipse.microprofile.config.inject.ConfigProperty
 import scala.compiletime.uninitialized
 import scala.util.Try
 
@@ -15,9 +16,34 @@ class ExternalTournamentClient:
   // scalafix:off DisableSyntax.var
   @Inject var objectMapper: ObjectMapper = uninitialized
   @volatile private var directorToken: Option[String] = None
+
+  @ConfigProperty(name = "nowchess.tournament.native-server-url", defaultValue = "http://141.37.123.132:8086")
+  var nativeServerUrl: String = uninitialized
+
+  @ConfigProperty(name = "nowchess.tournament.director-name", defaultValue = "NowChess System")
+  var directorName: String = uninitialized
   // scalafix:on
 
   private def buildClient(): Client = ClientBuilder.newClient()
+
+  // The tournament-server only accepts HS256 tokens it issued. Never forward a NowChessSystems
+  // RS256 user token to it — swap in the director token registered on that server.
+  private def normalize(url: String): String = url.stripSuffix("/")
+
+  private def isNativeServer(serverUrl: String): Boolean =
+    nativeServerUrl.nonEmpty && normalize(serverUrl) == normalize(nativeServerUrl)
+
+  private def directorBearer(): Option[String] =
+    directorToken
+      .orElse {
+        val fresh = registerDirector(nativeServerUrl, directorName)
+        directorToken = fresh
+        fresh
+      }
+      .map(t => s"Bearer $t")
+
+  private def authFor(serverUrl: String, userAuth: Option[String]): Option[String] =
+    if isNativeServer(serverUrl) then directorBearer() else userAuth
 
   def publishNative(serverUrl: String, directorName: String, form: String): Boolean =
     val token = directorToken.orElse {
@@ -105,7 +131,7 @@ class ExternalTournamentClient:
     Try {
       val client   = buildClient()
       val builder  = client.target(s"$serverUrl/$path").request(MediaType.APPLICATION_JSON)
-      val withAuth = authHeader.fold(builder)(h => builder.header("Authorization", h))
+      val withAuth = authFor(serverUrl, authHeader).fold(builder)(h => builder.header("Authorization", h))
       val response = withAuth.post(Entity.json(""))
       try (response.getStatus, response.readEntity(classOf[String]))
       finally
@@ -132,7 +158,7 @@ class ExternalTournamentClient:
     Try {
       val client   = buildClient()
       val builder  = client.target(s"$serverUrl/$path").request("application/x-ndjson")
-      val withAuth = authHeader.fold(builder)(h => builder.header("Authorization", h))
+      val withAuth = authFor(serverUrl, authHeader).fold(builder)(h => builder.header("Authorization", h))
       val response = withAuth.get()
       if response.getStatus == 200 then Some(response.readEntity(classOf[java.io.InputStream]))
       else
