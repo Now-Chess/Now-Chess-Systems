@@ -14,7 +14,7 @@ import scala.util.Try
 class ExternalTournamentClient:
 
   // scalafix:off DisableSyntax.var
-  @Inject var objectMapper: ObjectMapper = uninitialized
+  @Inject var objectMapper: ObjectMapper              = uninitialized
   @volatile private var directorToken: Option[String] = None
 
   @ConfigProperty(name = "nowchess.tournament.native-server-url", defaultValue = "http://141.37.123.132:8086")
@@ -30,7 +30,7 @@ class ExternalTournamentClient:
   // RS256 user token to it — swap in the director token registered on that server.
   private def normalize(url: String): String = url.stripSuffix("/")
 
-  private def isNativeServer(serverUrl: String): Boolean =
+  def isNativeServer(serverUrl: String): Boolean =
     nativeServerUrl.nonEmpty && normalize(serverUrl) == normalize(nativeServerUrl)
 
   private def directorBearer(): Option[String] =
@@ -45,18 +45,18 @@ class ExternalTournamentClient:
   private def authFor(serverUrl: String, userAuth: Option[String]): Option[String] =
     if isNativeServer(serverUrl) then directorBearer() else userAuth
 
-  def publishNative(serverUrl: String, directorName: String, form: String): Boolean =
+  def publishNative(serverUrl: String, directorName: String, form: String): Option[String] =
     val token = directorToken.orElse {
       val fresh = registerDirector(serverUrl, directorName)
       directorToken = fresh
       fresh
     }
-    token.exists { tok =>
-      if createNative(serverUrl, tok, form) then true
-      else
+    token.flatMap { tok =>
+      createNative(serverUrl, tok, form).orElse {
         val refreshed = registerDirector(serverUrl, directorName)
         directorToken = refreshed
-        refreshed.exists(createNative(serverUrl, _, form))
+        refreshed.flatMap(createNative(serverUrl, _, form))
+      }
     }
 
   private def registerDirector(serverUrl: String, name: String): Option[String] =
@@ -76,7 +76,7 @@ class ExternalTournamentClient:
         client.close()
     }.getOrElse(None)
 
-  private def createNative(serverUrl: String, token: String, form: String): Boolean =
+  private def createNative(serverUrl: String, token: String, form: String): Option[String] =
     Try {
       val client = buildClient()
       val response = client
@@ -84,11 +84,14 @@ class ExternalTournamentClient:
         .request(MediaType.APPLICATION_JSON)
         .header("Authorization", s"Bearer $token")
         .post(Entity.entity(form, MediaType.APPLICATION_FORM_URLENCODED))
-      try response.getStatus / 100 == 2
+      try
+        if response.getStatus / 100 == 2 then
+          Option(objectMapper.readTree(response.readEntity(classOf[String])).path("id").asText()).filter(_.nonEmpty)
+        else None
       finally
         response.close()
         client.close()
-    }.getOrElse(false)
+    }.getOrElse(None)
 
   def fetchList(serverUrl: String): Option[JsonNode] =
     Try {
@@ -141,8 +144,8 @@ class ExternalTournamentClient:
 
   def replicateTournament(serverUrl: String, req: ReplicateTournamentRequest, selfUrl: String): Boolean =
     Try {
-      val client  = buildClient()
-      val body    = objectMapper.writeValueAsString(req)
+      val client = buildClient()
+      val body   = objectMapper.writeValueAsString(req)
       val response = client
         .target(s"$serverUrl/api/tournament/replicate")
         .request(MediaType.APPLICATION_JSON)

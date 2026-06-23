@@ -52,9 +52,9 @@ class TournamentResource:
   @PermitAll
   def list(): Response =
     val (created, started, finished) = tournamentService.list()
-    val internalCreated              = created.map(t => objectMapper.valueToTree[JsonNode](tournamentService.toDto(t)))
-    val internalStarted              = started.map(t => objectMapper.valueToTree[JsonNode](tournamentService.toDto(t)))
-    val internalFinished             = finished.map(t => objectMapper.valueToTree[JsonNode](tournamentService.toDto(t)))
+    val internalCreated              = created.map(nativeOverlay)
+    val internalStarted              = started.map(nativeOverlay)
+    val internalFinished             = finished.map(nativeOverlay)
 
     val (extCreated, extStarted, extFinished) = registry
       .serverUrls()
@@ -96,7 +96,7 @@ class TournamentResource:
     val form   = CreateTournamentForm(name, nbRounds, clockLimit, clockIncrement, rated)
     val t      = tournamentService.create(userId, form)
     selfUrl.ifPresent { url =>
-      registry.serverUrls().foreach { remoteUrl =>
+      registry.serverUrls().filterNot(externalClient.isNativeServer).foreach { remoteUrl =>
         if !externalClient.replicateTournament(remoteUrl, toReplicateRequest(t), url) then
           log.warnf("Failed to replicate tournament %s to %s", t.id, remoteUrl)
       }
@@ -115,8 +115,42 @@ class TournamentResource:
           "rated"          -> t.rated.toString,
         ),
       )
-      if !externalClient.publishNative(nativeServerUrl, directorName, form) then
-        log.warnf("Failed to publish tournament %s to native server %s", t.id, nativeServerUrl)
+      externalClient.publishNative(nativeServerUrl, directorName, form) match
+        case Some(nativeId) => tournamentService.setNativeTournamentId(t.id, nativeId)
+        case None           => log.warnf("Failed to publish tournament %s to native server %s", t.id, nativeServerUrl)
+
+  // Resolve the native-server twin of a local tournament. Backfills the stored id by matching
+  // fullName against the native list for tournaments created before the id was captured.
+  private def nativeIdFor(t: de.nowchess.tournament.domain.Tournament): Option[String] =
+    if nativeServerUrl.isEmpty then None
+    else
+      Option(t.nativeTournamentId).filter(_.nonEmpty).orElse {
+        val found = externalClient
+          .fetchList(nativeServerUrl)
+          .flatMap { node =>
+            Seq("created", "started", "finished").iterator
+              .flatMap(k => node.path(k).elements().asScala)
+              .find(_.path("fullName").asText() == t.fullName)
+              .map(_.path("id").asText())
+              .filter(_.nonEmpty)
+          }
+        found.foreach(id => tournamentService.setNativeTournamentId(t.id, id))
+        found
+      }
+
+  // Overlay live participant/standings/status fields from the native twin onto a local DTO so
+  // bots that joined directly on the native server are reflected in NowChess.
+  private def nativeOverlay(t: de.nowchess.tournament.domain.Tournament): JsonNode =
+    val standings = tournamentService.getStandings(t.id)
+    val dto       = objectMapper.valueToTree[JsonNode](tournamentService.toDto(t, standings))
+    nativeIdFor(t).flatMap(nid => externalClient.fetch(nativeServerUrl, nid)) match
+      case Some(native) =>
+        val merged = dto.deepCopy[com.fasterxml.jackson.databind.node.ObjectNode]()
+        Seq("nbPlayers", "standing", "status", "round", "winner").foreach { field =>
+          if native.has(field) then merged.set(field, native.get(field))
+        }
+        merged
+      case None => dto
 
   private def encodeForm(params: Map[String, String]): String =
     params
@@ -132,8 +166,7 @@ class TournamentResource:
   def get(@PathParam("id") id: String): Response =
     tournamentService.get(id) match
       case Some(t) =>
-        val standings = tournamentService.getStandings(id)
-        Response.ok(tournamentService.toDto(t, standings)).build()
+        Response.ok(nativeOverlay(t)).build()
       case None =>
         resolveServer(id)
           .flatMap(url => externalClient.fetch(url, id).map(node => Response.ok(node).build()))
@@ -179,19 +212,26 @@ class TournamentResource:
         val (status, body) = externalClient.proxyPost(originUrl, s"api/tournament/$id/start", auth)
         Response.status(status).entity(body).build()
       case None =>
-        tournamentService.start(id, userId) match
-          case Right(t) => Response.ok(tournamentService.toDto(t)).build()
-          case Left(error) =>
-            error match
-              case TournamentError.NotFound(_) =>
-                val auth = Option(headers.getHeaderString("Authorization"))
-                resolveServer(id)
-                  .map { url =>
-                    val (status, body) = externalClient.proxyPost(url, s"api/tournament/$id/start", auth)
-                    Response.status(status).entity(body).build()
-                  }
-                  .getOrElse(errorResponse(error))
-              case _ => errorResponse(error)
+        tournamentService.get(id).flatMap(nativeIdFor) match
+          case Some(nativeId) =>
+            val auth           = Option(headers.getHeaderString("Authorization"))
+            val (status, body) = externalClient.proxyPost(nativeServerUrl, s"api/tournament/$nativeId/start", auth)
+            if status / 100 == 2 then tournamentService.markStatus(id, "started")
+            Response.status(status).entity(body).build()
+          case None =>
+            tournamentService.start(id, userId) match
+              case Right(t) => Response.ok(tournamentService.toDto(t)).build()
+              case Left(error) =>
+                error match
+                  case TournamentError.NotFound(_) =>
+                    val auth = Option(headers.getHeaderString("Authorization"))
+                    resolveServer(id)
+                      .map { url =>
+                        val (status, body) = externalClient.proxyPost(url, s"api/tournament/$id/start", auth)
+                        Response.status(status).entity(body).build()
+                      }
+                      .getOrElse(errorResponse(error))
+                  case _ => errorResponse(error)
 
   @POST
   @Path("/{id}/join")
@@ -317,7 +357,8 @@ class TournamentResource:
     tournamentService.get(id) match
       case Some(t) if Option(t.originServerUrl).isDefined =>
         val auth = Option(headers.getHeaderString("Authorization"))
-        externalClient.proxyGetStream(t.originServerUrl, s"api/tournament/$id/stream", auth)
+        externalClient
+          .proxyGetStream(t.originServerUrl, s"api/tournament/$id/stream", auth)
           .map { inputStream =>
             Response
               .ok(new StreamingOutput {
@@ -334,10 +375,12 @@ class TournamentResource:
               .`type`("application/x-ndjson")
               .build()
           }
-          .getOrElse(Response.status(Response.Status.NOT_FOUND).entity(ErrorDto(s"Tournament $id stream unavailable")).build())
+          .getOrElse(
+            Response.status(Response.Status.NOT_FOUND).entity(ErrorDto(s"Tournament $id stream unavailable")).build(),
+          )
       case Some(_) =>
         val botId = Option(jwt.getSubject).getOrElse("")
-        val queue   = new java.util.concurrent.LinkedBlockingQueue[Option[String]]()
+        val queue = new java.util.concurrent.LinkedBlockingQueue[Option[String]]()
         val emitter = new io.smallrye.mutiny.subscription.MultiEmitter[String] {
           def emit(item: String): io.smallrye.mutiny.subscription.MultiEmitter[String] =
             queue.put(Some(item)); this
@@ -358,7 +401,7 @@ class TournamentResource:
                 var cont = true
                 while cont do
                   queue.take() match
-                    case None       => cont = false
+                    case None => cont = false
                     case Some(line) =>
                       output.write((line + "\n").getBytes("UTF-8"))
                       output.flush()
@@ -440,7 +483,8 @@ class TournamentResource:
       .getOrElse(Response.status(Response.Status.NOT_FOUND).build())
 
   private def resolveServer(tournamentId: String): Option[String] =
-    tournamentService.get(tournamentId)
+    tournamentService
+      .get(tournamentId)
       .flatMap(t => Option(t.originServerUrl))
       .orElse(registry.findServerUrl(tournamentId))
       .orElse {

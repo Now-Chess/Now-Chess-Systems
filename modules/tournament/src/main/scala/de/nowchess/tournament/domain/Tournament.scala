@@ -7,7 +7,7 @@ import java.time.Instant
 @Entity
 @Table(name = "tournaments")
 class Tournament:
-  // scalafix:off DisableSyntax.var
+  // scalafix:off
   @Id
   var id: String = uninitialized
 
@@ -33,4 +33,7 @@ class Tournament:
 
   @Column(nullable = true)
   var originServerUrl: String = null
+
+  @Column(nullable = true)
+  var nativeTournamentId: String = null
   // scalafix:on

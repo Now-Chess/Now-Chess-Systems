@@ -30,3 +30,7 @@ nowchess:
     secret: test-secret
     auth:
       enabled: false
+  tournament:
+    self-url: ""
+    external-servers: ""
+    native-server-url: "http://localhost:1"

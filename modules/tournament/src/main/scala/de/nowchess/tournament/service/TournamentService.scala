@@ -82,6 +82,14 @@ class TournamentService:
   def get(id: String): Option[Tournament] =
     tournamentRepository.findOptById(id)
 
+  @Transactional
+  def setNativeTournamentId(id: String, nativeId: String): Unit =
+    tournamentRepository.findOptById(id).foreach(_.nativeTournamentId = nativeId)
+
+  @Transactional
+  def markStatus(id: String, status: String): Unit =
+    tournamentRepository.findOptById(id).foreach(_.status = status)
+
   def list(): (List[Tournament], List[Tournament], List[Tournament]) =
     (
       tournamentRepository.findByStatus("created"),
