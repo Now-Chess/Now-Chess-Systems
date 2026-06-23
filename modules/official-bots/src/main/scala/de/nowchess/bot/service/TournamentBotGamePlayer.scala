@@ -85,7 +85,7 @@ class TournamentBotGamePlayer:
         openTournaments().foreach { tournamentId =>
           if joinedTournaments.add(tournamentId) then
             val cfg = TournamentBotConfig(autoJoinServerUrl, tournamentId, token, botId, hardestDifficulty)
-            if join(cfg) then startAsync(cfg)
+            if joinedOrParticipating(cfg) then startAsync(cfg)
             else joinedTournaments.remove(tournamentId)
         }
       }
@@ -236,7 +236,7 @@ class TournamentBotGamePlayer:
           case None => Left("Invalid bot token — could not extract subject")
           case Some(botId) =>
             val cfg = TournamentBotConfig(tournamentServiceUrl, tournamentId, token, botId, difficulty)
-            if join(cfg) then
+            if joinedOrParticipating(cfg) then
               startAsync(cfg)
               Right(botId)
             else Left("Failed to join tournament")
@@ -259,15 +259,18 @@ class TournamentBotGamePlayer:
         case Failure(ex) => log.warnf(ex, "Tournament event stream dropped — reconnecting"); sleep(5000)
         case Success(_)  => sleep(2000)
 
-  private def join(cfg: TournamentBotConfig): Boolean =
+  // 200 = joined, 409 = already a participant (e.g. after a restart) — both mean "play this tournament".
+  private def joinedOrParticipating(cfg: TournamentBotConfig): Boolean =
     Try {
       val response = authed(cfg, target(cfg).path("join"))
         .post(Entity.entity("", MediaType.APPLICATION_JSON))
-      val ok = response.getStatus == 200
-      if ok then log.infof("Joined tournament %s", cfg.tournamentId)
-      else log.errorf("Failed to join tournament %s — status %d", cfg.tournamentId, response.getStatus)
+      val status = response.getStatus
       response.close()
-      ok
+      status match
+        case 200 => log.infof("Joined tournament %s", cfg.tournamentId); true
+        case 409 => log.infof("Already in tournament %s — resuming", cfg.tournamentId); true
+        case other =>
+          log.errorf("Failed to join tournament %s — status %d", cfg.tournamentId, other); false
     }.getOrElse { log.error("Join request failed"); false }
 
   private def streamEvents(cfg: TournamentBotConfig): Unit =
