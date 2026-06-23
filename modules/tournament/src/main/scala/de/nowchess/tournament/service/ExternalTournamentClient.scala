@@ -60,9 +60,12 @@ class ExternalTournamentClient:
     }
 
   private def registerDirector(serverUrl: String, name: String): Option[String] =
+    registerAccount(serverUrl, name, isBot = false)
+
+  private def registerAccount(serverUrl: String, name: String, isBot: Boolean): Option[String] =
     Try {
       val client = buildClient()
-      val body   = s"""{"name":"${name.replace("\"", "\\\"")}","isBot":false}"""
+      val body   = s"""{"name":"${name.replace("\"", "\\\"")}","isBot":$isBot}"""
       val response = client
         .target(s"$serverUrl/api/auth/register")
         .request(MediaType.APPLICATION_JSON)
@@ -75,6 +78,24 @@ class ExternalTournamentClient:
         response.close()
         client.close()
     }.getOrElse(None)
+
+  // The tournament server holds only the director token, which cannot join as a bot. Register the
+  // bot on the native server by name to mint a bot token, then join the native twin as that bot.
+  def joinNativeAsBot(serverUrl: String, tournamentId: String, botName: String): Boolean =
+    registerAccount(serverUrl, botName, isBot = true).exists { token =>
+      Try {
+        val client = buildClient()
+        val response = client
+          .target(s"$serverUrl/api/tournament/$tournamentId/join")
+          .request(MediaType.APPLICATION_JSON)
+          .header("Authorization", s"Bearer $token")
+          .post(Entity.json(""))
+        try response.getStatus / 100 == 2 || response.getStatus == 409
+        finally
+          response.close()
+          client.close()
+      }.getOrElse(false)
+    }
 
   private def createNative(serverUrl: String, token: String, form: String): Option[String] =
     Try {

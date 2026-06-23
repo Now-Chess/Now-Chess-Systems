@@ -119,6 +119,16 @@ class TournamentResource:
         case Some(nativeId) => tournamentService.setNativeTournamentId(t.id, nativeId)
         case None           => log.warnf("Failed to publish tournament %s to native server %s", t.id, nativeServerUrl)
 
+  // Mirror a bot join onto the native twin so it surfaces in the UI, which reads participant and
+  // standings fields from the native server (see nativeOverlay).
+  private def joinNativeTwin(id: String, botName: String): Unit =
+    if nativeServerUrl.nonEmpty then
+      tournamentService.get(id).flatMap(nativeIdFor).foreach { nativeId =>
+        if externalClient.joinNativeAsBot(nativeServerUrl, nativeId, botName) then
+          log.infof("Joined bot %s on native twin %s of tournament %s", botName, nativeId, id)
+        else log.warnf("Failed to join bot %s on native twin %s of tournament %s", botName, nativeId, id)
+      }
+
   // Resolve the native-server twin of a local tournament. Backfills the stored id by matching
   // fullName against the native list for tournaments created before the id was captured.
   private def nativeIdFor(t: de.nowchess.tournament.domain.Tournament): Option[String] =
@@ -250,7 +260,14 @@ class TournamentResource:
           val botId   = Option(jwt.getSubject).getOrElse("")
           val botName = Option(jwt.getClaim[AnyRef]("name")).map(_.toString).getOrElse(botId)
           tournamentService.join(id, botId, botName) match
-            case Right(_) => Response.ok(OkDto()).build()
+            case Right(_) =>
+              joinNativeTwin(id, botName)
+              Response.ok(OkDto()).build()
+            // Already in the NowChess participant list but possibly never mirrored onto the native
+            // twin (where the UI reads participants from) — make the native join idempotent.
+            case Left(TournamentError.AlreadyJoined) =>
+              joinNativeTwin(id, botName)
+              Response.ok(OkDto()).build()
             case Left(error) =>
               error match
                 case TournamentError.NotFound(_) =>
