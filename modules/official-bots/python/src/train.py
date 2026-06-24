@@ -13,6 +13,11 @@ import chess
 from datetime import datetime, timedelta
 import re
 import numpy as np
+import os
+
+# DataLoader workers: cap to the machine's CPUs (Colab free tier = 2). Too many
+# workers each fork the dataset and OOM-kill the runtime.
+LOADER_WORKERS = int(os.environ.get("NNUE_LOADER_WORKERS", min(4, os.cpu_count() or 2)))
 
 
 def _shard_files(data_file):
@@ -256,17 +261,17 @@ def _setup_training(data_file, batch_size, subsample_ratio):
         train_dataset,
         batch_size=batch_size,
         sampler=train_sampler,
-        num_workers=8,
+        num_workers=LOADER_WORKERS,
         pin_memory=True,
-        persistent_workers=True
+        persistent_workers=LOADER_WORKERS > 0
     )
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=8,
+        num_workers=LOADER_WORKERS,
         pin_memory=True,
-        persistent_workers=True
+        persistent_workers=LOADER_WORKERS > 0
     )
 
     return device, dataset, train_dataset, val_dataset, train_loader, val_loader, num_positions
