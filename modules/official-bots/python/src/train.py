@@ -53,6 +53,11 @@ class NNUEDataset(Dataset):
         eval_val = self.evals[idx]
         features = fen_to_features(fen)
 
+        # Board is flipped for Black-to-move in fen_to_features; negate eval
+        # so the label still means "good for the side shown as White after flip"
+        if ' b ' in fen:
+            eval_val = -eval_val
+
         # Use evaluation as-is if normalized, otherwise apply sigmoid scaling
         if self.is_normalized:
             target = torch.tensor(eval_val, dtype=torch.float32)
@@ -61,38 +66,59 @@ class NNUEDataset(Dataset):
 
         return features, target
 
+# King-relative (HalfKP) encoding: two perspectives, one per side's king.
+# Each piece is encoded as:  kingSq * 768 + pieceIdx * 64 + sq
+# White perspective uses white king square; black perspective uses black king square.
+# Total input dimension = 2 × 64 × 12 × 64 = 98304.
+_HALF_SIZE = 64 * 12 * 64   # 49152 features per perspective
+INPUT_SIZE = _HALF_SIZE * 2  # 98304
+
+_PIECE_TO_IDX = {
+    'p': 0, 'n': 1, 'b': 2, 'r': 3, 'q': 4, 'k': 5,
+    'P': 6, 'N': 7, 'B': 8, 'R': 9, 'Q': 10, 'K': 11,
+}
+
+
 def fen_to_features(fen):
-    """Convert FEN to 768-dimensional binary feature vector."""
-    # Piece type to index: pawn=0, knight=1, bishop=2, rook=3, queen=4, king=5
-    piece_to_idx = {'p': 0, 'n': 1, 'b': 2, 'r': 3, 'q': 4, 'k': 5,
-                    'P': 6, 'N': 7, 'B': 8, 'R': 9, 'Q': 10, 'K': 11}
+    """Convert FEN to 98304-dim king-relative (HalfKP) feature vector.
 
-    features = torch.zeros(768, dtype=torch.float32)
-
+    For Black-to-move positions the board is mirrored (ranks flipped, colours
+    swapped) so the network always sees the position from the side-to-move's
+    perspective.  The caller is responsible for negating the eval label to match.
+    """
+    features = torch.zeros(INPUT_SIZE, dtype=torch.float32)
     try:
         board = chess.Board(fen)
-
-        # 12 piece types × 64 squares = 768
-        for square in chess.SQUARES:
-            piece = board.piece_at(square)
-            if piece is not None:
-                piece_char = piece.symbol()
-                if piece_char in piece_to_idx:
-                    piece_idx = piece_to_idx[piece_char]
-                    feature_idx = piece_idx * 64 + square
-                    features[feature_idx] = 1.0
-    except:
+        # Perspective flip: present all positions as if White is to move
+        if board.turn == chess.BLACK:
+            board = board.mirror()
+        wk = board.king(chess.WHITE)
+        bk = board.king(chess.BLACK)
+        if wk is None or bk is None:
+            return features
+        for sq in chess.SQUARES:
+            piece = board.piece_at(sq)
+            if piece is None:
+                continue
+            pidx = _PIECE_TO_IDX[piece.symbol()]
+            # White-king perspective (indices 0 .. _HALF_SIZE-1)
+            features[wk * 768 + pidx * 64 + sq] = 1.0
+            # Black-king perspective (indices _HALF_SIZE .. INPUT_SIZE-1)
+            features[_HALF_SIZE + bk * 768 + pidx * 64 + sq] = 1.0
+    except Exception:
         pass
-
     return features
 
-DEFAULT_HIDDEN_SIZES = [1536, 1024, 512, 256]
+# Smaller hidden layers are appropriate: the L1 input is very sparse (~64 active
+# features out of 98304) so the L1 itself is cheap to update incrementally; the
+# larger capacity comes from the wider perspective encoding, not deeper layers.
+DEFAULT_HIDDEN_SIZES = [512, 256, 128]
 
 
 class NNUE(nn.Module):
     """NNUE neural network with configurable hidden layers.
 
-    Architecture: 768 → hidden_sizes[0] → ... → hidden_sizes[-1] → 1
+    Architecture: INPUT_SIZE → hidden_sizes[0] → ... → hidden_sizes[-1] → 1
     Layer attributes follow the naming l1, l2, ..., lN so export.py can
     infer the architecture directly from the state_dict.
     """
@@ -102,7 +128,7 @@ class NNUE(nn.Module):
         if hidden_sizes is None:
             hidden_sizes = DEFAULT_HIDDEN_SIZES
         self.hidden_sizes = list(hidden_sizes)
-        sizes = [768] + self.hidden_sizes + [1]
+        sizes = [INPUT_SIZE] + self.hidden_sizes + [1]
         num_hidden = len(self.hidden_sizes)
 
         for i in range(num_hidden):

@@ -23,9 +23,9 @@ object EvaluationNNUE extends Evaluation:
     nnue.copyAccumulator(parentPly, childPly)
 
   override def pushAccumulator(childPly: Int, move: Move, parent: GameContext, child: GameContext): Unit =
-    // Use incremental updates, but recompute from scratch every 10 plies to prevent accumulation errors
+    // Recompute every 10 plies to prevent floating-point drift; king moves always recompute internally
     if childPly % 10 == 0 then nnue.recomputeAccumulator(childPly, child.board)
-    else nnue.pushAccumulator(childPly, move, parent.board)
+    else nnue.pushAccumulator(childPly, move, parent.board, child.board)
 
   override def evaluateAccumulator(ply: Int, context: GameContext, hash: Long): Int =
     nnue.evaluateAtPlyWithValidation(ply, context.turn, hash, context.board)

@@ -1,17 +1,17 @@
 package de.nowchess.bot.bots.nnue
 
-import de.nowchess.api.board.{Board, Color, File, Piece, PieceType, Square}
+import de.nowchess.api.board.{Board, Color, Piece, PieceType, Square}
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 
 class NNUE(model: NbaiModel):
 
-  private val featureSize   = model.layers(0).inputSize
+  private val HALF_SIZE     = 49152                     // 64 king-squares × 12 piece-types × 64 piece-squares
+  private val featureSize   = model.layers(0).inputSize // 98304 (= HALF_SIZE * 2) for king-relative
   private val accSize       = model.layers(0).outputSize
-  private val validateAccum = sys.env.contains("NNUE_VALIDATE") // Enable with NNUE_VALIDATE=1
+  private val validateAccum = sys.env.contains("NNUE_VALIDATE")
 
-  // Column-major L1 weights for cache-friendly sparse & incremental updates.
-  // l1WeightsT(featureIdx * accSize + outputIdx) = l1Weights(outputIdx * featureSize + featureIdx)
+  // Column-major L1 weights: l1WeightsT(featureIdx * accSize + outputIdx)
   private val l1WeightsT: Array[Float] =
     val w = model.weights(0).weights
     val t = new Array[Float](featureSize * accSize)
@@ -23,7 +23,6 @@ class NNUE(model: NbaiModel):
   private val MAX_PLY                      = 128
   private val l1Stack: Array[Array[Float]] = Array.fill(MAX_PLY + 1)(new Array[Float](accSize))
 
-  // Shared evaluation buffers: index i holds the output of layers(i) (all except the scalar output layer).
   private val evalBuffers: Array[Array[Float]] = model.layers.init.map(l => new Array[Float](l.outputSize))
 
   // ── Eval cache ───────────────────────────────────────────────────────────
@@ -36,9 +35,29 @@ class NNUE(model: NbaiModel):
 
   private def squareNum(sq: Square): Int = sq.rank.ordinal * 8 + sq.file.ordinal
 
-  private def featureIndex(piece: Piece, sqNum: Int): Int =
-    val colorOffset = if piece.color == Color.White then 6 else 0
-    (colorOffset + piece.pieceType.ordinal) * 64 + sqNum
+  // Mirror square vertically (rank 0 ↔ rank 7) for the perspective flip
+  private def flipSqNum(sqNum: Int): Int = (7 - sqNum / 8) * 8 + sqNum % 8
+
+  private def pieceIdx(piece: Piece): Int =
+    if piece.color == Color.White then 6 + piece.pieceType.ordinal else piece.pieceType.ordinal
+
+  // White-king perspective: index in [0, HALF_SIZE)
+  private def featureIdxWhite(piece: Piece, sqNum: Int, wkSq: Int): Int =
+    wkSq * 768 + pieceIdx(piece) * 64 + sqNum
+
+  // Black-king perspective: index in [HALF_SIZE, featureSize)
+  private def featureIdxBlack(piece: Piece, sqNum: Int, bkSq: Int): Int =
+    HALF_SIZE + bkSq * 768 + pieceIdx(piece) * 64 + sqNum
+
+  private def wkSqOf(board: Board): Int =
+    board.pieces
+      .collectFirst { case (sq, p) if p.pieceType == PieceType.King && p.color == Color.White => squareNum(sq) }
+      .getOrElse(0)
+
+  private def bkSqOf(board: Board): Int =
+    board.pieces
+      .collectFirst { case (sq, p) if p.pieceType == PieceType.King && p.color == Color.Black => squareNum(sq) }
+      .getOrElse(0)
 
   private def addColumn(l1Pre: Array[Float], featureIdx: Int): Unit =
     val offset = featureIdx * accSize
@@ -48,92 +67,96 @@ class NNUE(model: NbaiModel):
     val offset = featureIdx * accSize
     for i <- 0 until accSize do l1Pre(i) -= l1WeightsT(offset + i)
 
+  private def addPiece(l1: Array[Float], piece: Piece, sqNum: Int, wkSq: Int, bkSq: Int): Unit =
+    addColumn(l1, featureIdxWhite(piece, sqNum, wkSq))
+    addColumn(l1, featureIdxBlack(piece, sqNum, bkSq))
+
+  private def removePiece(l1: Array[Float], piece: Piece, sqNum: Int, wkSq: Int, bkSq: Int): Unit =
+    subtractColumn(l1, featureIdxWhite(piece, sqNum, wkSq))
+    subtractColumn(l1, featureIdxBlack(piece, sqNum, bkSq))
+
   // ── Accumulator init ─────────────────────────────────────────────────────
 
   def initAccumulator(board: Board): Unit =
+    val wkSq = wkSqOf(board)
+    val bkSq = bkSqOf(board)
     System.arraycopy(model.weights(0).bias, 0, l1Stack(0), 0, accSize)
-    for (sq, piece) <- board.pieces do addColumn(l1Stack(0), featureIndex(piece, squareNum(sq)))
+    for (sq, piece) <- board.pieces do addPiece(l1Stack(0), piece, squareNum(sq), wkSq, bkSq)
 
   // ── Accumulator push (incremental updates) ───────────────────────────────
 
-  def pushAccumulator(childPly: Int, move: Move, board: Board): Unit =
+  def pushAccumulator(childPly: Int, move: Move, parentBoard: Board, childBoard: Board): Unit =
     System.arraycopy(l1Stack(childPly - 1), 0, l1Stack(childPly), 0, accSize)
-    val l1 = l1Stack(childPly)
-    move.moveType match
-      case MoveType.Normal(_)                                 => applyNormalDelta(l1, move, board)
-      case MoveType.EnPassant                                 => applyEnPassantDelta(l1, move, board)
-      case MoveType.CastleKingside | MoveType.CastleQueenside => applyCastleDelta(l1, move, board)
-      case MoveType.Promotion(p)                              => applyPromotionDelta(l1, move, p, board)
+    if isKingMove(move, parentBoard) then recomputeAccumulatorInto(l1Stack(childPly), childBoard)
+    else applyNonKingDelta(l1Stack(childPly), move, parentBoard)
+
+  private def isKingMove(move: Move, board: Board): Boolean =
+    move.moveType == MoveType.CastleKingside ||
+      move.moveType == MoveType.CastleQueenside ||
+      board.pieceAt(move.from).exists(_.pieceType == PieceType.King)
 
   def copyAccumulator(parentPly: Int, childPly: Int): Unit =
     System.arraycopy(l1Stack(parentPly), 0, l1Stack(childPly), 0, accSize)
 
   def recomputeAccumulator(ply: Int, board: Board): Unit =
-    System.arraycopy(model.weights(0).bias, 0, l1Stack(ply), 0, accSize)
-    for (sq, piece) <- board.pieces do addColumn(l1Stack(ply), featureIndex(piece, squareNum(sq)))
+    recomputeAccumulatorInto(l1Stack(ply), board)
+
+  private def recomputeAccumulatorInto(l1: Array[Float], board: Board): Unit =
+    val wkSq = wkSqOf(board)
+    val bkSq = bkSqOf(board)
+    System.arraycopy(model.weights(0).bias, 0, l1, 0, accSize)
+    for (sq, piece) <- board.pieces do addPiece(l1, piece, squareNum(sq), wkSq, bkSq)
 
   def validateAccumulator(ply: Int, board: Board): Boolean =
-    // Compute what L1 should be from scratch
-    val expectedL1 = new Array[Float](accSize)
-    System.arraycopy(model.weights(0).bias, 0, expectedL1, 0, accSize)
-    for (sq, piece) <- board.pieces do addColumn(expectedL1, featureIndex(piece, squareNum(sq)))
-
-    // Compare with actual L1
+    val expected = new Array[Float](accSize)
+    val wkSq     = wkSqOf(board)
+    val bkSq     = bkSqOf(board)
+    System.arraycopy(model.weights(0).bias, 0, expected, 0, accSize)
+    for (sq, piece) <- board.pieces do addPiece(expected, piece, squareNum(sq), wkSq, bkSq)
     val actual = l1Stack(ply)
-    val maxError =
-      (0 until accSize).foldLeft(0f) { (currentMax, i) =>
-        val error = math.abs(actual(i) - expectedL1(i))
-        math.max(currentMax, error)
-      }
+    (0 until accSize).forall(i => math.abs(actual(i) - expected(i)) < 0.001f)
 
-    maxError < 0.001f // Allow small floating-point errors
+  // ── Non-king incremental deltas ──────────────────────────────────────────
 
-  private def applyNormalDelta(l1: Array[Float], move: Move, board: Board): Unit =
-    // Extract source and destination square indices early
-    val fromNum = squareNum(move.from)
-    val toNum   = squareNum(move.to)
+  private def applyNonKingDelta(l1: Array[Float], move: Move, board: Board): Unit =
+    val wkSq = wkSqOf(board)
+    val bkSq = bkSqOf(board)
+    move.moveType match
+      case MoveType.Normal(_)    => applyNormalDelta(l1, move, board, wkSq, bkSq)
+      case MoveType.EnPassant    => applyEnPassantDelta(l1, move, board, wkSq, bkSq)
+      case MoveType.Promotion(p) => applyPromotionDelta(l1, move, p, board, wkSq, bkSq)
+      case _                     => () // king moves handled before this point
 
-    // Get the moving piece
+  private def applyNormalDelta(l1: Array[Float], move: Move, board: Board, wkSq: Int, bkSq: Int): Unit =
     board.pieceAt(move.from).foreach { mover =>
-      subtractColumn(l1, featureIndex(mover, fromNum))
-
-      // If there's a capture, subtract the captured piece
-      board.pieceAt(move.to).foreach { cap =>
-        subtractColumn(l1, featureIndex(cap, toNum))
-      }
-
-      // Add the piece to its new location
-      addColumn(l1, featureIndex(mover, toNum))
+      val fromNum = squareNum(move.from)
+      val toNum   = squareNum(move.to)
+      removePiece(l1, mover, fromNum, wkSq, bkSq)
+      board.pieceAt(move.to).foreach(cap => removePiece(l1, cap, toNum, wkSq, bkSq))
+      addPiece(l1, mover, toNum, wkSq, bkSq)
     }
 
-  private def applyEnPassantDelta(l1: Array[Float], move: Move, board: Board): Unit =
+  private def applyEnPassantDelta(l1: Array[Float], move: Move, board: Board, wkSq: Int, bkSq: Int): Unit =
     board.pieceAt(move.from).foreach { pawn =>
       val capturedSq = Square(move.to.file, move.from.rank)
-      subtractColumn(l1, featureIndex(pawn, squareNum(move.from)))
-      board.pieceAt(capturedSq).foreach(cap => subtractColumn(l1, featureIndex(cap, squareNum(capturedSq))))
-      addColumn(l1, featureIndex(pawn, squareNum(move.to)))
+      removePiece(l1, pawn, squareNum(move.from), wkSq, bkSq)
+      board.pieceAt(capturedSq).foreach(cap => removePiece(l1, cap, squareNum(capturedSq), wkSq, bkSq))
+      addPiece(l1, pawn, squareNum(move.to), wkSq, bkSq)
     }
 
-  private def applyCastleDelta(l1: Array[Float], move: Move, board: Board): Unit =
-    board.pieceAt(move.from).foreach { king =>
-      val rank     = move.from.rank
-      val kingside = move.moveType == MoveType.CastleKingside
-      val (rookFrom, rookTo) =
-        if kingside then (Square(File.H, rank), Square(File.F, rank))
-        else (Square(File.A, rank), Square(File.D, rank))
-      val rook = Piece(king.color, PieceType.Rook)
-      subtractColumn(l1, featureIndex(king, squareNum(move.from)))
-      addColumn(l1, featureIndex(king, squareNum(move.to)))
-      subtractColumn(l1, featureIndex(rook, squareNum(rookFrom)))
-      addColumn(l1, featureIndex(rook, squareNum(rookTo)))
-    }
-
-  private def applyPromotionDelta(l1: Array[Float], move: Move, promo: PromotionPiece, board: Board): Unit =
+  private def applyPromotionDelta(
+      l1: Array[Float],
+      move: Move,
+      promo: PromotionPiece,
+      board: Board,
+      wkSq: Int,
+      bkSq: Int,
+  ): Unit =
     board.pieceAt(move.from).foreach { pawn =>
       val toNum = squareNum(move.to)
-      subtractColumn(l1, featureIndex(pawn, squareNum(move.from)))
-      board.pieceAt(move.to).foreach(cap => subtractColumn(l1, featureIndex(cap, toNum)))
-      addColumn(l1, featureIndex(Piece(pawn.color, promotedType(promo)), toNum))
+      removePiece(l1, pawn, squareNum(move.from), wkSq, bkSq)
+      board.pieceAt(move.to).foreach(cap => removePiece(l1, cap, toNum, wkSq, bkSq))
+      addPiece(l1, Piece(pawn.color, promotedType(promo)), toNum, wkSq, bkSq)
     }
 
   private def promotedType(promo: PromotionPiece): PieceType = promo match
@@ -154,7 +177,6 @@ class NNUE(model: NbaiModel):
       score
 
   def evaluateAtPlyWithValidation(ply: Int, turn: Color, hash: Long, board: Board): Int =
-    // For debugging: validate that incremental accumulator matches recomputation
     if validateAccum && ply > 0 && ply % 10 != 0 then
       val isValid = validateAccumulator(ply, board)
       if !isValid then System.err.println(s"WARNING: NNUE accumulator diverged at ply $ply")
@@ -206,9 +228,23 @@ class NNUE(model: NbaiModel):
   private val legacyL1 = new Array[Float](accSize)
 
   def evaluate(context: GameContext): Int =
+    // Match training: for Black-to-move positions, mirror the board (ranks flipped,
+    // colours swapped) so the model always sees from the side-to-move's perspective.
+    // The scoreFromOutput negation then converts back to White's absolute perspective.
+    val (wkSq, bkSq, pieces, turn) =
+      if context.turn == Color.Black then
+        val wk = flipSqNum(bkSqOf(context.board)) // flipped Black king → new "White" king
+        val bk = flipSqNum(wkSqOf(context.board)) // flipped White king → new "Black" king
+        val flipped = context.board.pieces.map { case (sq, p) =>
+          (sq, Piece(p.color.opposite, p.pieceType))
+        }
+        (wk, bk, flipped, Color.Black) // pass Black so scoreFromOutput negates the result
+      else (wkSqOf(context.board), bkSqOf(context.board), context.board.pieces, context.turn)
     System.arraycopy(model.weights(0).bias, 0, legacyL1, 0, accSize)
-    for (sq, piece) <- context.board.pieces do addColumn(legacyL1, featureIndex(piece, squareNum(sq)))
-    runL2toOutput(legacyL1, context.turn)
+    for (sq, piece) <- pieces do
+      val sqNum = if turn == Color.Black then flipSqNum(squareNum(sq)) else squareNum(sq)
+      addPiece(legacyL1, piece, sqNum, wkSq, bkSq)
+    runL2toOutput(legacyL1, turn)
 
   def benchmark(): Unit =
     val context    = GameContext.initial

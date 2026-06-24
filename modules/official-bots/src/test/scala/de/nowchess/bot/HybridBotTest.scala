@@ -85,17 +85,17 @@ class HybridBotTest extends AnyFunSuite with Matchers:
   private val altMove  = Move(Square(File.E, Rank.R2), Square(File.E, Rank.R3), MoveType.Normal())
 
   private def vetoRules: RuleSet = new RuleSet:
-    private def fresh(ctx: GameContext): Boolean                          = ctx.moves.isEmpty
-    def candidateMoves(context: GameContext)(square: Square): List[Move]  = Nil
-    def legalMoves(context: GameContext)(square: Square): List[Move]      = Nil
-    def allLegalMoves(context: GameContext): List[Move]                   =
+    private def fresh(ctx: GameContext): Boolean                         = ctx.moves.isEmpty
+    def candidateMoves(context: GameContext)(square: Square): List[Move] = Nil
+    def legalMoves(context: GameContext)(square: Square): List[Move]     = Nil
+    def allLegalMoves(context: GameContext): List[Move] =
       if fresh(context) then List(mateMove, altMove) else Nil
-    def isCheck(context: GameContext): Boolean                            = false
-    def isCheckmate(context: GameContext): Boolean                        = context.moves.lastOption.contains(mateMove)
-    def isStalemate(context: GameContext): Boolean                        = context.moves.lastOption.contains(altMove)
-    def isInsufficientMaterial(context: GameContext): Boolean             = false
-    def isFiftyMoveRule(context: GameContext): Boolean                    = false
-    def isThreefoldRepetition(context: GameContext): Boolean              = false
+    def isCheck(context: GameContext): Boolean                = false
+    def isCheckmate(context: GameContext): Boolean            = context.moves.lastOption.contains(mateMove)
+    def isStalemate(context: GameContext): Boolean            = context.moves.lastOption.contains(altMove)
+    def isInsufficientMaterial(context: GameContext): Boolean = false
+    def isFiftyMoveRule(context: GameContext): Boolean        = false
+    def isThreefoldRepetition(context: GameContext): Boolean  = false
     def applyMove(context: GameContext)(move: Move): GameContext =
       context.copy(turn = context.turn.opposite, moves = context.moves :+ move)
 
