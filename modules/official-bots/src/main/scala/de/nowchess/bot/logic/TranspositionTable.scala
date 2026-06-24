@@ -14,6 +14,7 @@ final case class SearchParams(
     window: Window,
     state: SearchState,
     excludedRootMoves: Set[Move],
+    rootHints: Map[Move, Int] = Map.empty,
 )
 
 final case class SearchState(hash: Long, repetitions: Map[Long, Int]):

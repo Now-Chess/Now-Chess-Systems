@@ -312,6 +312,24 @@ class AlphaBetaSearchTest extends AnyFunSuite with Matchers:
     val search = AlphaBetaSearch(qRules, weights = ZeroEval)
     search.bestMove(GameContext.initial, maxDepth = 1) should be(Some(rootMove))
 
+  test("bestMove with root hints returns a valid move without regression"):
+    val context    = GameContext.initial
+    val legalMoves = DefaultRules.allLegalMoves(context)
+    val hints      = legalMoves.zipWithIndex.map { case (m, i) => m -> (legalMoves.length - i) }.toMap
+    val withHints = AlphaBetaSearch(DefaultRules, weights = EvaluationClassic)
+      .bestMove(context, maxDepth = 2, Set.empty, hints)
+    withHints should not be None
+    legalMoves should contain(withHints.get)
+
+  test("bestMoveWithTime with root hints returns a valid move without regression"):
+    val context    = GameContext.initial
+    val legalMoves = DefaultRules.allLegalMoves(context)
+    val hints      = legalMoves.zipWithIndex.map { case (m, i) => m -> (legalMoves.length - i) }.toMap
+    val withHints = AlphaBetaSearch(DefaultRules, weights = EvaluationClassic)
+      .bestMoveWithTime(context, 500L, Set.empty, hints)
+    withHints should not be None
+    legalMoves should contain(withHints.get)
+
   test("quiescence depth-limit in-check branch is exercised"):
     val rootMove            = Move(Square(File.E, Rank.R2), Square(File.E, Rank.R3), MoveType.Normal())
     val capMove             = Move(Square(File.D, Rank.R2), Square(File.D, Rank.R3), MoveType.Normal(true))

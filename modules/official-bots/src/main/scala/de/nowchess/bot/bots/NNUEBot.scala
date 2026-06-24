@@ -28,7 +28,7 @@ object NNUEBot:
           else
             val scored   = batchEvaluateRoot(rules, context, moves)
             val bestMove = scored.maxBy(_._2)._1
-            search.bestMoveWithTime(context, allocateTime(scored), blockedMoves).orElse(Some(bestMove))
+            search.bestMoveWithTime(context, allocateTime(scored), blockedMoves, scored.toMap).orElse(Some(bestMove))
         }
 
   private def batchEvaluateRoot(rules: RuleSet, context: GameContext, moves: List[Move]): List[(Move, Int)] =

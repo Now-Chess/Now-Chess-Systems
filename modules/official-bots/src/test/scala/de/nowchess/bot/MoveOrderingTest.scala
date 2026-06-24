@@ -217,3 +217,60 @@ class MoveOrderingTest extends AnyFunSuite with Matchers:
     val castle  = Move(Square(File.E, Rank.R1), Square(File.G, Rank.R1), MoveType.CastleKingside)
 
     MoveOrdering.score(context, castle, None) should be(0)
+
+  test("root hints override capture heuristics at ply 0"):
+    val board = Board(
+      Map(
+        Square(File.E, Rank.R4) -> Piece.WhiteQueen,
+        Square(File.E, Rank.R5) -> Piece.BlackPawn,
+        Square(File.D, Rank.R5) -> Piece.BlackRook,
+      ),
+    )
+    val context     = GameContext.initial.withBoard(board).withTurn(Color.White)
+    val quietMove   = Move(Square(File.E, Rank.R4), Square(File.E, Rank.R6))
+    val rookCapture = Move(Square(File.E, Rank.R4), Square(File.D, Rank.R5), MoveType.Normal(true))
+    val hints       = Map(quietMove -> 500, rookCapture -> 100)
+
+    MoveOrdering.score(context, quietMove, None, ply = 0, rootHints = hints) should equal(500)
+    MoveOrdering.score(context, rookCapture, None, ply = 0, rootHints = hints) should equal(100)
+    MoveOrdering.score(context, rookCapture, None, ply = 0, rootHints = hints) should be <
+      MoveOrdering.score(context, quietMove, None, ply = 0, rootHints = hints)
+
+  test("root hints ignored at ply > 0"):
+    val board   = Board(Map(Square(File.E, Rank.R4) -> Piece.WhiteQueen, Square(File.E, Rank.R5) -> Piece.BlackPawn))
+    val context = GameContext.initial.withBoard(board).withTurn(Color.White)
+    val capture = Move(Square(File.E, Rank.R4), Square(File.E, Rank.R5), MoveType.Normal(true))
+    val quiet   = Move(Square(File.E, Rank.R4), Square(File.D, Rank.R4))
+    val hints   = Map(quiet -> 99999, capture -> -99999)
+
+    val captureScore = MoveOrdering.score(context, capture, None, ply = 1, rootHints = hints)
+    val quietScore   = MoveOrdering.score(context, quiet, None, ply = 1, rootHints = hints)
+    captureScore should be > quietScore
+
+  test("move absent from root hints gets Int.MinValue / 2 fallback"):
+    val board   = Board(Map(Square(File.E, Rank.R4) -> Piece.WhiteQueen))
+    val context = GameContext.initial.withBoard(board).withTurn(Color.White)
+    val move1   = Move(Square(File.E, Rank.R4), Square(File.E, Rank.R6))
+    val move2   = Move(Square(File.E, Rank.R4), Square(File.E, Rank.R5))
+    val hints   = Map(move1 -> 0)
+
+    MoveOrdering.score(context, move2, None, ply = 0, rootHints = hints) should equal(Int.MinValue / 2)
+
+  test("sort uses root hints at ply 0 to reorder moves"):
+    val board = Board(
+      Map(
+        Square(File.E, Rank.R4) -> Piece.WhiteQueen,
+        Square(File.E, Rank.R5) -> Piece.BlackPawn,
+        Square(File.D, Rank.R5) -> Piece.BlackRook,
+      ),
+    )
+    val context     = GameContext.initial.withBoard(board).withTurn(Color.White)
+    val rookCapture = Move(Square(File.E, Rank.R4), Square(File.D, Rank.R5), MoveType.Normal(true))
+    val pawnCapture = Move(Square(File.E, Rank.R4), Square(File.E, Rank.R5), MoveType.Normal(true))
+    val quiet       = Move(Square(File.E, Rank.R4), Square(File.E, Rank.R6))
+    val hints       = Map(quiet -> 9999, pawnCapture -> 500, rookCapture -> 100)
+
+    val sorted = MoveOrdering.sort(context, List(rookCapture, pawnCapture, quiet), None, ply = 0, rootHints = hints)
+    sorted.head should equal(quiet)
+    sorted(1) should equal(pawnCapture)
+    sorted(2) should equal(rookCapture)

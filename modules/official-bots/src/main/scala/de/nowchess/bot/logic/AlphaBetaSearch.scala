@@ -32,6 +32,8 @@ final class AlphaBetaSearch(
   private val nodeCount   = AtomicInteger(0)
   private val ordering    = MoveOrdering.OrderingContext()
 
+  def lastNodeCount: Int = nodeCount.get()
+
   private final case class QuiescenceNode(
       context: GameContext,
       ply: Int,
@@ -47,6 +49,17 @@ final class AlphaBetaSearch(
     bestMove(context, maxDepth, Set.empty)
 
   def bestMove(context: GameContext, maxDepth: Int, excludedRootMoves: Set[Move]): Option[Move] =
+    doDepthSearch(context, maxDepth, excludedRootMoves, Map.empty)
+
+  def bestMove(context: GameContext, maxDepth: Int, excludedRootMoves: Set[Move], hints: Map[Move, Int]): Option[Move] =
+    doDepthSearch(context, maxDepth, excludedRootMoves, hints)
+
+  private def doDepthSearch(
+      context: GameContext,
+      maxDepth: Int,
+      excludedRootMoves: Set[Move],
+      hints: Map[Move, Int],
+  ): Option[Move] =
     tt.clear()
     ordering.clear()
     weights.initAccumulator(context)
@@ -66,6 +79,7 @@ final class AlphaBetaSearch(
           ASPIRATION_DELTA,
           rootHash,
           excludedRootMoves,
+          hints,
         )
         (move.orElse(bestSoFar), score)
       }
@@ -78,6 +92,22 @@ final class AlphaBetaSearch(
     bestMoveWithTime(context, timeBudgetMs, Set.empty)
 
   def bestMoveWithTime(context: GameContext, timeBudgetMs: Long, excludedRootMoves: Set[Move]): Option[Move] =
+    doTimedSearch(context, timeBudgetMs, excludedRootMoves, Map.empty)
+
+  def bestMoveWithTime(
+      context: GameContext,
+      timeBudgetMs: Long,
+      excludedRootMoves: Set[Move],
+      hints: Map[Move, Int],
+  ): Option[Move] =
+    doTimedSearch(context, timeBudgetMs, excludedRootMoves, hints)
+
+  private def doTimedSearch(
+      context: GameContext,
+      timeBudgetMs: Long,
+      excludedRootMoves: Set[Move],
+      hints: Map[Move, Int],
+  ): Option[Move] =
     tt.clear()
     ordering.clear()
     weights.initAccumulator(context)
@@ -100,6 +130,7 @@ final class AlphaBetaSearch(
           ASPIRATION_DELTA,
           rootHash,
           excludedRootMoves,
+          hints,
         )
         loop(move.orElse(bestSoFar), score, depth + 1, depth)
 
@@ -124,14 +155,17 @@ final class AlphaBetaSearch(
       initialWindow: Int,
       rootHash: Long,
       excludedRootMoves: Set[Move],
+      hints: Map[Move, Int],
   ): (Int, Option[Move]) =
     val state = SearchState(rootHash, Map(rootHash -> 1))
 
     @scala.annotation.tailrec
     def loop(currentAlpha: Int, currentBeta: Int, delta: Int, attempt: Int): (Int, Option[Move]) =
-      if attempt >= 3 || attempt >= depth then search(context, depth, 0, Window(-INF, INF), state, excludedRootMoves)
+      if attempt >= 3 || attempt >= depth then
+        search(context, depth, 0, Window(-INF, INF), state, excludedRootMoves, hints)
       else
-        val (score, move) = search(context, depth, 0, Window(currentAlpha, currentBeta), state, excludedRootMoves)
+        val (score, move) =
+          search(context, depth, 0, Window(currentAlpha, currentBeta), state, excludedRootMoves, hints)
         if score > currentAlpha && score < currentBeta then (score, move)
         else if score <= currentAlpha then
           loop(score - delta, currentBeta, math.min(delta * 2, ASPIRATION_DELTA_MAX), attempt + 1)
@@ -156,12 +190,14 @@ final class AlphaBetaSearch(
       beta: Int,
       state: SearchState,
       excludedRootMoves: Set[Move],
+      hints: Map[Move, Int],
   ): Option[Int] =
     val nullCtx        = nullMoveContext(context)
     val nullState      = state.advance(ZobristHash.hash(nullCtx))
     val reductionDepth = math.max(0, depth - 1 - NULL_MOVE_R)
     weights.copyAccumulator(ply, ply + 1)
-    val (score, _) = search(nullCtx, reductionDepth, ply + 1, Window(-beta, -beta + 1), nullState, excludedRootMoves)
+    val (score, _) =
+      search(nullCtx, reductionDepth, ply + 1, Window(-beta, -beta + 1), nullState, excludedRootMoves, hints)
     if -score >= beta then Some(beta) else None
 
   /** Negamax alpha-beta search returning (score, best move). */
@@ -172,8 +208,9 @@ final class AlphaBetaSearch(
       window: Window,
       state: SearchState,
       excludedRootMoves: Set[Move],
+      hints: Map[Move, Int],
   ): (Int, Option[Move]) =
-    val params = SearchParams(context, depth, ply, window, state, excludedRootMoves)
+    val params = SearchParams(context, depth, ply, window, state, excludedRootMoves, hints)
     searchNode(params)
 
   private def searchNode(params: SearchParams): (Int, Option[Move]) =
@@ -235,13 +272,14 @@ final class AlphaBetaSearch(
             params.window.beta,
             params.state,
             params.excludedRootMoves,
+            params.rootHints,
           ),
         )
         .flatten
 
     nullResult.map((_, None)).getOrElse {
       val ttBest  = tt.probe(params.state.hash).flatMap(_.bestMove)
-      val ordered = MoveOrdering.sort(params.context, legalMoves, ttBest, params.ply, ordering)
+      val ordered = MoveOrdering.sort(params.context, legalMoves, ttBest, params.ply, ordering, params.rootHints)
       searchSequential(
         params.context,
         params.depth,
@@ -250,6 +288,7 @@ final class AlphaBetaSearch(
         ordered,
         params.state,
         params.excludedRootMoves,
+        params.rootHints,
       )
     }
 
@@ -280,6 +319,7 @@ final class AlphaBetaSearch(
         Window(-a - 1, -a),
         childState,
         params.excludedRootMoves,
+        params.rootHints,
       )
       val s = -rs
       if s > a then
@@ -290,6 +330,7 @@ final class AlphaBetaSearch(
           Window(betaNeg, -a),
           childState,
           params.excludedRootMoves,
+          params.rootHints,
         )
         -fs
       else s
@@ -301,6 +342,7 @@ final class AlphaBetaSearch(
         Window(betaNeg, -a),
         childState,
         params.excludedRootMoves,
+        params.rootHints,
       )
       -rs
 
@@ -364,8 +406,9 @@ final class AlphaBetaSearch(
       ordered: List[Move],
       state: SearchState,
       excludedRootMoves: Set[Move],
+      rootHints: Map[Move, Int] = Map.empty,
   ): (Int, Option[Move]) =
-    val params                        = SearchParams(context, depth, ply, window, state, excludedRootMoves)
+    val params                        = SearchParams(context, depth, ply, window, state, excludedRootMoves, rootHints)
     val (bestMove, bestScore, cutoff) = searchLoop(0, 0, LoopAcc(None, -INF, window.alpha), params, ordered)
     val flag =
       if cutoff then TTFlag.Lower

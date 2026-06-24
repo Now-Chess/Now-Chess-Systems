@@ -38,8 +38,10 @@ object MoveOrdering:
       ttBestMove: Option[Move],
       ply: Int = 0,
       ordering: OrderingContext = new OrderingContext(),
+      rootHints: Map[Move, Int] = Map.empty,
   ): Int =
     if ttBestMove.exists(m => m.from == move.from && m.to == move.to) then Int.MaxValue
+    else if ply == 0 && rootHints.nonEmpty then rootHints.getOrElse(move, Int.MinValue / 2)
     else
       move.moveType match
         case MoveType.Promotion(PromotionPiece.Queen) =>
@@ -56,8 +58,9 @@ object MoveOrdering:
       ttBestMove: Option[Move],
       ply: Int = 0,
       ordering: OrderingContext = new OrderingContext(),
+      rootHints: Map[Move, Int] = Map.empty,
   ): List[Move] =
-    moves.sortBy(m => -score(context, m, ttBestMove, ply, ordering))
+    moves.sortBy(m => -score(context, m, ttBestMove, ply, ordering, rootHints))
 
   private def scoreQuietMove(move: Move, ply: Int, ordering: OrderingContext): Int =
     val isKiller = ordering.getKillerMoves(ply).exists(k => k.from == move.from && k.to == move.to)
