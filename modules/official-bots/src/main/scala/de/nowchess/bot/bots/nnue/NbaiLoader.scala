@@ -1,6 +1,7 @@
 package de.nowchess.bot.bots.nnue
 
 import java.io.InputStream
+import java.nio.file.{Files, Path}
 import java.nio.{ByteBuffer, ByteOrder}
 import java.nio.charset.StandardCharsets
 
@@ -17,13 +18,28 @@ object NbaiLoader:
     val weights  = descs.map(_ => readLayerWeights(buf))
     NbaiModel(metadata, descs, weights)
 
-  /** Tries /nnue_weights.nbai on the classpath; falls back to migrating /nnue_weights.bin. */
+  /** Loads weights from the `nnue.weights` system property if it points at a readable file; otherwise tries
+    * /nnue_weights.nbai on the classpath, falling back to migrating /nnue_weights.bin.
+    */
   def loadDefault(): NbaiModel =
-    Option(getClass.getResourceAsStream("/nnue_weights.nbai")) match
-      case Some(s) =>
+    overrideModel().getOrElse {
+      Option(getClass.getResourceAsStream("/nnue_weights.nbai")) match
+        case Some(s) =>
+          try load(s)
+          finally s.close()
+        case None => NbaiMigrator.migrateFromBin()
+    }
+
+  private def overrideModel(): Option[NbaiModel] =
+    sys.props
+      .get("nnue.weights")
+      .map(Path.of(_))
+      .filter(Files.isRegularFile(_))
+      .map { path =>
+        val s = Files.newInputStream(path)
         try load(s)
         finally s.close()
-      case None => NbaiMigrator.migrateFromBin()
+      }
 
   private def checkHeader(buf: ByteBuffer): Unit =
     val magic = buf.getInt()

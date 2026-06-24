@@ -14,6 +14,33 @@ from datetime import datetime, timedelta
 import re
 import numpy as np
 
+
+def _shard_files(data_file):
+    """Resolve a data path to a list of shard files. Accepts a single .jsonl/.jsonl.zst
+    file, or a directory (searched recursively for shards, e.g. a synced datasets/ dir)."""
+    p = Path(data_file)
+    if p.is_dir():
+        shards = sorted(p.rglob("*.jsonl.zst")) or sorted(p.rglob("*.jsonl"))
+        if not shards:
+            raise FileNotFoundError(f"No .jsonl/.jsonl.zst shards found under {p}")
+        print(f"Loading {len(shards)} shard(s) from {p}")
+        return shards
+    return [p]
+
+
+def _iter_dataset_lines(data_file):
+    """Yield text lines from every shard, transparently decompressing .zst shards."""
+    import io
+    for shard in _shard_files(data_file):
+        if str(shard).endswith(".zst"):
+            import zstandard as zstd
+            with open(shard, "rb") as fh, zstd.ZstdDecompressor().stream_reader(fh) as reader:
+                yield from io.TextIOWrapper(reader, encoding="utf-8")
+        else:
+            with open(shard, "r") as fh:
+                yield from fh
+
+
 class NNUEDataset(Dataset):
     """Dataset of chess positions with evaluations."""
 
@@ -23,27 +50,26 @@ class NNUEDataset(Dataset):
         self.evals_raw = []
         self.is_normalized = None
 
-        with open(data_file, 'r') as f:
-            for line in f:
-                try:
-                    data = json.loads(line)
-                    fen = data['fen']
-                    eval_val = data['eval']
-                    self.positions.append(fen)
-                    self.evals.append(eval_val)
+        for line in _iter_dataset_lines(data_file):
+            try:
+                data = json.loads(line)
+                fen = data['fen']
+                eval_val = data['eval']
+                self.positions.append(fen)
+                self.evals.append(eval_val)
 
-                    # Check if normalized or raw
-                    if self.is_normalized is None:
-                        # If eval is in range [-1, 1], assume normalized
-                        self.is_normalized = abs(eval_val) <= 1.0
+                # Check if normalized or raw
+                if self.is_normalized is None:
+                    # If eval is in range [-1, 1], assume normalized
+                    self.is_normalized = abs(eval_val) <= 1.0
 
-                    # Store raw if available
-                    if 'eval_raw' in data:
-                        self.evals_raw.append(data['eval_raw'])
-                    else:
-                        self.evals_raw.append(eval_val)
-                except (json.JSONDecodeError, KeyError):
-                    pass
+                # Store raw if available
+                if 'eval_raw' in data:
+                    self.evals_raw.append(data['eval_raw'])
+                else:
+                    self.evals_raw.append(eval_val)
+            except (json.JSONDecodeError, KeyError):
+                pass
 
     def __len__(self):
         return len(self.positions)

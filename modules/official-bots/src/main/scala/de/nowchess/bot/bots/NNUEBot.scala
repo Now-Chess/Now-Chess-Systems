@@ -15,6 +15,7 @@ object NNUEBot:
       difficulty: BotDifficulty,
       rules: RuleSet = DefaultRules,
       book: Option[PolyglotBook] = None,
+      fixedMoveTimeMs: Option[Long] = None,
   ): Bot =
     val search = AlphaBetaSearch(rules, weights = EvaluationNNUE)
     context =>
@@ -28,7 +29,8 @@ object NNUEBot:
           else
             val scored   = batchEvaluateRoot(rules, context, moves)
             val bestMove = scored.maxBy(_._2)._1
-            search.bestMoveWithTime(context, allocateTime(scored), blockedMoves, scored.toMap).orElse(Some(bestMove))
+            val budget   = fixedMoveTimeMs.getOrElse(allocateTime(scored))
+            search.bestMoveWithTime(context, budget, blockedMoves, scored.toMap).orElse(Some(bestMove))
         }
 
   private def batchEvaluateRoot(rules: RuleSet, context: GameContext, moves: List[Move]): List[(Move, Int)] =

@@ -47,6 +47,14 @@ tasks.withType<JavaCompile> {
     options.compilerArgs.add("-parameters")
 }
 
+tasks.register<JavaExec>("selfPlay") {
+    group = "nnue"
+    description = "Run standalone NNUEBot self-play and write FENs for labeling."
+    mainClass.set("de.nowchess.bot.selfplay.SelfPlayMain")
+    classpath = sourceSets["main"].runtimeClasspath
+    args((project.findProperty("spArgs")?.toString() ?: "").split(" ").filter { it.isNotBlank() })
+}
+
 dependencies {
 
     compileOnly("org.scala-lang:scala3-compiler_3") {
