@@ -468,5 +468,5 @@ final class AlphaBetaSearch(
   private def isCapture(context: GameContext, move: Move): Boolean = move.moveType match
     case MoveType.Normal(true) => true
     case MoveType.EnPassant    => true
-    case MoveType.Promotion(_) => context.board.pieceAt(move.to).exists(_.color != context.turn)
+    case MoveType.Promotion(_) => true
     case _                     => false

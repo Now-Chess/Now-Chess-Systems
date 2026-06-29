@@ -253,6 +253,30 @@ class AlphaBetaSearchTest extends AnyFunSuite with Matchers:
     val search = AlphaBetaSearch(promoCaptureRules, weights = EvaluationClassic)
     search.bestMove(ctx, maxDepth = 1) should be(Some(promoCapture))
 
+  test("quiet promotion is treated as tactical in quiescence"):
+    // Pawn pushes to an empty back-rank square (no capture). Must still be searched in
+    // quiescence so a bot does not skip queening at the search horizon.
+    val quietPromo = Move(Square(File.E, Rank.R7), Square(File.E, Rank.R8), MoveType.Promotion(PromotionPiece.Queen))
+    val board = Board(
+      Map(
+        Square(File.E, Rank.R7) -> Piece.WhitePawn,
+      ),
+    )
+    val ctx = GameContext.initial.withBoard(board).withTurn(Color.White)
+    val quietPromoRules = new RuleSet:
+      def candidateMoves(context: GameContext)(square: Square): List[Move] = Nil
+      def legalMoves(context: GameContext)(square: Square): List[Move]     = Nil
+      def allLegalMoves(context: GameContext): List[Move]                  = List(quietPromo)
+      def isCheck(context: GameContext): Boolean                           = false
+      def isCheckmate(context: GameContext): Boolean                       = false
+      def isStalemate(context: GameContext): Boolean                       = false
+      def isInsufficientMaterial(context: GameContext): Boolean            = false
+      def isFiftyMoveRule(context: GameContext): Boolean                   = false
+      def isThreefoldRepetition(context: GameContext): Boolean             = false
+      def applyMove(context: GameContext)(move: Move): GameContext         = context
+    val search = AlphaBetaSearch(quietPromoRules, weights = EvaluationClassic)
+    search.bestMove(ctx, maxDepth = 1) should be(Some(quietPromo))
+
   test("draw when isInsufficientMaterial with legal moves present"):
     val legalMove = Move(Square(File.E, Rank.R2), Square(File.E, Rank.R4), MoveType.Normal())
     val drawRules = new RuleSet:
