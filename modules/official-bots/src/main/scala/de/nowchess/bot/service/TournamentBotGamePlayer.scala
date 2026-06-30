@@ -20,7 +20,6 @@ import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 import java.io.{BufferedReader, InputStream, InputStreamReader}
 import java.util.concurrent.{ConcurrentHashMap, ExecutorService, Executors}
-import java.util.concurrent.atomic.AtomicReference
 
 @Startup
 @ApplicationScoped
@@ -44,7 +43,7 @@ class TournamentBotGamePlayer:
   private val hardestDifficulty  = "expert"
   private val autoJoinIntervalMs = 15000L
   // Detect the opponent's move fast: every poll spent waiting runs our clock without us thinking.
-  private val pollIntervalMs = 250L
+  private val pollIntervalMs = 150L
 
   private val gameTerminalStatuses =
     Set("checkmate", "stalemate", "draw", "resigned", "timeout", "aborted", "finished")
@@ -396,57 +395,11 @@ class TournamentBotGamePlayer:
   private def playGame(cfg: TournamentBotConfig, gameId: String, color: String): Unit =
     Try {
       log.infof("Playing game %s as %s", gameId, color)
-      if !streamGameLoop(cfg, gameId, color) then
-        log.infof("Stream unavailable for game %s — falling back to polling", gameId)
-        pollGameLoop(cfg, gameId, color)
+      pollGameLoop(cfg, gameId, color)
       activeGames.remove(gameId)
     } match
       case Failure(ex) => log.errorf(ex, "Game %s crashed", gameId); activeGames.remove(gameId)
       case Success(_)  => ()
-
-  // Push-based play: the game stream delivers the opponent's move the instant it lands, so our clock
-  // is not burned waiting between polls. Heartbeats (every 10s) keep the NDJSON connection flushing.
-  // Returns true if the game was driven to completion via the stream; false to fall back to polling.
-  private def streamGameLoop(cfg: TournamentBotConfig, gameId: String, color: String): Boolean =
-    val myColor = resolveColor(cfg, gameId).getOrElse(color)
-    val lastFen = AtomicReference("")
-    Try {
-      val response = authed(cfg, target(cfg).path("game").path(gameId).path("stream"))
-        .header("Accept", "application/x-ndjson")
-        .get()
-      try
-        if response.getStatus != 200 then
-          log.warnf("Game stream %s returned status %d", gameId, response.getStatus)
-          false
-        else
-          log.infof("Streaming game %s as %s", gameId, myColor)
-          forEachLine(response.readEntity(classOf[InputStream])): line =>
-            parse(line).foreach(node => handleStreamEvent(cfg, gameId, myColor, node, lastFen))
-          true
-      finally response.close()
-    } match
-      case Success(completed) => completed
-      case Failure(ex)        => log.warnf(ex, "Game stream %s failed", gameId); false
-
-  private def handleStreamEvent(
-      cfg: TournamentBotConfig,
-      gameId: String,
-      myColor: String,
-      node: JsonNode,
-      lastFen: AtomicReference[String],
-  ): Unit =
-    val eventType = node.path("type").asText()
-    if eventType == "move" || eventType == "gameState" then
-      val status = node.path("status").asText("ongoing")
-      val turn   = node.path("turn").asText()
-      val fen    = node.path("fen").asText()
-      if !gameTerminalStatuses.contains(status) && turn == myColor && fen.nonEmpty && fen != lastFen.get then
-        lastFen.set(fen)
-        val time = readTimeControl(node, myColor)
-        log.infof("Our turn (stream) in game %s — computing move (fen=%s, budget=%dms)", gameId, fen, time.budgetMs)
-        computeUci(cfg, fen, time) match
-          case None      => log.warnf("No move found for game %s (fen=%s)", gameId, fen)
-          case Some(uci) => submitMove(cfg, gameId, uci)
 
   // The native JAX-RS client buffers streaming responses, so reading the NDJSON game stream blocks
   // forever. Poll the game state with plain GETs (which work) and move when it is our turn.
