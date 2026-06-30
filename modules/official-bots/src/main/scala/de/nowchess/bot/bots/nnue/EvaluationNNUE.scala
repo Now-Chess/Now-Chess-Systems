@@ -12,7 +12,7 @@ object EvaluationNNUE extends Evaluation:
   val DRAW_SCORE: Int      = 0
 
   /** Full-board evaluate — used as fallback and by non-search callers. */
-  def evaluate(context: GameContext): Int = nnue.evaluate(context)
+  def evaluate(context: GameContext): Int = nnue.evaluate(context) + MopUp.score(context)
 
   // ── Accumulator hooks (incremental L1) ───────────────────────────────────
 
@@ -28,4 +28,4 @@ object EvaluationNNUE extends Evaluation:
     else nnue.pushAccumulator(childPly, move, parent.board, child.board)
 
   override def evaluateAccumulator(ply: Int, context: GameContext, hash: Long): Int =
-    nnue.evaluateAtPlyWithValidation(ply, context.turn, hash, context.board)
+    nnue.evaluateAtPlyWithValidation(ply, context.turn, hash, context.board) + MopUp.score(context)

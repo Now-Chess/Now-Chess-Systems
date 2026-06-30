@@ -1,6 +1,6 @@
 package de.nowchess.bot.logic
 
-import de.nowchess.api.board.PieceType
+import de.nowchess.api.board.{CastlingRights, PieceType}
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.{Move, MoveType}
 import de.nowchess.bot.ai.Evaluation
@@ -26,6 +26,7 @@ final class AlphaBetaSearch(
   private val TIME_CHECK_FREQUENCY = 1000
   private val FUTILITY_MARGIN      = 100
   private val CHECK_EXTENSION      = 1
+  private val CONTEMPT             = 25
 
   private val timeStartMs = AtomicLong(0L)
   private val timeLimitMs = AtomicLong(0L)
@@ -67,6 +68,7 @@ final class AlphaBetaSearch(
     timeLimitMs.set(Long.MaxValue / 4)
     nodeCount.set(0)
     val rootHash = ZobristHash.hash(context)
+    val history  = historyCounts(context)
     (1 to maxDepth)
       .foldLeft((None: Option[Move], 0)) { case ((bestSoFar, prevScore), depth) =>
         val (alpha, beta) =
@@ -78,6 +80,7 @@ final class AlphaBetaSearch(
           beta,
           ASPIRATION_DELTA,
           rootHash,
+          history,
           excludedRootMoves,
           hints,
         )
@@ -115,6 +118,7 @@ final class AlphaBetaSearch(
     timeLimitMs.set(timeBudgetMs)
     nodeCount.set(0)
     val rootHash = ZobristHash.hash(context)
+    val history  = historyCounts(context)
 
     @scala.annotation.tailrec
     def loop(bestSoFar: Option[Move], prevScore: Int, depth: Int, lastDepth: Int): (Option[Move], Int) =
@@ -129,6 +133,7 @@ final class AlphaBetaSearch(
           beta,
           ASPIRATION_DELTA,
           rootHash,
+          history,
           excludedRootMoves,
           hints,
         )
@@ -154,10 +159,11 @@ final class AlphaBetaSearch(
       beta: Int,
       initialWindow: Int,
       rootHash: Long,
+      history: Map[Long, Int],
       excludedRootMoves: Set[Move],
       hints: Map[Move, Int],
   ): (Int, Option[Move]) =
-    val state = SearchState(rootHash, Map(rootHash -> 1))
+    val state = SearchState(rootHash, history)
 
     @scala.annotation.tailrec
     def loop(currentAlpha: Int, currentBeta: Int, delta: Int, attempt: Int): (Int, Option[Move]) =
@@ -172,6 +178,32 @@ final class AlphaBetaSearch(
         else loop(currentAlpha, score + delta, math.min(delta * 2, ASPIRATION_DELTA_MAX), attempt + 1)
 
     loop(alpha, beta, initialWindow, 0)
+
+  private def drawScore(ply: Int): Int =
+    if ply % 2 == 0 then weights.DRAW_SCORE - CONTEMPT else weights.DRAW_SCORE + CONTEMPT
+
+  private def historyCounts(context: GameContext): Map[Long, Int] =
+    val initialTurn = if context.moves.size % 2 == 0 then context.turn else context.turn.opposite
+    val root = GameContext(
+      board = context.initialBoard,
+      turn = initialTurn,
+      castlingRights = CastlingRights.Initial,
+      enPassantSquare = None,
+      halfMoveClock = 0,
+      moves = List.empty,
+    )
+    val rootHash = ZobristHash.hash(root)
+    context.moves
+      .foldLeft((root, rootHash, List(rootHash))) { case ((cur, curHash, acc), move) =>
+        val next     = rules.applyMove(cur)(move)
+        val nextHash = ZobristHash.nextHash(cur, curHash, move, next)
+        (next, nextHash, nextHash :: acc)
+      }
+      ._3
+      .groupBy(identity)
+      .view
+      .mapValues(_.size)
+      .toMap
 
   private def hasNonPawnMaterial(context: GameContext): Boolean =
     context.board.pieces.values.exists { piece =>
@@ -226,7 +258,8 @@ final class AlphaBetaSearch(
   ): Option[(Int, Option[Move])] =
     if count % TIME_CHECK_FREQUENCY == 0 && isOutOfTime then
       Some((weights.evaluateAccumulator(params.ply, params.context, params.state.hash), None))
-    else if params.state.repetitions.getOrElse(params.state.hash, 0) >= 3 then Some((weights.DRAW_SCORE, None))
+    else if params.ply > 0 && params.state.repetitions.getOrElse(params.state.hash, 0) >= 2 then
+      Some((drawScore(params.ply), None))
     else ttCutoff(params)
 
   private def ttCutoff(params: SearchParams): Option[(Int, Option[Move])] =
@@ -248,12 +281,12 @@ final class AlphaBetaSearch(
     if legalMoves.isEmpty then
       Some(
         (
-          if rules.isCheckmate(params.context) then -(weights.CHECKMATE_SCORE - params.ply) else weights.DRAW_SCORE,
+          if rules.isCheckmate(params.context) then -(weights.CHECKMATE_SCORE - params.ply) else drawScore(params.ply),
           None,
         ),
       )
     else if rules.isInsufficientMaterial(params.context) || rules.isFiftyMoveRule(params.context) then
-      Some((weights.DRAW_SCORE, None))
+      Some((drawScore(params.ply), None))
     else if params.depth == 0 then
       Some((quiescence(params.context, params.ply, params.window.alpha, params.window.beta, params.state.hash), None))
     else None
