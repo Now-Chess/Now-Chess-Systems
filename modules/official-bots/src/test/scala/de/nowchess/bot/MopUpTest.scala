@@ -11,8 +11,8 @@ class MopUpTest extends AnyFunSuite with Matchers:
   private def ctx(turn: Color, pieces: (Square, Piece)*): GameContext =
     GameContext.initial.withBoard(Board(pieces.toMap)).withTurn(turn)
 
-  private val wk = Square(File.E, Rank.R1) -> Piece.WhiteKing
-  private val wq = Square(File.D, Rank.R1) -> Piece.WhiteQueen
+  private val wk       = Square(File.E, Rank.R1) -> Piece.WhiteKing
+  private val wq       = Square(File.D, Rank.R1) -> Piece.WhiteQueen
   private val bkCorner = Square(File.H, Rank.R8) -> Piece.BlackKing
   private val bkCenter = Square(File.D, Rank.R4) -> Piece.BlackKing
 

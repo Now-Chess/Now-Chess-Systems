@@ -32,7 +32,7 @@ object MopUp:
       PROXIMITY_WEIGHT * (14 - kingDistance(winnerKing, loserKing))).getOrElse(0)
 
   private def loneKingColor(context: GameContext): Option[Color] =
-    val nonKing = context.board.pieces.values.filter(_.pieceType != PieceType.King)
+    val nonKing       = context.board.pieces.values.filter(_.pieceType != PieceType.King)
     val whiteHasOther = nonKing.exists(_.color == Color.White)
     val blackHasOther = nonKing.exists(_.color == Color.Black)
     if whiteHasOther == blackHasOther then None
@@ -48,7 +48,8 @@ object MopUp:
           case PieceType.Rook   => 500
           case PieceType.Bishop => 330
           case PieceType.Knight => 320
-          case _                => 0)
+          case _                => 0
+        )
     }
 
   private def centerDistance(sq: Square): Int =

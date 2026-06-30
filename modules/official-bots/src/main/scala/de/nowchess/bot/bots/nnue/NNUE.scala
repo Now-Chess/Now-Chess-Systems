@@ -4,19 +4,19 @@ import de.nowchess.api.board.{Board, Color, Piece, PieceType, Square}
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.{Move, MoveType, PromotionPiece}
 
-class NNUE(model: NbaiModel):
+object NNUE:
+  def apply(model: NbaiModel): NNUE     = new NNUE(NNUEWeights(model))
+  def apply(weights: NNUEWeights): NNUE = new NNUE(weights)
 
-  private val HALF_SIZE     = 49152                     // 64 king-squares × 12 piece-types × 64 piece-squares
-  private val featureSize   = model.layers(0).inputSize // 98304 (= HALF_SIZE * 2) for king-relative
-  private val accSize       = model.layers(0).outputSize
+/** Per-thread NNUE evaluator: owns the mutable accumulator stack, scratch buffers and eval cache, while sharing the
+  * read-only [[NNUEWeights]]. Construct one instance per search thread (cheap — only buffer allocation); they may all
+  * share a single weights instance.
+  */
+class NNUE(weights: NNUEWeights):
+
+  import weights.{accSize, l1WeightsT, model, HALF_SIZE}
+
   private val validateAccum = sys.env.contains("NNUE_VALIDATE")
-
-  // Column-major L1 weights: l1WeightsT(featureIdx * accSize + outputIdx)
-  private val l1WeightsT: Array[Float] =
-    val w = model.weights(0).weights
-    val t = new Array[Float](featureSize * accSize)
-    for j <- 0 until featureSize; i <- 0 until accSize do t(j * accSize + i) = w(i * featureSize + j)
-    t
 
   // ── Accumulator stack ────────────────────────────────────────────────────
 
