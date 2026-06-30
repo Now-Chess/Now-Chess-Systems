@@ -5,19 +5,23 @@ import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.Move
 import de.nowchess.api.rules.RuleSet
 import de.nowchess.bot.bots.nnue.EvaluationNNUE
-import de.nowchess.bot.logic.AlphaBetaSearch
+import de.nowchess.bot.logic.{ParallelSearch, TranspositionTable}
 import de.nowchess.bot.util.{PolyglotBook, ZobristHash}
 import de.nowchess.bot.{BotDifficulty, BotMoveRepetition}
 import de.nowchess.rules.sets.DefaultRules
 
 object NNUEBot:
+  private def defaultThreads: Int =
+    sys.env.get("NNUE_SEARCH_THREADS").flatMap(_.toIntOption).filter(_ >= 1).getOrElse(1)
+
   def apply(
       difficulty: BotDifficulty,
       rules: RuleSet = DefaultRules,
       book: Option[PolyglotBook] = None,
       fixedMoveTimeMs: Option[Long] = None,
+      searchThreads: Int = defaultThreads,
   ): Bot =
-    val search = AlphaBetaSearch(rules, weights = EvaluationNNUE)
+    val search = ParallelSearch(rules, TranspositionTable(), () => EvaluationNNUE.freshEvaluator(), searchThreads)
     context =>
       val blockedMoves = BotMoveRepetition.blockedMoves(context)
       book

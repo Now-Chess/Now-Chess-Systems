@@ -95,7 +95,7 @@ final class AlphaBetaSearch(
     bestMoveWithTime(context, timeBudgetMs, Set.empty)
 
   def bestMoveWithTime(context: GameContext, timeBudgetMs: Long, excludedRootMoves: Set[Move]): Option[Move] =
-    doTimedSearch(context, timeBudgetMs, excludedRootMoves, Map.empty)
+    doTimedSearch(context, timeBudgetMs, excludedRootMoves, Map.empty, clearTt = true)
 
   def bestMoveWithTime(
       context: GameContext,
@@ -103,15 +103,27 @@ final class AlphaBetaSearch(
       excludedRootMoves: Set[Move],
       hints: Map[Move, Int],
   ): Option[Move] =
-    doTimedSearch(context, timeBudgetMs, excludedRootMoves, hints)
+    doTimedSearch(context, timeBudgetMs, excludedRootMoves, hints, clearTt = true)
+
+  /** Timed search over a transposition table that is shared with other workers (Lazy SMP): the caller is responsible
+    * for clearing it once before launching all workers, so this worker must not clear it.
+    */
+  def bestMoveWithTimeSharedTt(
+      context: GameContext,
+      timeBudgetMs: Long,
+      excludedRootMoves: Set[Move],
+      hints: Map[Move, Int],
+  ): Option[Move] =
+    doTimedSearch(context, timeBudgetMs, excludedRootMoves, hints, clearTt = false)
 
   private def doTimedSearch(
       context: GameContext,
       timeBudgetMs: Long,
       excludedRootMoves: Set[Move],
       hints: Map[Move, Int],
+      clearTt: Boolean,
   ): Option[Move] =
-    tt.clear()
+    if clearTt then tt.clear()
     ordering.clear()
     weights.initAccumulator(context)
     timeStartMs.set(System.currentTimeMillis)
