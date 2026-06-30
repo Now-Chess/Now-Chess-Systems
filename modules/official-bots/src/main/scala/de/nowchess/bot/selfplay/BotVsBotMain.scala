@@ -4,7 +4,7 @@ import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.Move
 import de.nowchess.api.rules.RuleSet
 import de.nowchess.api.board.Color
-import de.nowchess.bot.BotDifficulty
+import de.nowchess.bot.{Bot, BotDifficulty}
 import de.nowchess.bot.bots.{HybridBot, NNUEBot}
 import de.nowchess.io.fen.FenExporter
 import de.nowchess.rules.sets.DefaultRules
@@ -19,11 +19,11 @@ enum GameResult:
   case Bot2Wins
   case Draw
 
-/** Standalone bot-vs-bot harness. Runs two NNUEBots against each other from randomised openings and writes the
-  * visited positions as one FEN per line. Each bot can use different difficulty levels and weight files.
+/** Standalone bot-vs-bot harness. Runs two NNUEBots against each other from randomised openings and writes the visited
+  * positions as one FEN per line. Each bot can use different difficulty levels and weight files.
   *
-  * Games run sequentially. Bots alternate: bot1 plays white, then bot1 plays black, alternating per game to ensure
-  * fair evaluation.
+  * Games run sequentially. Bots alternate: bot1 plays white, then bot1 plays black, alternating per game to ensure fair
+  * evaluation.
   */
 object BotVsBotMain:
 
@@ -43,7 +43,7 @@ object BotVsBotMain:
   def main(args: Array[String]): Unit =
     val config = parse(args.toList, Config())
 
-    val rules = DefaultRules
+    val rules       = DefaultRules
     val difficulty1 = parseDifficulty(config.difficulty1)
     val difficulty2 = parseDifficulty(config.difficulty2)
 
@@ -53,11 +53,11 @@ object BotVsBotMain:
     config.weights2.foreach(System.setProperty("nnue.weights", _))
     val bot2 = HybridBot(difficulty2, rules)
 
-    val rng = new Random(config.seed)
-    val seen = mutable.HashSet.empty[String]
+    val rng      = new Random(config.seed)
+    val seen     = mutable.HashSet.empty[String]
     var bot1Wins = 0
     var bot2Wins = 0
-    var draws = 0
+    var draws    = 0
 
     Files.createDirectories(Path.of(config.out).toAbsolutePath.getParent)
     val writer = new BufferedWriter(new FileWriter(config.out))
@@ -65,7 +65,7 @@ object BotVsBotMain:
       var game = 0
       while game < config.games do
         val bot1AsWhite = game % 2 == 0
-        val result = playGame(rules, bot1, bot2, rng, config, seen, writer, bot1AsWhite)
+        val result      = playGame(rules, bot1, bot2, rng, config, seen, writer, bot1AsWhite)
         game += 1
 
         result match
@@ -83,7 +83,7 @@ object BotVsBotMain:
         if game % 25 == 0 then
           writer.flush()
           println(
-            s"  Progress: $game/${config.games} | Positions: ${seen.size} | Bot1: $bot1Wins, Bot2: $bot2Wins, Draws: $draws\n"
+            s"  Progress: $game/${config.games} | Positions: ${seen.size} | Bot1: $bot1Wins, Bot2: $bot2Wins, Draws: $draws\n",
           )
     finally writer.close()
     println(s"\nFinal Statistics:")
@@ -94,8 +94,8 @@ object BotVsBotMain:
 
   private def playGame(
       rules: RuleSet,
-      bot1: GameContext => Option[Move],
-      bot2: GameContext => Option[Move],
+      bot1: Bot,
+      bot2: Bot,
       rng: Random,
       config: Config,
       seen: mutable.HashSet[String],
@@ -105,16 +105,16 @@ object BotVsBotMain:
     randomOpening(rules, rng, config.randomPlies, GameContext.initial) match
       case None => None
       case Some(start) =>
-        var ctx = start
+        var ctx   = start
         var plies = config.randomPlies
-        var live = true
+        var live  = true
         while live && plies < config.maxPlies do
           if isTerminal(rules, ctx) then live = false
           else
-            val currentBot = if (plies - config.randomPlies) % 2 == 0 then
-              if bot1AsWhite then bot1 else bot2
-            else if bot1AsWhite then bot2
-            else bot1
+            val currentBot =
+              if (plies - config.randomPlies) % 2 == 0 then if bot1AsWhite then bot1 else bot2
+              else if bot1AsWhite then bot2
+              else bot1
 
             currentBot(ctx) match
               case None => live = false
@@ -127,22 +127,18 @@ object BotVsBotMain:
 
   private def determineWinner(rules: RuleSet, ctx: GameContext, bot1AsWhite: Boolean): Option[GameResult] =
     val legalMoves = rules.allLegalMoves(ctx)
-     
-    if legalMoves.nonEmpty then
-      Some(GameResult.Draw)
+
+    if legalMoves.nonEmpty then Some(GameResult.Draw)
     else if rules.isCheck(ctx) then
-      if ctx.turn == (if bot1AsWhite then Color.Black else Color.White) then
-        Some(GameResult.Bot1Wins)
-      else
-        Some(GameResult.Bot2Wins)
+      if ctx.turn == (if bot1AsWhite then Color.Black else Color.White) then Some(GameResult.Bot1Wins)
+      else Some(GameResult.Bot2Wins)
     else if rules.isFiftyMoveRule(ctx) || rules.isThreefoldRepetition(ctx) || rules.isInsufficientMaterial(ctx) then
       Some(GameResult.Draw)
-    else
-      Some(GameResult.Draw)
+    else Some(GameResult.Draw)
 
   private def randomOpening(rules: RuleSet, rng: Random, plies: Int, start: GameContext): Option[GameContext] =
     var ctx = start
-    var i = 0
+    var i   = 0
     while i < plies do
       val legal = rules.allLegalMoves(ctx)
       if legal.isEmpty then return None

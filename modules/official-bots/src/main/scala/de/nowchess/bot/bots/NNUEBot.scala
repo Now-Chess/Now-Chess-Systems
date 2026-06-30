@@ -1,13 +1,12 @@
 package de.nowchess.bot.bots
 
-import de.nowchess.bot.Bot
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.Move
 import de.nowchess.api.rules.RuleSet
 import de.nowchess.bot.bots.nnue.EvaluationNNUE
 import de.nowchess.bot.logic.{ParallelSearch, TranspositionTable}
 import de.nowchess.bot.util.{PolyglotBook, ZobristHash}
-import de.nowchess.bot.{BotDifficulty, BotMoveRepetition}
+import de.nowchess.bot.{Bot, BotDifficulty, BotMoveRepetition, TimeControl}
 import de.nowchess.rules.sets.DefaultRules
 
 object NNUEBot:
@@ -22,20 +21,21 @@ object NNUEBot:
       searchThreads: Int = defaultThreads,
   ): Bot =
     val search = ParallelSearch(rules, TranspositionTable(), () => EvaluationNNUE.freshEvaluator(), searchThreads)
-    context =>
-      val blockedMoves = BotMoveRepetition.blockedMoves(context)
-      book
-        .flatMap(_.probe(context))
-        .filterNot(blockedMoves.contains)
-        .orElse {
-          val moves = BotMoveRepetition.filterAllowed(context, rules.allLegalMoves(context))
-          if moves.isEmpty then None
-          else
-            val scored   = batchEvaluateRoot(rules, context, moves)
-            val bestMove = scored.maxBy(_._2)._1
-            val budget   = fixedMoveTimeMs.getOrElse(allocateTime(scored))
-            search.bestMoveWithTime(context, budget, blockedMoves, scored.toMap).orElse(Some(bestMove))
-        }
+    new Bot:
+      def move(context: GameContext, time: TimeControl): Option[Move] =
+        val blockedMoves = BotMoveRepetition.blockedMoves(context)
+        book
+          .flatMap(_.probe(context))
+          .filterNot(blockedMoves.contains)
+          .orElse {
+            val moves = BotMoveRepetition.filterAllowed(context, rules.allLegalMoves(context))
+            if moves.isEmpty then None
+            else
+              val scored   = batchEvaluateRoot(rules, context, moves)
+              val bestMove = scored.maxBy(_._2)._1
+              val budget   = fixedMoveTimeMs.getOrElse(if time.isClocked then time.budgetMs else allocateTime(scored))
+              search.bestMoveWithTime(context, budget, blockedMoves, scored.toMap).orElse(Some(bestMove))
+          }
 
   private def batchEvaluateRoot(rules: RuleSet, context: GameContext, moves: List[Move]): List[(Move, Int)] =
     EvaluationNNUE.initAccumulator(context)

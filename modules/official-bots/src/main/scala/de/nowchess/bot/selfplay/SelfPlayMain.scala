@@ -3,7 +3,7 @@ package de.nowchess.bot.selfplay
 import de.nowchess.api.game.GameContext
 import de.nowchess.api.move.Move
 import de.nowchess.api.rules.RuleSet
-import de.nowchess.bot.BotDifficulty
+import de.nowchess.bot.{Bot, BotDifficulty}
 import de.nowchess.bot.bots.NNUEBot
 import de.nowchess.io.fen.FenExporter
 import de.nowchess.rules.sets.DefaultRules
@@ -55,7 +55,7 @@ object SelfPlayMain:
 
   private def playGame(
       rules: RuleSet,
-      bot: GameContext => Option[Move],
+      bot: Bot,
       rng: Random,
       config: Config,
       seen: mutable.HashSet[String],
