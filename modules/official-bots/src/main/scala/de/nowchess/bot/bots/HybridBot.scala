@@ -7,12 +7,16 @@ import de.nowchess.api.rules.RuleSet
 import de.nowchess.bot.ai.Evaluation
 import de.nowchess.bot.bots.classic.EvaluationClassic
 import de.nowchess.bot.bots.nnue.EvaluationNNUE
-import de.nowchess.bot.logic.{AlphaBetaSearch, TranspositionTable}
+import de.nowchess.bot.logic.{ParallelSearch, TranspositionTable}
 import de.nowchess.bot.util.PolyglotBook
 import de.nowchess.bot.{BotDifficulty, BotMoveRepetition, Config}
 import de.nowchess.rules.sets.DefaultRules
 
 object HybridBot:
+
+  private def defaultThreads: Int =
+    sys.env.get("NNUE_SEARCH_THREADS").flatMap(_.toIntOption).filter(_ >= 1).getOrElse(1)
+
   def apply(
       difficulty: BotDifficulty,
       rules: RuleSet = DefaultRules,
@@ -20,8 +24,10 @@ object HybridBot:
       nnueEvaluation: Evaluation = EvaluationNNUE,
       classicalEvaluation: Evaluation = EvaluationClassic,
       vetoReporter: String => Unit = println(_),
+      searchThreads: Int = defaultThreads,
   ): Bot =
-    val search = AlphaBetaSearch(rules, TranspositionTable(), classicalEvaluation)
+    // Use ParallelSearch to enable multi-threaded (SMP) search similar to NNUEBot
+    val search = ParallelSearch(rules, TranspositionTable(), () => classicalEvaluation, searchThreads)
     context =>
       val blockedMoves = BotMoveRepetition.blockedMoves(context)
 
